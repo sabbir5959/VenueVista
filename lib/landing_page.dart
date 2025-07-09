@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'login_page.dart'; // Import the LoginPage here
+import 'login_page.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({Key? key}) : super(key: key);
@@ -8,7 +8,8 @@ class LandingPage extends StatefulWidget {
   State<LandingPage> createState() => _LandingPageState();
 }
 
-class _LandingPageState extends State<LandingPage> with SingleTickerProviderStateMixin {
+class _LandingPageState extends State<LandingPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
   bool _showLogin = false;
@@ -20,7 +21,10 @@ class _LandingPageState extends State<LandingPage> with SingleTickerProviderStat
       duration: const Duration(seconds: 2),
       vsync: this,
     );
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic);
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOutCubic,
+    );
     _controller.forward();
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -71,10 +75,7 @@ class _LandingPageState extends State<LandingPage> with SingleTickerProviderStat
               SizedBox(height: 10),
               Text(
                 'Book your football turf easily',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.white70,
-                ),
+                style: TextStyle(fontSize: 18, color: Colors.white70),
               ),
             ],
           ),
