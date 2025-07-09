@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'login_page.dart';
 
 class LandingPage extends StatefulWidget {
-  const LandingPage({Key? key}) : super(key: key);
+  const LandingPage({super.key});
 
   @override
   State<LandingPage> createState() => _LandingPageState();
@@ -53,6 +53,7 @@ class _LandingPageState extends State<LandingPage>
         );
       });
     }
+
     return Scaffold(
       backgroundColor: Colors.green[700],
       body: Center(
@@ -62,8 +63,8 @@ class _LandingPageState extends State<LandingPage>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.sports_soccer, size: 100, color: Colors.white),
-              SizedBox(height: 20),
-              Text(
+              const SizedBox(height: 20),
+              const Text(
                 'VenueVista',
                 style: TextStyle(
                   fontSize: 32,
@@ -72,8 +73,8 @@ class _LandingPageState extends State<LandingPage>
                   letterSpacing: 2,
                 ),
               ),
-              SizedBox(height: 10),
-              Text(
+              const SizedBox(height: 10),
+              const Text(
                 'Book your football turf easily',
                 style: TextStyle(fontSize: 18, color: Colors.white70),
               ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'landing_page.dart';
-import 'login_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,9 +11,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'VenueVista',
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.green, useMaterial3: true),
       home: const LandingPage(),
-
     );
   }
 }

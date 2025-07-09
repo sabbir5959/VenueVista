@@ -1,16 +1,54 @@
-# venuevista
+# VenueVista
 
-A new Flutter project.
+A Flutter application for booking football grounds and turfs easily.
+
+## Project Structure
+
+```
+lib/
+├── main.dart                    # App entry point
+├── screens/                     # All screen widgets
+│   ├── landing_page.dart        # Splash/Landing screen
+│   ├── login_page.dart          # User login screen
+│   └── dashboard_page.dart      # Main dashboard
+├── widgets/                     # Reusable widgets
+│   └── app_logo.dart           # App logo widget
+└── utils/                      # Utility functions and constants
+```
+
+## Features
+
+- ✅ Animated landing page
+- ✅ User login interface
+- ✅ Dashboard with ground listings
+- ✅ Responsive design
+- ✅ Material 3 design system
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+1. Clone the repository
+2. Run `flutter pub get` to install dependencies
+3. Run `flutter run` to start the app
 
-A few resources to get you started if this is your first Flutter project:
+## Design Highlights
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### Dashboard Features:
+- **Top-right logo**: VenueVista brand logo
+- **Left sidebar menu**: Navigation drawer with user options
+- **Choose Ground section**: Prominent header for ground selection
+- **Scrollable ground list**: Cards showing ground details with images, names, ratings, and prices
+- **Search functionality**: Find specific grounds easily
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Color Scheme:
+- Primary: Green (#4CAF50)
+- Background: Light grey (#FAFAFA)
+- Cards: White with subtle shadows
+
+## TODO
+
+- [ ] Add ground details page
+- [ ] Implement booking functionality
+- [ ] Add user authentication
+- [ ] Add favorites feature
+- [ ] Add filters and sorting
+- [ ] Add payment integration
