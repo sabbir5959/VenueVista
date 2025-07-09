@@ -62,7 +62,7 @@ class _LoginPageState extends State<LoginPage> {
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: () {
-                          // TODO: Implement password recovery
+
                         },
                         child: Text('Forgot Password?'),
                       ),
