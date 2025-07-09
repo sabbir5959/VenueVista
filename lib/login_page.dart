@@ -79,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: () {
-                          // TODO: Implement actual login logic
+
                         },
                         child: Text('Login'),
                       ),
@@ -91,7 +91,7 @@ class _LoginPageState extends State<LoginPage> {
                         Text("Don't have an account? ", style: TextStyle(color: Colors.grey[700])),
                         TextButton(
                           onPressed: () {
-                            // TODO: Implement signup navigation
+
                           },
                           child: Text('Sign Up'),
                         ),
