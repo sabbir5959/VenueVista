@@ -12,7 +12,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -53,13 +53,26 @@ class _LoginPageState extends State<LoginPage> {
       await Future.delayed(const Duration(seconds: 1));
 
       if (mounted) {
-        _showSuccessMessage('Login successful! Welcome to VenueVista.');
-        // Navigate to dashboard (to be implemented)
+        // Check for admin credentials
+        String phone = _phoneController.text.trim();
+        String password = _passwordController.text.trim();
+
+        // Admin login check (for demo purposes)
+        if (phone == "01798155814" && password == "sabbir55") {
+          _showSuccessMessage('Admin login successful! Welcome Admin.');
+          Navigator.of(context).pushReplacementNamed('/admin');
+        } else {
+          _showSuccessMessage('Login successful! Welcome to VenueVista.');
+
+          Navigator.of(context).pushReplacementNamed('/admin');
+        }
       }
 
       setState(() {
         _isLoading = false;
       });
+    } else {
+      _showErrorMessage('Please fill all fields correctly.');
     }
   }
 
@@ -73,6 +86,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (mounted) {
       _showSuccessMessage('Google login successful!');
+      Navigator.of(context).pushReplacementNamed('/admin');
     }
 
     setState(() {
@@ -90,6 +104,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (mounted) {
       _showSuccessMessage('Facebook login successful!');
+      Navigator.of(context).pushReplacementNamed('/admin');
     }
 
     setState(() {
@@ -99,19 +114,13 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
   void _showSuccessMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
@@ -123,10 +132,7 @@ class _LoginPageState extends State<LoginPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.green[300]!,
-              Colors.green[500]!,
-            ],
+            colors: [Colors.green[300]!, Colors.green[500]!],
           ),
         ),
         child: SafeArea(
@@ -156,9 +162,9 @@ class _LoginPageState extends State<LoginPage> {
                           color: Colors.green[700],
                         ),
                       ),
-                      
+
                       const SizedBox(height: 24),
-                      
+
                       Text(
                         'Welcome Back!',
                         style: TextStyle(
@@ -167,17 +173,14 @@ class _LoginPageState extends State<LoginPage> {
                           color: Colors.green[700],
                         ),
                       ),
-                      
+
                       const SizedBox(height: 8),
-                      
+
                       Text(
                         'Sign in to continue to VenueVista',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                       ),
-                      
+
                       const SizedBox(height: 32),
 
                       // Social Login Buttons
@@ -202,7 +205,9 @@ class _LoginPageState extends State<LoginPage> {
                               label: const Text('Google'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.grey[700],
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -210,9 +215,9 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                           ),
-                          
+
                           const SizedBox(width: 16),
-                          
+
                           // Facebook Login Button
                           Expanded(
                             child: OutlinedButton.icon(
@@ -232,7 +237,9 @@ class _LoginPageState extends State<LoginPage> {
                               label: const Text('Facebook'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.grey[700],
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -242,7 +249,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 24),
 
                       // Divider with "OR"
@@ -262,7 +269,7 @@ class _LoginPageState extends State<LoginPage> {
                           Expanded(child: Divider(color: Colors.grey[300])),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 24),
 
                       // Login Form
@@ -287,12 +294,14 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.green[700]!),
+                                  borderSide: BorderSide(
+                                    color: Colors.green[700]!,
+                                  ),
                                 ),
                               ),
                               validator: _validatePhone,
                             ),
-                            
+
                             const SizedBox(height: 16),
 
                             // Password Field
@@ -319,12 +328,14 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.green[700]!),
+                                  borderSide: BorderSide(
+                                    color: Colors.green[700]!,
+                                  ),
                                 ),
                               ),
                               validator: _validatePassword,
                             ),
-                            
+
                             const SizedBox(height: 8),
 
                             // Forgot Password Link
@@ -333,7 +344,9 @@ class _LoginPageState extends State<LoginPage> {
                               child: TextButton(
                                 onPressed: () {
                                   // Handle forgot password
-                                  _showSuccessMessage('Forgot password feature coming soon!');
+                                  _showSuccessMessage(
+                                    'Forgot password feature coming soon!',
+                                  );
                                 },
                                 child: Text(
                                   'Forgot Password?',
@@ -341,7 +354,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                             ),
-                            
+
                             const SizedBox(height: 16),
 
                             // Login Button
@@ -351,7 +364,9 @@ class _LoginPageState extends State<LoginPage> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green[700],
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   textStyle: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -376,7 +391,7 @@ class _LoginPageState extends State<LoginPage> {
                           ],
                         ),
                       ),
-                      
+
                       const SizedBox(height: 24),
 
                       // Sign Up Link
