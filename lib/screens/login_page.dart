@@ -287,7 +287,7 @@ class _LoginPageState extends State<LoginPage> {
                               ],
                               decoration: InputDecoration(
                                 labelText: 'Phone Number',
-                                hintText: '01XXXXXXXXX',
+                                hintText: 'phone number',
                                 prefixIcon: const Icon(Icons.phone),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
