@@ -928,6 +928,7 @@ class AdminPaymentsPage extends StatelessWidget {
   }
 }
 
+
 class AdminSettingsPage extends StatelessWidget {
   const AdminSettingsPage({super.key});
 
