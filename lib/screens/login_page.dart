@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../users/dashboard.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -53,18 +54,24 @@ class _LoginPageState extends State<LoginPage> {
       await Future.delayed(const Duration(seconds: 1));
 
       if (mounted) {
-        // Check for admin credentials
+        // Check for admin and user credentials
         String phone = _phoneController.text.trim();
         String password = _passwordController.text.trim();
 
-        // Admin login check (for demo purposes)
+        // Admin login check
         if (phone == "01798155814" && password == "sabbir55") {
           _showSuccessMessage('Admin login successful! Welcome Admin.');
           Navigator.of(context).pushReplacementNamed('/admin');
+        }
+        // User login check
+        else if (phone == "01533985291" && password == "kawsar47") {
+          _showSuccessMessage('User login successful! Welcome to VenueVista.');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomeActivity()),
+          );
         } else {
-          _showSuccessMessage('Login successful! Welcome to VenueVista.');
-
-          Navigator.of(context).pushReplacementNamed('/admin');
+          _showErrorMessage('Invalid credentials. Please try again.');
         }
       }
 
@@ -376,16 +383,17 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                                 onPressed: _isLoading ? null : _login,
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Text('Login'),
+                                child:
+                                    _isLoading
+                                        ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                        : const Text('Login'),
                               ),
                             ),
                           ],
