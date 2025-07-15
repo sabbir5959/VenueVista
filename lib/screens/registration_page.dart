@@ -406,6 +406,32 @@ class _RegistrationPageState extends State<RegistrationPage> {
                             ),
                           ],
                         ),
+
+                        const SizedBox(height: 16),
+
+                        // Browse Events Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[700],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              textStyle: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.event),
+                            label: const Text('Browse Events'),
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/events');
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   ),

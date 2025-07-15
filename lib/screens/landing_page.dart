@@ -346,6 +346,21 @@ class _LandingPageState extends State<LandingPage>
                         );
                       },
                     ),
+                    const SizedBox(height: 32),
+                    // Go to User Section (Events Page)
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.person, color: Colors.white),
+                      label: const Text('Go to User Events', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 8,
+                      ),
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/user');
+                      },
+                    ),
                   ],
                 ),
               ),
