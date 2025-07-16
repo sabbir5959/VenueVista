@@ -16,7 +16,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _isOwnerLogin = false; // Track if user is logging in as owner
+  bool _isOwnerLogin = false; 
 
   @override
   void dispose() {
