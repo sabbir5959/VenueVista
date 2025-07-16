@@ -271,7 +271,7 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
                           ),
                           child: Text(
                             _selectedDate != null
-                                ? DateFormat('MMM dd, yyyy').format(_selectedDate!)
+                                ? DateFormat('dd MMM yyyy').format(_selectedDate!)
                                 : 'Select Date',
                           ),
                         ),
@@ -356,7 +356,7 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
                               );
                               return;
                             }
-                            // TODO: Implement tournament creation
+                            
                             Navigator.pop(context);
                           }
                         },
