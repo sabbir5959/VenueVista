@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../owners/screens/owner_dashboard.dart';
+import '../users/dashboard.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -55,29 +55,24 @@ class _LoginPageState extends State<LoginPage> {
       await Future.delayed(const Duration(seconds: 2));
 
       if (mounted) {
+        // Check for admin and user credentials
         String phone = _phoneController.text.trim();
         String password = _passwordController.text.trim();
 
-        if (_isOwnerLogin) {
-          // Venue owner login logic
-          if (phone == "01700594133" && password == "owner123") {
-            _showSuccessMessage('Owner login successful!');
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const OwnerDashboard()),
-            );
-          } else {
-            _showErrorMessage('Invalid owner credentials');
-          }
+        // Admin login check
+        if (phone == "01798155814" && password == "sabbir55") {
+          _showSuccessMessage('Admin login successful! Welcome Admin.');
+          Navigator.of(context).pushReplacementNamed('/admin');
+        }
+        // User login check
+        else if (phone == "01533985291" && password == "kawsar47") {
+          _showSuccessMessage('User login successful! Welcome to VenueVista.');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomeActivity()),
+          );
         } else {
-          // Regular user login logic
-          if (phone == "01798155814" && password == "sabbir55") {
-            _showSuccessMessage('Admin login successful! Welcome Admin.');
-            Navigator.pushReplacementNamed(context, '/admin');
-          } else {
-            _showSuccessMessage('User login successful!');
-            Navigator.pushReplacementNamed(context, '/admin');
-          }
+          _showErrorMessage('Invalid credentials. Please try again.');
         }
       }
 
@@ -425,16 +420,17 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                                 onPressed: _isLoading ? null : _login,
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Text('Login'),
+                                child:
+                                    _isLoading
+                                        ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                        : const Text('Login'),
                               ),
                             ),
                           ],
