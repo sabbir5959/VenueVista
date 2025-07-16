@@ -16,7 +16,6 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _isOwnerLogin = false; 
 
   @override
   void dispose() {
@@ -55,14 +54,25 @@ class _LoginPageState extends State<LoginPage> {
       await Future.delayed(const Duration(seconds: 2));
 
       if (mounted) {
-        // Check for admin and user credentials
+        // Check for admin, owner and user credentials
         String phone = _phoneController.text.trim();
         String password = _passwordController.text.trim();
+
+        // Debug prints
+        print('Entered phone: "$phone"');
+        print('Entered password: "$password"');
+        print('Phone length: ${phone.length}');
+        print('Password length: ${password.length}');
 
         // Admin login check
         if (phone == "01798155814" && password == "sabbir55") {
           _showSuccessMessage('Admin login successful! Welcome Admin.');
           Navigator.of(context).pushReplacementNamed('/admin');
+        }
+        // Owner login check
+        else if (phone == "01798155815" && password == "owner123") {
+          _showSuccessMessage('Owner login successful! Welcome Owner.');
+          Navigator.of(context).pushReplacementNamed('/owner');
         }
         // User login check
         else if (phone == "01533985291" && password == "kawsar47") {
@@ -165,7 +175,7 @@ class _LoginPageState extends State<LoginPage> {
                           color: Colors.green[50],
                         ),
                         child: Icon(
-                          _isOwnerLogin ? Icons.sports : Icons.person,
+                          Icons.person,
                           size: 60,
                           color: Colors.green[700],
                         ),
@@ -173,42 +183,8 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 24),
 
-                      // Login Type Toggle
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('User'),
-                            selected: !_isOwnerLogin,
-                            onSelected: (selected) {
-                              if (selected) {
-                                setState(() {
-                                  _isOwnerLogin = false;
-                                });
-                              }
-                            },
-                            selectedColor: Colors.green[100],
-                          ),
-                          const SizedBox(width: 16),
-                          ChoiceChip(
-                            label: const Text('Venue Owner'),
-                            selected: _isOwnerLogin,
-                            onSelected: (selected) {
-                              if (selected) {
-                                setState(() {
-                                  _isOwnerLogin = true;
-                                });
-                              }
-                            },
-                            selectedColor: Colors.green[100],
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 24),
-
                       Text(
-                        _isOwnerLogin ? 'Venue Owner Login' : 'Welcome Back!',
+                        'Welcome Back!',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -219,102 +195,134 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 8),
 
                       Text(
-                        'Sign in to continue to VenueVista',
+                        'Sign in to continue to VenueVista\n(Admin, Owner, or User)',
+                        textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Demo credentials info
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green[200]!),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              'Demo Credentials:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[700],
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Owner: 01798155815 / owner123\nAdmin: 01798155814 / sabbir55\nUser: 01533985291 / kawsar47',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.green[600],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
 
                       const SizedBox(height: 32),
 
-                      // Social Login Buttons (only for users)
-                      if (!_isOwnerLogin) ...[
-                        Row(
-                          children: [
-                            // Google Login Button
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _isLoading ? null : _loginWithGoogle,
-                                icon: Image.asset(
-                                  'assets/icons/google.png',
-                                  height: 20,
-                                  width: 20,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Icon(
-                                      Icons.g_mobiledata,
-                                      color: Colors.red,
-                                      size: 20,
-                                    );
-                                  },
+                      // Social Login Buttons
+                      Row(
+                        children: [
+                          // Google Login Button
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _isLoading ? null : _loginWithGoogle,
+                              icon: Image.asset(
+                                'assets/icons/google.png',
+                                height: 20,
+                                width: 20,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.g_mobiledata,
+                                    color: Colors.red,
+                                    size: 20,
+                                  );
+                                },
+                              ),
+                              label: const Text('Google'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey[700],
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
                                 ),
-                                label: const Text('Google'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.grey[700],
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  side: BorderSide(color: Colors.grey[300]!),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
+                                side: BorderSide(color: Colors.grey[300]!),
                               ),
                             ),
+                          ),
 
-                            const SizedBox(width: 16),
+                          const SizedBox(width: 16),
 
-                            // Facebook Login Button
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _isLoading ? null : _loginWithFacebook,
-                                icon: Image.asset(
-                                  'assets/icons/facebook.png',
-                                  height: 20,
-                                  width: 20,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Icon(
-                                      Icons.facebook,
-                                      color: Colors.blue[700],
-                                      size: 20,
-                                    );
-                                  },
+                          // Facebook Login Button
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _isLoading ? null : _loginWithFacebook,
+                              icon: Image.asset(
+                                'assets/icons/facebook.png',
+                                height: 20,
+                                width: 20,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.facebook,
+                                    color: Colors.blue[700],
+                                    size: 20,
+                                  );
+                                },
+                              ),
+                              label: const Text('Facebook'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey[700],
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
                                 ),
-                                label: const Text('Facebook'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.grey[700],
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  side: BorderSide(color: Colors.grey[300]!),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
+                                side: BorderSide(color: Colors.grey[300]!),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
 
-                        const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                        // Divider with "OR"
-                        Row(
-                          children: [
-                            Expanded(child: Divider(color: Colors.grey[300])),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                'OR',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
+                      // Divider with "OR"
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.grey[300])),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'OR',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                            Expanded(child: Divider(color: Colors.grey[300])),
-                          ],
-                        ),
+                          ),
+                          Expanded(child: Divider(color: Colors.grey[300])),
+                        ],
+                      ),
 
-                        const SizedBox(height: 24),
-                      ],
+                      const SizedBox(height: 24),
 
                       // Login Form
                       Form(
