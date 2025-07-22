@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../screens/search_grounds.dart';
+import 'search_grounds.dart';
 
 class HomeActivity extends StatefulWidget {
   const HomeActivity({super.key});
