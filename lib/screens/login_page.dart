@@ -51,17 +51,28 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       // Simulate network delay
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(seconds: 2));
 
       if (mounted) {
-        // Check for admin and user credentials
+        // Check for admin, owner and user credentials
         String phone = _phoneController.text.trim();
         String password = _passwordController.text.trim();
+
+        // Debug prints
+        print('Entered phone: "$phone"');
+        print('Entered password: "$password"');
+        print('Phone length: ${phone.length}');
+        print('Password length: ${password.length}');
 
         // Admin login check
         if (phone == "01798155814" && password == "sabbir55") {
           _showSuccessMessage('Admin login successful! Welcome Admin.');
           Navigator.of(context).pushReplacementNamed('/admin');
+        }
+        // Owner login check
+        else if (phone == "01798155815" && password == "owner123") {
+          _showSuccessMessage('Owner login successful! Welcome Owner.');
+          Navigator.of(context).pushReplacementNamed('/owner');
         }
         // User login check
         else if (phone == "01533985291" && password == "kawsar47") {
@@ -164,7 +175,7 @@ class _LoginPageState extends State<LoginPage> {
                           color: Colors.green[50],
                         ),
                         child: Icon(
-                          Icons.sports_soccer,
+                          Icons.person,
                           size: 60,
                           color: Colors.green[700],
                         ),
@@ -184,8 +195,42 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 8),
 
                       Text(
-                        'Sign in to continue to VenueVista',
+                        'Sign in to continue to VenueVista\n(Admin, Owner, or User)',
+                        textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Demo credentials info
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green[200]!),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              'Demo Credentials:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[700],
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Owner: 01798155815 / owner123\nAdmin: 01798155814 / sabbir55\nUser: 01533985291 / kawsar47',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.green[600],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
 
                       const SizedBox(height: 32),
