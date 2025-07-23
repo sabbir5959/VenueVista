@@ -203,7 +203,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                           isSelected
                                               ? FontWeight.w600
                                               : FontWeight.w500,
-                                      fontSize: 15,
+                                      fontSize: 14,
                                     ),
                                   ),
                                 ],
@@ -260,7 +260,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               style: TextStyle(
                                 color: Colors.red,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 15,
+                                fontSize: 14,
                               ),
                             ),
                           ],

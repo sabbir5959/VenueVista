@@ -19,7 +19,7 @@ class AdminBookingsPage extends StatelessWidget {
             Text(
               isMobile ? 'Bookings' : 'Bookings Management',
               style: TextStyle(
-                fontSize: isMobile ? 20 : 32,
+                fontSize: isMobile ? 24 : 32,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
                 letterSpacing: -0.5,
@@ -250,7 +250,7 @@ class AdminBookingsPage extends StatelessWidget {
                             Text(
                               booking['venue'],
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textPrimary,
                               ),
@@ -261,7 +261,7 @@ class AdminBookingsPage extends StatelessWidget {
                             Text(
                               'by ${booking['user']}',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 color: AppColors.textSecondary,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -285,7 +285,7 @@ class AdminBookingsPage extends StatelessWidget {
                         child: Text(
                           booking['status'],
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: _getBookingStatusColor(booking['status']),
                           ),
@@ -306,7 +306,7 @@ class AdminBookingsPage extends StatelessWidget {
                       Text(
                         booking['date'],
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -321,7 +321,7 @@ class AdminBookingsPage extends StatelessWidget {
                         child: Text(
                           booking['time'],
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
                           overflow: TextOverflow.ellipsis,

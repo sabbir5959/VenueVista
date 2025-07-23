@@ -1,0 +1,20 @@
+// Font size mapping based on your requirements:
+// Heading text: 20-24 -> Use AppTextStyles.heading (22), headingLarge (24), headingMedium (20)
+// Sub-heading: 16-18 -> Use AppTextStyles.subHeading (18), subHeadingSmall (16)  
+// Body text: 14-16 -> Use AppTextStyles.body (16), bodyMedium (15), bodySmall (14)
+// Small text/Caption: 12-14 -> Use AppTextStyles.caption (14), captionSmall (12)
+
+// Current font sizes found and their new mappings:
+// 48 -> 24 (headingLarge)
+// 28 -> 24 (headingLarge) 
+// 24 -> 22 (heading)
+// 20 -> 20 (headingMedium)
+// 18 -> 18 (subHeading)
+// 16 -> 16 (body)
+// 15 -> 15 (bodyMedium)
+// 14 -> 14 (bodySmall)
+// 13 -> 12 (captionSmall)
+// 12 -> 12 (captionSmall)
+// 11 -> 12 (captionSmall)
+// 10 -> 12 (captionSmall)
+// 9 -> 12 (captionSmall)
