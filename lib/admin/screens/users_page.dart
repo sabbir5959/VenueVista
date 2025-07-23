@@ -19,7 +19,7 @@ class AdminUsersPage extends StatelessWidget {
             Text(
               isMobile ? 'Users' : 'Users Management',
               style: TextStyle(
-                fontSize: isMobile ? 20 : 32,
+                fontSize: isMobile ? 24 : 32,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
                 letterSpacing: -0.5,
@@ -189,7 +189,7 @@ class AdminUsersPage extends StatelessWidget {
                             Text(
                               user['name'],
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textPrimary,
                               ),
@@ -199,7 +199,7 @@ class AdminUsersPage extends StatelessWidget {
                             Text(
                               user['email'],
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 color: AppColors.textSecondary,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -223,7 +223,7 @@ class AdminUsersPage extends StatelessWidget {
                         child: Text(
                           user['status'],
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color:
                                 user['status'] == 'Active'
@@ -248,7 +248,7 @@ class AdminUsersPage extends StatelessWidget {
                         child: Text(
                           user['phone'],
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
                           overflow: TextOverflow.ellipsis,

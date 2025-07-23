@@ -20,7 +20,7 @@ class AdminEventsPage extends StatelessWidget {
               Text(
                 isMobile ? 'Events' : 'Events Management',
                 style: TextStyle(
-                  fontSize: isMobile ? 20 : 32,
+                  fontSize: isMobile ? 24 : 32,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                   letterSpacing: -0.5,
@@ -334,7 +334,7 @@ class AdminEventsPage extends StatelessWidget {
                         child: Text(
                           event['status'],
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: _getEventStatusColor(event['status']),
                           ),
@@ -355,7 +355,7 @@ class AdminEventsPage extends StatelessWidget {
                       Text(
                         event['date'],
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -370,7 +370,7 @@ class AdminEventsPage extends StatelessWidget {
                         child: Text(
                           '${event['attendees']} attendees',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
                           overflow: TextOverflow.ellipsis,
