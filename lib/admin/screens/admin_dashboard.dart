@@ -3,11 +3,9 @@ import '../../constants/app_colors.dart';
 import 'overview_page.dart';
 import 'users_page.dart';
 import 'owners_page.dart';
-import 'venues_page.dart';
 import 'bookings_page.dart';
 import 'events_page.dart';
 import 'payments_page.dart';
-import 'settings_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});

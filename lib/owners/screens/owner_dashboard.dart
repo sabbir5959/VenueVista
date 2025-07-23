@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'create_tournament.dart';
 
 class OwnerDashboard extends StatefulWidget {
-  const OwnerDashboard({Key? key}) : super(key: key);
+  const OwnerDashboard({super.key});
 
   @override
   State<OwnerDashboard> createState() => _OwnerDashboardState();

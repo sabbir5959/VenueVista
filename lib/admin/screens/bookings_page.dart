@@ -39,7 +39,7 @@ class AdminBookingsPage extends StatelessWidget {
             ),
             SizedBox(height: isMobile ? 12 : 20), // Further reduced
             // Quick Stats - Made more compact
-            Container(
+            SizedBox(
               height: isMobile ? 90 : 110, // Even more reduced height
               child: GridView.count(
                 shrinkWrap: true,

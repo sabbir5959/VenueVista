@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../screens/search_grounds.dart';
+import 'screens/schedule_page.dart';
 
 class HomeActivity extends StatefulWidget {
   const HomeActivity({super.key});
@@ -21,37 +22,149 @@ class _HomeActivityState extends State<HomeActivity> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: Colors.red,
-        unselectedItemColor: Colors.grey,
-        currentIndex: index,
-        onTap: (i) {
-          setState(() => index = i);
-          if (i == 1) {
-            // Index 1 is for Playgrounds
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => SearchGrounds()),
-            );
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.sports_soccer),
-            label: 'Playgrounds',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event),
-            label: 'Tournaments',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Account'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
+      appBar: AppBar(
+        backgroundColor: Colors.green.shade700,
+        title: Text('VenueVista', style: TextStyle(color: Colors.white)),
+        iconTheme: IconThemeData(color: Colors.white),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.green.shade700, Colors.green.shade300],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      Icons.person,
+                      size: 35,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Welcome',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Explore VenueVista',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.home, color: Colors.green.shade700),
+              title: Text('Home'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => index = 0);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.sports_soccer, color: Colors.green.shade700),
+              title: Text('Playgrounds'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SearchGrounds()),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.event, color: Colors.green.shade700),
+              title: Text('Tournaments'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => index = 2);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.schedule, color: Colors.green.shade700),
+              title: Text('Schedule'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SchedulePage()),
+                );
+              },
+            ),
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.person, color: Colors.green.shade700),
+              title: Text('Account'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => index = 3);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.settings, color: Colors.green.shade700),
+              title: Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => index = 4);
+              },
+            ),
+            Divider(thickness: 1),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red),
+              title: Text('Logout', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                // Show confirmation dialog
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: Text('Logout'),
+                      content: Text('Are you sure you want to logout?'),
+                      actions: [
+                        TextButton(
+                          child: Text('Cancel'),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        TextButton(
+                          child: Text(
+                            'Logout',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop(); // Close dialog
+                            Navigator.of(context).pop(); // Close drawer
+                            // Navigate to login page
+                            Navigator.pushReplacementNamed(context, '/login');
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
       body: SingleChildScrollView(
         child: Column(
