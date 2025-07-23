@@ -3,7 +3,7 @@ import 'create_tournament.dart';
 import '../widgets/venue_owner_sidebar.dart';
 
 class OwnerDashboard extends StatefulWidget {
-  const OwnerDashboard({Key? key}) : super(key: key);
+  const OwnerDashboard({super.key});
 
   @override
   State<OwnerDashboard> createState() => _OwnerDashboardState();
