@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../users/dashboard.dart';
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -362,9 +363,13 @@ class _LoginPageState extends State<LoginPage> {
                               alignment: Alignment.centerRight,
                               child: TextButton(
                                 onPressed: () {
-                                  // Handle forgot password
-                                  _showSuccessMessage(
-                                    'Forgot password feature coming soon!',
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              const ForgotPasswordPage(),
+                                    ),
                                   );
                                 },
                                 child: Text(
