@@ -194,7 +194,7 @@ class AdminOverviewPage extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
               ),

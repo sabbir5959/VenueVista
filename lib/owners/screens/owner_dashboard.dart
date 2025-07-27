@@ -39,9 +39,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.green[700],
-              ),
+              decoration: BoxDecoration(color: Colors.green[700]),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -49,7 +47,11 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                   CircleAvatar(
                     radius: 30,
                     backgroundColor: Colors.white,
-                    child: Icon(Icons.sports_soccer_rounded, size: 35, color: Colors.green),
+                    child: Icon(
+                      Icons.sports_soccer_rounded,
+                      size: 35,
+                      color: Colors.green,
+                    ),
                   ),
                   SizedBox(height: 10),
                   Text(
@@ -171,16 +173,101 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       body: Stack(
         children: [
           // Main content area
-          Center(
-            child: Text(
-              '',
-              style: TextStyle(
-                fontSize: 24,
-                color: Colors.grey[700],
-              ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Welcome Card
+                Card(
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome to Owner Dashboard',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Manage your venue, tournaments, and bookings from here.',
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Quick Stats
+                Row(
+                  children: [
+                    Expanded(
+                      child: Card(
+                        color: Colors.blue[50],
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.calendar_month,
+                                size: 30,
+                                color: Colors.blue[700],
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                '12',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const Text('Bookings'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Card(
+                        color: Colors.orange[50],
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.emoji_events,
+                                size: 30,
+                                color: Colors.orange[700],
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                '3',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const Text('Tournaments'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          
+
           // Add Tournament FAB
           Positioned(
             bottom: 16,

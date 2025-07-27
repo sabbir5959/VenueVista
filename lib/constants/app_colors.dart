@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// VenueVista Application Color Palette
-///
-/// This file contains all the color constants used throughout the app
-/// for consistent theming and easy maintenance.
 class AppColors {
   // Private constructor to prevent instantiation
   AppColors._();
