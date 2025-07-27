@@ -71,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.of(context).pushReplacementNamed('/admin');
         }
         // Owner login check
-        else if (phone == "01798155815" && password == "owner123") {
+        else if (phone == "01700594133" && password == "owner123") {
           _showSuccessMessage('Owner login successful! Welcome Owner.');
           Navigator.of(context).pushReplacementNamed('/owner');
         }
