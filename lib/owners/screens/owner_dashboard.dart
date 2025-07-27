@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'create_tournament.dart';
+import 'cancellation_request.dart';
+import 'revenue_tracking.dart';
+import 'tournaments_and_events.dart'; // Import the new page
 
 class OwnerDashboard extends StatefulWidget {
   const OwnerDashboard({Key? key}) : super(key: key);
@@ -91,6 +94,12 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                   _selectedIndex = 2;
                 });
                 Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TournamentsAndEventsPage(),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -112,7 +121,13 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                 setState(() {
                   _selectedIndex = 4;
                 });
-                Navigator.pop(context);
+                Navigator.pop(context); // Close the drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RevenueTrackingScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -129,12 +144,17 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             ListTile(
               leading: const Icon(Icons.cancel_rounded),
               title: const Text(' Cancellations Request'),
-              selected: _selectedIndex == 6,
               onTap: () {
                 setState(() {
                   _selectedIndex = 6;
                 });
-                Navigator.pop(context);
+                Navigator.pop(context); // Close the drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CancellationRequestsPage(),
+                  ),
+                );
               },
             ),
             const Divider(),

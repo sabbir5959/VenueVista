@@ -64,6 +64,14 @@ class _LoginPageState extends State<LoginPage> {
           _showSuccessMessage('Admin login successful! Welcome Admin.');
           Navigator.of(context).pushReplacementNamed('/admin');
         }
+<<<<<<< Updated upstream
+=======
+        // Owner login check
+        else if (phone == "01700594133" && password == "prarona103") {
+          _showSuccessMessage('Owner login successful! Welcome Owner.');
+          Navigator.of(context).pushReplacementNamed('/owner');
+        }
+>>>>>>> Stashed changes
         // User login check
         else if (phone == "01533985291" && password == "kawsar47") {
           _showSuccessMessage('User login successful! Welcome to VenueVista.');
