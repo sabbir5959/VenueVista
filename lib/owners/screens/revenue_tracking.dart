@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/venue_owner_sidebar.dart';
 
 class RevenueTrackingScreen extends StatelessWidget {
   const RevenueTrackingScreen({Key? key}) : super(key: key);
@@ -23,6 +24,7 @@ class RevenueTrackingScreen extends StatelessWidget {
           ),
         ],
       ),
+      drawer: const VenueOwnerSidebar(currentPage: 'revenue'),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
