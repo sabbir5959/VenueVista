@@ -89,8 +89,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.19.1"
-<<<<<<< HEAD
-=======
   crypto:
     dependency: transitive
     description:
@@ -99,7 +97,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.6"
->>>>>>> main
   cupertino_icons:
     dependency: "direct main"
     description:
