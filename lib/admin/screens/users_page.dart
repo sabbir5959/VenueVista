@@ -11,7 +11,7 @@ class AdminUsersPage extends StatefulWidget {
 class _AdminUsersPageState extends State<AdminUsersPage> {
   int _currentPage = 1;
   final int _itemsPerPage = 8; // Users এর জন্য একটু বেশি রাখলাম
-  
+
   List<Map<String, dynamic>> get _paginatedUsers {
     final startIndex = (_currentPage - 1) * _itemsPerPage;
     final endIndex = startIndex + _itemsPerPage;
@@ -20,7 +20,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       endIndex > _demoUsers.length ? _demoUsers.length : endIndex,
     );
   }
-  
+
   int get _totalPages => (_demoUsers.length / _itemsPerPage).ceil();
 
   @override
@@ -121,43 +121,44 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               ),
               child: Column(
                 children: [
-                    // Header
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.05),
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          topRight: Radius.circular(16),
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.05),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Users (${_demoUsers.length})',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Users (${_demoUsers.length})',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const Spacer(),
-                          Icon(
-                            Icons.person_add_outlined,
-                            color: AppColors.primary,
-                          ),
-                        ],
-                      ),
+                        const Spacer(),
+                        Icon(
+                          Icons.person_add_outlined,
+                          color: AppColors.primary,
+                        ),
+                      ],
                     ),
-                    // User List
-                    Column(
-                      children: _paginatedUsers.map((user) {
-                        return _buildUserCard(user, isMobile);
-                      }).toList(),
-                    ),
-                  ],
-                ),
+                  ),
+                  // User List
+                  Column(
+                    children:
+                        _paginatedUsers.map((user) {
+                          return _buildUserCard(user, isMobile);
+                        }).toList(),
+                  ),
+                ],
               ),
+            ),
 
             // Pagination Controls
             const SizedBox(height: 20),
@@ -195,7 +196,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             onPressed: _currentPage > 1 ? _goToPreviousPage : null,
             isMobile: isMobile,
           ),
-          
+
           // Page Numbers
           Row(
             children: [
@@ -243,7 +244,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               ],
             ],
           ),
-          
+
           // Next Button
           _buildPaginationButton(
             icon: Icons.chevron_right,
@@ -273,14 +274,16 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
           vertical: isMobile ? 8 : 10,
         ),
         decoration: BoxDecoration(
-          color: onPressed != null 
-            ? AppColors.primary.withOpacity(0.05)
-            : AppColors.surface,
+          color:
+              onPressed != null
+                  ? AppColors.primary.withOpacity(0.05)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: onPressed != null 
-              ? AppColors.primary.withOpacity(0.2)
-              : AppColors.borderLight,
+            color:
+                onPressed != null
+                    ? AppColors.primary.withOpacity(0.2)
+                    : AppColors.borderLight,
           ),
         ),
         child: Row(
@@ -291,9 +294,10 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 text,
                 style: TextStyle(
                   fontSize: 14,
-                  color: onPressed != null 
-                    ? AppColors.primary
-                    : AppColors.textSecondary,
+                  color:
+                      onPressed != null
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -302,9 +306,10 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             Icon(
               icon,
               size: isMobile ? 20 : 16,
-              color: onPressed != null 
-                ? AppColors.primary
-                : AppColors.textSecondary,
+              color:
+                  onPressed != null
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
             ),
             if (isNext && !isMobile) ...[
               const SizedBox(width: 4),
@@ -312,9 +317,10 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 text,
                 style: TextStyle(
                   fontSize: 14,
-                  color: onPressed != null 
-                    ? AppColors.primary
-                    : AppColors.textSecondary,
+                  color:
+                      onPressed != null
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),

@@ -11,7 +11,7 @@ class AdminOwnersPage extends StatefulWidget {
 class _AdminOwnersPageState extends State<AdminOwnersPage> {
   int _currentPage = 1;
   final int _itemsPerPage = 6; // Mobile এর জন্য optimal
-  
+
   List<Map<String, dynamic>> get _paginatedOwners {
     final startIndex = (_currentPage - 1) * _itemsPerPage;
     final endIndex = startIndex + _itemsPerPage;
@@ -20,7 +20,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
       endIndex > _demoOwners.length ? _demoOwners.length : endIndex,
     );
   }
-  
+
   int get _totalPages => (_demoOwners.length / _itemsPerPage).ceil();
 
   @override
@@ -164,9 +164,10 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 ],
               ),
               child: Column(
-                children: _paginatedOwners.map((owner) {
-                  return _buildOwnerCard(owner, isMobile);
-                }).toList(),
+                children:
+                    _paginatedOwners.map((owner) {
+                      return _buildOwnerCard(owner, isMobile);
+                    }).toList(),
               ),
             ),
 
@@ -206,7 +207,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
             onPressed: _currentPage > 1 ? _goToPreviousPage : null,
             isMobile: isMobile,
           ),
-          
+
           // Page Numbers
           Row(
             children: [
@@ -254,7 +255,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
               ],
             ],
           ),
-          
+
           // Next Button
           _buildPaginationButton(
             icon: Icons.chevron_right,
@@ -284,14 +285,16 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
           vertical: isMobile ? 8 : 10,
         ),
         decoration: BoxDecoration(
-          color: onPressed != null 
-            ? AppColors.primary.withOpacity(0.05)
-            : AppColors.surface,
+          color:
+              onPressed != null
+                  ? AppColors.primary.withOpacity(0.05)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: onPressed != null 
-              ? AppColors.primary.withOpacity(0.2)
-              : AppColors.borderLight,
+            color:
+                onPressed != null
+                    ? AppColors.primary.withOpacity(0.2)
+                    : AppColors.borderLight,
           ),
         ),
         child: Row(
@@ -302,9 +305,10 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 text,
                 style: TextStyle(
                   fontSize: 14,
-                  color: onPressed != null 
-                    ? AppColors.primary
-                    : AppColors.textSecondary,
+                  color:
+                      onPressed != null
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -313,9 +317,10 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
             Icon(
               icon,
               size: isMobile ? 20 : 16,
-              color: onPressed != null 
-                ? AppColors.primary
-                : AppColors.textSecondary,
+              color:
+                  onPressed != null
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
             ),
             if (isNext && !isMobile) ...[
               const SizedBox(width: 4),
@@ -323,9 +328,10 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 text,
                 style: TextStyle(
                   fontSize: 14,
-                  color: onPressed != null 
-                    ? AppColors.primary
-                    : AppColors.textSecondary,
+                  color:
+                      onPressed != null
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
