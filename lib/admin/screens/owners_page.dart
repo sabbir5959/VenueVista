@@ -1,8 +1,27 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 
-class AdminOwnersPage extends StatelessWidget {
+class AdminOwnersPage extends StatefulWidget {
   const AdminOwnersPage({super.key});
+
+  @override
+  State<AdminOwnersPage> createState() => _AdminOwnersPageState();
+}
+
+class _AdminOwnersPageState extends State<AdminOwnersPage> {
+  int _currentPage = 1;
+  final int _itemsPerPage = 6; // Mobile এর জন্য optimal
+
+  List<Map<String, dynamic>> get _paginatedOwners {
+    final startIndex = (_currentPage - 1) * _itemsPerPage;
+    final endIndex = startIndex + _itemsPerPage;
+    return _demoOwners.sublist(
+      startIndex,
+      endIndex > _demoOwners.length ? _demoOwners.length : endIndex,
+    );
+  }
+
+  int get _totalPages => (_demoOwners.length / _itemsPerPage).ceil();
 
   @override
   Widget build(BuildContext context) {
@@ -10,7 +29,7 @@ class AdminOwnersPage extends StatelessWidget {
 
     return Container(
       color: AppColors.background,
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.all(isMobile ? 16 : 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,81 +97,265 @@ class AdminOwnersPage extends StatelessWidget {
 
             SizedBox(height: 24),
 
-            // Owners List
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.shadowLight,
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+            // Owners List Header
+            Container(
+              padding: EdgeInsets.all(isMobile ? 16 : 20),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.05),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
-                child: Column(
-                  children: [
-                    // Header
-                    Container(
-                      padding: EdgeInsets.all(isMobile ? 16 : 20),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.05),
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          topRight: Radius.circular(16),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Venue Owners',
-                            style: TextStyle(
-                              fontSize: isMobile ? 16 : 18,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isMobile ? 8 : 12,
-                              vertical: isMobile ? 4 : 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'Add New',
-                              style: TextStyle(
-                                color: AppColors.white,
-                                fontSize: isMobile ? 12 : 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.shadowLight,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    'Venue Owners',
+                    style: TextStyle(
+                      fontSize: isMobile ? 16 : 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 8 : 12,
+                      vertical: isMobile ? 4 : 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Add New',
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: isMobile ? 12 : 14,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    // Owners List
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: _demoOwners.length,
-                        itemBuilder: (context, index) {
-                          return _buildOwnerCard(_demoOwners[index], isMobile);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
+
+            // Owners List Items
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.shadowLight,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children:
+                    _paginatedOwners.map((owner) {
+                      return _buildOwnerCard(owner, isMobile);
+                    }).toList(),
+              ),
+            ),
+
+            // Pagination Controls
+            const SizedBox(height: 20),
+            _buildPaginationControls(isMobile),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildPaginationControls(bool isMobile) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 24,
+        vertical: isMobile ? 12 : 16,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowLight,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Previous Button
+          _buildPaginationButton(
+            icon: Icons.chevron_left,
+            text: isMobile ? '' : 'Previous',
+            onPressed: _currentPage > 1 ? _goToPreviousPage : null,
+            isMobile: isMobile,
+          ),
+
+          // Page Numbers
+          Row(
+            children: [
+              if (!isMobile) ...[
+                Text(
+                  'Page ',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$_currentPage',
+                  style: TextStyle(
+                    fontSize: isMobile ? 16 : 14,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                ' of $_totalPages',
+                style: TextStyle(
+                  fontSize: isMobile ? 14 : 14,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (!isMobile) ...[
+                Text(
+                  ' (${_demoOwners.length} total)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          // Next Button
+          _buildPaginationButton(
+            icon: Icons.chevron_right,
+            text: isMobile ? '' : 'Next',
+            onPressed: _currentPage < _totalPages ? _goToNextPage : null,
+            isMobile: isMobile,
+            isNext: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationButton({
+    required IconData icon,
+    required String text,
+    required VoidCallback? onPressed,
+    required bool isMobile,
+    bool isNext = false,
+  }) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 8 : 12,
+          vertical: isMobile ? 8 : 10,
+        ),
+        decoration: BoxDecoration(
+          color:
+              onPressed != null
+                  ? AppColors.primary.withOpacity(0.05)
+                  : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color:
+                onPressed != null
+                    ? AppColors.primary.withOpacity(0.2)
+                    : AppColors.borderLight,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!isNext && !isMobile) ...[
+              Text(
+                text,
+                style: TextStyle(
+                  fontSize: 14,
+                  color:
+                      onPressed != null
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
+            Icon(
+              icon,
+              size: isMobile ? 20 : 16,
+              color:
+                  onPressed != null
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+            ),
+            if (isNext && !isMobile) ...[
+              const SizedBox(width: 4),
+              Text(
+                text,
+                style: TextStyle(
+                  fontSize: 14,
+                  color:
+                      onPressed != null
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _goToPreviousPage() {
+    if (_currentPage > 1) {
+      setState(() {
+        _currentPage--;
+      });
+    }
+  }
+
+  void _goToNextPage() {
+    if (_currentPage < _totalPages) {
+      setState(() {
+        _currentPage++;
+      });
+    }
   }
 
   Widget _buildOwnerStatCard(
