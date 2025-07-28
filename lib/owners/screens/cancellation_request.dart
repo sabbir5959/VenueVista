@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/venue_owner_sidebar.dart';
 
 class CancellationRequest {
   final String userName;
@@ -53,6 +54,7 @@ class _CancellationRequestsPageState extends State<CancellationRequestsPage> {
           ),
         ],
       ),
+      drawer: const VenueOwnerSidebar(currentPage: 'cancellations'),
       body: requests.isEmpty
           ? const Center(
               child: Text(

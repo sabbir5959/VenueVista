@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/venue_owner_sidebar.dart';
 
 class TournamentsAndEventsPage extends StatefulWidget {
   const TournamentsAndEventsPage({Key? key}) : super(key: key);
@@ -26,6 +27,7 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
             ],
           ),
         ),
+        drawer: const VenueOwnerSidebar(currentPage: 'tournaments'),
         body: TabBarView(
           children: [
             _buildEventList('Ongoing'),
