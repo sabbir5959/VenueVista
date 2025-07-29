@@ -3,6 +3,7 @@ import '../../constants/app_colors.dart';
 import 'overview_page.dart';
 import 'users_page.dart';
 import 'owners_page.dart';
+import 'venues_page.dart';
 import 'bookings_page.dart';
 import 'events_page.dart';
 import 'payments_page.dart';
@@ -33,7 +34,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ),
     AdminMenuItem(icon: Icons.event_outlined, title: 'Events', index: 5),
     AdminMenuItem(icon: Icons.payment_outlined, title: 'Payments', index: 6),
-    AdminMenuItem(icon: Icons.settings_outlined, title: 'Settings', index: 7),
   ];
 
   @override
@@ -203,7 +203,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                           isSelected
                                               ? FontWeight.w600
                                               : FontWeight.w500,
-                                      fontSize: 15,
+                                      fontSize: 14,
                                     ),
                                   ),
                                 ],
@@ -260,7 +260,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               style: TextStyle(
                                 color: Colors.red,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 15,
+                                fontSize: 14,
                               ),
                             ),
                           ],
@@ -316,8 +316,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return const AdminEventsPage();
       case 6:
         return const AdminPaymentsPage();
-      case 7:
-        return const AdminSettingsPage();
       default:
         return const AdminOverviewPage();
     }
@@ -409,133 +407,4 @@ class AdminMenuItem {
   final int index;
 
   AdminMenuItem({required this.icon, required this.title, required this.index});
-}
-
-// Placeholder pages for sections that don't have separate files yet
-class AdminVenuesPage extends StatelessWidget {
-  const AdminVenuesPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      color: AppColors.background,
-      child: Padding(
-        padding: EdgeInsets.all(isMobile ? 16 : 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Venues Management',
-              style: TextStyle(
-                fontSize: isMobile ? 24 : 32,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.5,
-              ),
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Manage all venue listings and details',
-              style: TextStyle(
-                fontSize: isMobile ? 14 : 16,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: isMobile ? 24 : 40),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.location_city_outlined,
-                      size: isMobile ? 48 : 64,
-                      color: AppColors.textSecondary,
-                    ),
-                    SizedBox(height: isMobile ? 16 : 24),
-                    Text(
-                      'Venues management content will be added here',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: isMobile ? 16 : 18,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AdminSettingsPage extends StatelessWidget {
-  const AdminSettingsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      color: AppColors.background,
-      child: Padding(
-        padding: EdgeInsets.all(isMobile ? 16 : 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'System Settings',
-              style: TextStyle(
-                fontSize: isMobile ? 24 : 32,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.5,
-              ),
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Configure system preferences and settings',
-              style: TextStyle(
-                fontSize: isMobile ? 14 : 16,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: isMobile ? 24 : 40),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.tune_outlined,
-                      size: isMobile ? 48 : 64,
-                      color: AppColors.textSecondary,
-                    ),
-                    SizedBox(height: isMobile ? 16 : 24),
-                    Text(
-                      'System settings content will be added here',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: isMobile ? 16 : 18,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

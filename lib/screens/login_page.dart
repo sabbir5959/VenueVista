@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../users/dashboard.dart';
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -70,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.of(context).pushReplacementNamed('/admin');
         }
         // Owner login check
-        else if (phone == "01798155815" && password == "owner123") {
+        else if (phone == "01700594133" && password == "owner123") {
           _showSuccessMessage('Owner login successful! Welcome Owner.');
           Navigator.of(context).pushReplacementNamed('/owner');
         }
@@ -209,19 +210,17 @@ class _LoginPageState extends State<LoginPage> {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: _isLoading ? null : _loginWithGoogle,
-                              icon: Image.asset(
-                                'assets/icons/google.png',
-                                height: 20,
-                                width: 20,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.g_mobiledata,
-                                    color: Colors.red,
-                                    size: 20,
-                                  );
-                                },
+                              icon: Icon(
+                                Icons.g_mobiledata,
+                                color: Colors.red,
+                                size: 20,
                               ),
-                              label: const Text('Google'),
+                              label: const Flexible(
+                                child: Text(
+                                  'Google',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.grey[700],
                                 padding: const EdgeInsets.symmetric(
@@ -241,19 +240,17 @@ class _LoginPageState extends State<LoginPage> {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: _isLoading ? null : _loginWithFacebook,
-                              icon: Image.asset(
-                                'assets/icons/facebook.png',
-                                height: 20,
-                                width: 20,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.facebook,
-                                    color: Colors.blue[700],
-                                    size: 20,
-                                  );
-                                },
+                              icon: Icon(
+                                Icons.facebook,
+                                color: Colors.blue[700],
+                                size: 20,
                               ),
-                              label: const Text('Facebook'),
+                              label: const Flexible(
+                                child: Text(
+                                  'Facebook',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.grey[700],
                                 padding: const EdgeInsets.symmetric(
@@ -362,9 +359,13 @@ class _LoginPageState extends State<LoginPage> {
                               alignment: Alignment.centerRight,
                               child: TextButton(
                                 onPressed: () {
-                                  // Handle forgot password
-                                  _showSuccessMessage(
-                                    'Forgot password feature coming soon!',
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              const ForgotPasswordPage(),
+                                    ),
                                   );
                                 },
                                 child: Text(
@@ -418,9 +419,12 @@ class _LoginPageState extends State<LoginPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            "Don't have an account? ",
-                            style: TextStyle(color: Colors.grey[700]),
+                          Flexible(
+                            child: Text(
+                              "Don't have an account? ",
+                              style: TextStyle(color: Colors.grey[700]),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           TextButton(
                             onPressed: () {
