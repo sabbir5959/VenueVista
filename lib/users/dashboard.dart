@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'search_grounds.dart';
+import './search_grounds.dart';
 import 'screens/schedule_page.dart';
-import 'weather_update.dart';
 
 class HomeActivity extends StatefulWidget {
   const HomeActivity({super.key});
@@ -53,8 +52,9 @@ class _HomeActivityState extends State<HomeActivity> {
                       color: Colors.green.shade700,
                     ),
                   ),
+                  SizedBox(height: 10),
                   Text(
-                    'Kawsar Arafat',
+                    'Welcome',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -62,7 +62,7 @@ class _HomeActivityState extends State<HomeActivity> {
                     ),
                   ),
                   Text(
-                    'kawsar.arafat@example.com',
+                    'Explore VenueVista',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 16,
@@ -106,19 +106,6 @@ class _HomeActivityState extends State<HomeActivity> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => SchedulePage()),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.cloud, color: Colors.green.shade700),
-              title: Text('Weather'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => WeatherPage()),
-
-
                 );
               },
             ),
