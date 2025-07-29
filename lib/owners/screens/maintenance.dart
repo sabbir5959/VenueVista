@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/maintenance_schedule.dart';
 import '../services/maintenance_service.dart';
-import '../widgets/booking_calendar_widget.dart';
 import '../widgets/venue_owner_sidebar.dart';
 
 class MaintenancePage extends StatefulWidget {
@@ -17,8 +16,8 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
   final MaintenanceService _maintenanceService = MaintenanceService.instance;
   
   // Form controllers
-  DateTime? _startDateTime;
-  DateTime? _endDateTime;
+  DateTime? _startDate;
+  DateTime? _endDate;
   final TextEditingController _reasonController = TextEditingController();
   bool _isRepeating = false;
   String _repeatFrequency = 'Week';
@@ -98,19 +97,6 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
           _buildViewScheduleTab(),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const BookingExamplePage(),
-            ),
-          );
-        },
-        backgroundColor: Colors.blue[700],
-        icon: const Icon(Icons.calendar_month),
-        label: const Text('Test Booking'),
-      ),
     );
   }
 
@@ -129,9 +115,12 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                 children: [
                   Icon(Icons.build_circle, color: Colors.green[700], size: 30),
                   const SizedBox(width: 12),
-                  const Text(
-                    'Schedule a Maintenance Break',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      'Schedule a Maintenance Break',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -154,17 +143,18 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                   ),
                   const SizedBox(height: 16),
                   
-                  // Start Date & Time
+                  // Start Date
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _selectDateTime(true),
+                          onPressed: () => _selectDate(true),
                           icon: const Icon(Icons.calendar_today),
                           label: Text(
-                            _startDateTime != null
-                                ? DateFormat('MMM dd, yyyy - HH:mm').format(_startDateTime!)
-                                : 'Select Start Time',
+                            _startDate != null
+                                ? DateFormat('MMM dd, yyyy').format(_startDate!)
+                                : 'Select Start Date',
+                            overflow: TextOverflow.ellipsis,
                           ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.all(16),
@@ -177,17 +167,18 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                   
                   const SizedBox(height: 12),
                   
-                  // End Date & Time
+                  // End Date
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _selectDateTime(false),
-                          icon: const Icon(Icons.access_time),
+                          onPressed: () => _selectDate(false),
+                          icon: const Icon(Icons.event),
                           label: Text(
-                            _endDateTime != null
-                                ? DateFormat('MMM dd, yyyy - HH:mm').format(_endDateTime!)
-                                : 'Select End Time',
+                            _endDate != null
+                                ? DateFormat('MMM dd, yyyy').format(_endDate!)
+                                : 'Select End Date',
+                            overflow: TextOverflow.ellipsis,
                           ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.all(16),
@@ -251,11 +242,13 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                     children: [
                       const Icon(Icons.repeat, color: Colors.grey),
                       const SizedBox(width: 8),
-                      const Text(
-                        'Repeat This Maintenance',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      Expanded(
+                        child: Text(
+                          'Repeat This Maintenance',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      const Spacer(),
                       Switch(
                         value: _isRepeating,
                         onChanged: (value) {
@@ -274,7 +267,11 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                     // Repeat Frequency
                     Row(
                       children: [
-                        const Text('Repeat every: '),
+                        Flexible(
+                          child: Text(
+                            'Repeat every: ',
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: DropdownButton<String>(
@@ -302,7 +299,10 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                     Column(
                       children: [
                         RadioListTile<bool>(
-                          title: Text('End after $_repeatOccurrences occurrences'),
+                          title: Text(
+                            'End after $_repeatOccurrences occurrences',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           value: true,
                           groupValue: _useOccurrences,
                           onChanged: (bool? value) {
@@ -317,7 +317,12 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                             padding: const EdgeInsets.only(left: 32.0),
                             child: Row(
                               children: [
-                                const Text('Occurrences: '),
+                                Flexible(
+                                  child: Text(
+                                    'Occurrences: ',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                                 const SizedBox(width: 8),
                                 SizedBox(
                                   width: 80,
@@ -338,7 +343,10 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                           ),
                         
                         RadioListTile<bool>(
-                          title: const Text('End on specific date'),
+                          title: const Text(
+                            'End on specific date',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           value: false,
                           groupValue: _useOccurrences,
                           onChanged: (bool? value) {
@@ -358,6 +366,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                                 _repeatEndDate != null
                                     ? DateFormat('MMM dd, yyyy').format(_repeatEndDate!)
                                     : 'Select End Date',
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
@@ -394,78 +403,39 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
   }
 
   Widget _buildViewScheduleTab() {
-    return DefaultTabController(
-      length: 3,
-      child: Column(
-        children: [
-          Container(
-            color: Colors.grey[100],
-            child: const TabBar(
-              labelColor: Colors.green,
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: Colors.green,
-              tabs: [
-                Tab(text: 'Upcoming'),
-                Tab(text: 'Ongoing'),
-                Tab(text: 'Past'),
-              ],
-            ),
-          ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                _buildMaintenanceList('upcoming'),
-                _buildMaintenanceList('ongoing'),
-                _buildMaintenanceList('past'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return _buildMaintenanceList();
   }
 
-  Widget _buildMaintenanceList(String status) {
+  Widget _buildMaintenanceList() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     
-    final MaintenanceStatus statusEnum = status == 'upcoming' 
-        ? MaintenanceStatus.upcoming 
-        : status == 'ongoing' 
-            ? MaintenanceStatus.ongoing 
-            : MaintenanceStatus.past;
-    
-    final now = DateTime.now();
-    final filteredList = _maintenanceSchedules.where((schedule) {
-      switch (statusEnum) {
-        case MaintenanceStatus.upcoming:
-          return schedule.startTime.isAfter(now);
-        case MaintenanceStatus.ongoing:
-          return schedule.startTime.isBefore(now) && schedule.endTime.isAfter(now);
-        case MaintenanceStatus.past:
-          return schedule.endTime.isBefore(now);
-      }
-    }).toList();
-    
-    if (filteredList.isEmpty) {
+    if (_maintenanceSchedules.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              status == 'upcoming' ? Icons.schedule : 
-              status == 'ongoing' ? Icons.build : Icons.history,
+              Icons.build,
               size: 64,
               color: Colors.grey[400],
             ),
             const SizedBox(height: 16),
             Text(
-              'No ${status} maintenance',
+              'No maintenance scheduled',
               style: TextStyle(
                 fontSize: 18,
                 color: Colors.grey[600],
                 fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Schedule your first maintenance to get started',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
               ),
             ),
           ],
@@ -473,20 +443,45 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
       );
     }
 
+    // Sort maintenance schedules in descending order by start date (latest first)
+    final sortedList = List<MaintenanceSchedule>.from(_maintenanceSchedules);
+    sortedList.sort((a, b) => b.startTime.compareTo(a.startTime));
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: filteredList.length,
+      itemCount: sortedList.length,
       itemBuilder: (context, index) {
-        final maintenance = filteredList[index];
+        final maintenance = sortedList[index];
+        final now = DateTime.now();
+        
+        // Determine status dynamically (only Ongoing or Completed)
+        final bool isCompleted = maintenance.endTime.isBefore(now);
+        
+        String statusText;
+        Color statusColor;
+        IconData statusIcon;
+        
+        if (!isCompleted) {
+          // Current ongoing maintenance or future maintenance (treat as ongoing)
+          statusText = 'Ongoing';
+          statusColor = Colors.red;
+          statusIcon = Icons.build;
+        } else {
+          // Completed maintenance
+          statusText = 'Completed';
+          statusColor = Colors.green;
+          statusIcon = Icons.check_circle;
+        }
+        
         return Card(
           elevation: 2,
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: _getStatusColor(status).withOpacity(0.2),
+              backgroundColor: statusColor.withOpacity(0.2),
               child: Icon(
-                _getStatusIcon(status),
-                color: _getStatusColor(status),
+                statusIcon,
+                color: statusColor,
               ),
             ),
             title: Text(
@@ -499,75 +494,72 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                    const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text(
-                      '${DateFormat('MMM dd, HH:mm').format(maintenance.startTime)} - ${DateFormat('HH:mm').format(maintenance.endTime)}',
-                      style: const TextStyle(fontSize: 13),
+                    Expanded(
+                      child: Text(
+                        '${DateFormat('MMM dd, yyyy').format(maintenance.startTime)} - ${DateFormat('MMM dd, yyyy').format(maintenance.endTime)}',
+                        style: const TextStyle(fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
-                if (maintenance.isRepeating) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.repeat, size: 16, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text(
+                if (maintenance.isRepeating) const SizedBox(height: 4),
+                if (maintenance.isRepeating) Row(
+                  children: [
+                    const Icon(Icons.repeat, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
                         'Repeats ${maintenance.repeatFrequency}',
                         style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ],
             ),
-            trailing: status == 'upcoming' ? Row(
+            trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blue),
+                // Status indicator
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+                // Edit/Delete buttons only for non-completed maintenance
+                if (!isCompleted) const SizedBox(width: 8),
+                if (!isCompleted) IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
                   onPressed: () => _editMaintenance(maintenance),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
+                if (!isCompleted) IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
                   onPressed: () => _deleteMaintenance(maintenance.id),
                 ),
               ],
-            ) : null,
+            ),
           ),
         );
       },
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'upcoming':
-        return Colors.blue;
-      case 'ongoing':
-        return Colors.orange;
-      case 'past':
-        return Colors.grey;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'upcoming':
-        return Icons.schedule;
-      case 'ongoing':
-        return Icons.build;
-      case 'past':
-        return Icons.history;
-      default:
-        return Icons.build;
-    }
-  }
-
-  Future<void> _selectDateTime(bool isStartTime) async {
+  Future<void> _selectDate(bool isStartDate) async {
     final DateTime now = DateTime.now();
     final DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -577,32 +569,17 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
     );
 
     if (pickedDate != null) {
-      final TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.now(),
-      );
-
-      if (pickedTime != null) {
-        final DateTime selectedDateTime = DateTime(
-          pickedDate.year,
-          pickedDate.month,
-          pickedDate.day,
-          pickedTime.hour,
-          pickedTime.minute,
-        );
-
-        setState(() {
-          if (isStartTime) {
-            _startDateTime = selectedDateTime;
-            // Auto-set end time to 2 hours later if not set
-            if (_endDateTime == null) {
-              _endDateTime = selectedDateTime.add(const Duration(hours: 2));
-            }
-          } else {
-            _endDateTime = selectedDateTime;
+      setState(() {
+        if (isStartDate) {
+          _startDate = pickedDate;
+          // Auto-set end date to same day if not set
+          if (_endDate == null) {
+            _endDate = pickedDate;
           }
-        });
-      }
+        } else {
+          _endDate = pickedDate;
+        }
+      });
     }
   }
 
@@ -623,20 +600,20 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
   }
 
   void _scheduleMainenance() async {
-    if (_startDateTime == null || _endDateTime == null) {
+    if (_startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select both start and end times'),
+          content: Text('Please select both start and end dates'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    if (_endDateTime!.isBefore(_startDateTime!)) {
+    if (_endDate!.isBefore(_startDate!)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('End time must be after start time'),
+          content: Text('End date must be after or same as start date'),
           backgroundColor: Colors.red,
         ),
       );
@@ -648,12 +625,16 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
     });
 
     try {
+      // DateTime objects with full day coverage (00:00 to 23:59)
+      final startDateTime = DateTime(_startDate!.year, _startDate!.month, _startDate!.day, 0, 0);
+      final endDateTime = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59);
+      
       final newMaintenance = MaintenanceSchedule(
         id: DateTime.now().millisecondsSinceEpoch,
-        startTime: _startDateTime!,
-        endTime: _endDateTime!,
+        startTime: startDateTime,
+        endTime: endDateTime,
         reason: _reasonController.text.isNotEmpty ? _reasonController.text : null,
-        status: MaintenanceSchedule.getStatusForTime(_startDateTime!, _endDateTime!),
+        status: MaintenanceSchedule.getStatusForTime(startDateTime, endDateTime),
         isRepeating: _isRepeating,
         repeatFrequency: _isRepeating ? _repeatFrequency : null,
         repeatOccurrences: _isRepeating && _useOccurrences ? _repeatOccurrences : null,
@@ -680,8 +661,8 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
 
       // Clear form
       setState(() {
-        _startDateTime = null;
-        _endDateTime = null;
+        _startDate = null;
+        _endDate = null;
         _reasonController.clear();
         _isRepeating = false;
         _repeatFrequency = 'Week';

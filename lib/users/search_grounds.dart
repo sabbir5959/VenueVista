@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'ground_details.dart';
+import 'widgets/common_drawer.dart';
 
 class SearchGrounds extends StatefulWidget {
   const SearchGrounds({super.key});
@@ -206,6 +207,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
+      drawer: const CommonDrawer(),
       appBar: AppBar(
         title: Text(
           'Search Grounds',

@@ -66,22 +66,11 @@ class VenueOwnerSidebar extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.calendar_month_rounded),
-            title: const Text('Manage Bookings'),
-            selected: currentPage == 'bookings',
-            onTap: () {
-              Navigator.pop(context);
-              // TODO: Navigate to bookings page when implemented
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Manage Bookings page coming soon!'),
-                ),
-              );
-            },
-          ),
-          ListTile(
             leading: const Icon(Icons.emoji_events_rounded),
-            title: const Text('Tournaments & Events'),
+            title: const Text(
+              'Tournaments & Events',
+              overflow: TextOverflow.ellipsis,
+            ),
             selected: currentPage == 'tournaments',
             onTap: () {
               Navigator.pop(context);
@@ -97,7 +86,10 @@ class VenueOwnerSidebar extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.price_change_rounded),
-            title: const Text('Dynamic Pricing'),
+            title: const Text(
+              'Dynamic Pricing',
+              overflow: TextOverflow.ellipsis,
+            ),
             selected: currentPage == 'pricing',
             onTap: () {
               Navigator.pop(context);
@@ -145,7 +137,10 @@ class VenueOwnerSidebar extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.cancel_rounded),
-            title: const Text('Cancellations Request'),
+            title: const Text(
+              'Cancellations Request',
+              overflow: TextOverflow.ellipsis,
+            ),
             selected: currentPage == 'cancellations',
             onTap: () {
               Navigator.pop(context);
