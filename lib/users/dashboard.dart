@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'search_grounds.dart';
 import 'widgets/common_drawer.dart';
+import 'screens/tournaments_page.dart';
 
 class HomeActivity extends StatefulWidget {
   const HomeActivity({super.key});
@@ -167,7 +168,14 @@ class _HomeActivityState extends State<HomeActivity> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TournamentsPage(),
+                        ),
+                      );
+                    },
                     child: Text("SEE ALL", style: TextStyle(color: Colors.red)),
                   ),
                 ],
@@ -297,7 +305,7 @@ class _HomeActivityState extends State<HomeActivity> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: Colors.red.shade900,
+                    color: Colors.green.shade900,
                   ),
                   textAlign: TextAlign.center,
                 ),
