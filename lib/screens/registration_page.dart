@@ -314,6 +314,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
                         // Terms and Conditions Checkbox
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Checkbox(
                               value: _agreeToTerms,
@@ -326,6 +327,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                             ),
                             Expanded(
                               child: RichText(
+                                overflow: TextOverflow.visible,
                                 text: TextSpan(
                                   style: TextStyle(
                                     color: Colors.grey[700],
@@ -385,9 +387,12 @@ class _RegistrationPageState extends State<RegistrationPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              'Already have an account? ',
-                              style: TextStyle(color: Colors.grey[700]),
+                            Flexible(
+                              child: Text(
+                                'Already have an account? ',
+                                style: TextStyle(color: Colors.grey[700]),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             TextButton(
                               onPressed: () {

@@ -210,19 +210,17 @@ class _LoginPageState extends State<LoginPage> {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: _isLoading ? null : _loginWithGoogle,
-                              icon: Image.asset(
-                                'assets/icons/google.png',
-                                height: 20,
-                                width: 20,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.g_mobiledata,
-                                    color: Colors.red,
-                                    size: 20,
-                                  );
-                                },
+                              icon: Icon(
+                                Icons.g_mobiledata,
+                                color: Colors.red,
+                                size: 20,
                               ),
-                              label: const Text('Google'),
+                              label: const Flexible(
+                                child: Text(
+                                  'Google',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.grey[700],
                                 padding: const EdgeInsets.symmetric(
@@ -242,19 +240,17 @@ class _LoginPageState extends State<LoginPage> {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: _isLoading ? null : _loginWithFacebook,
-                              icon: Image.asset(
-                                'assets/icons/facebook.png',
-                                height: 20,
-                                width: 20,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.facebook,
-                                    color: Colors.blue[700],
-                                    size: 20,
-                                  );
-                                },
+                              icon: Icon(
+                                Icons.facebook,
+                                color: Colors.blue[700],
+                                size: 20,
                               ),
-                              label: const Text('Facebook'),
+                              label: const Flexible(
+                                child: Text(
+                                  'Facebook',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.grey[700],
                                 padding: const EdgeInsets.symmetric(
@@ -423,9 +419,12 @@ class _LoginPageState extends State<LoginPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            "Don't have an account? ",
-                            style: TextStyle(color: Colors.grey[700]),
+                          Flexible(
+                            child: Text(
+                              "Don't have an account? ",
+                              style: TextStyle(color: Colors.grey[700]),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           TextButton(
                             onPressed: () {

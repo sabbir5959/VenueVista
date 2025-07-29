@@ -22,16 +22,12 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
   // Discount form controllers
   DateTime? _startDate;
   DateTime? _endDate;
-  TimeOfDay? _startTime;
-  TimeOfDay? _endTime;
   final TextEditingController _discountValueController = TextEditingController();
   final TextEditingController _labelController = TextEditingController();
   String _discountType = 'percentage'; // 'percentage' or 'flat'
   
   // Settings
-  bool _applyToIndividualBookings = true;
-  bool _applyToTeamBookings = true;
-  bool _allowOverlappingDiscounts = false;
+
   
   // Data
   List<DiscountSchedule> _discountSchedules = [];
@@ -128,20 +124,18 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
           // Discount Scheduler
           _buildDiscountSchedulerCard(),
           
-          const SizedBox(height: 20),
+          const SizedBox(height: 40),
           
-          // Rules & Controls
-          _buildRulesControlsCard(),
-          
-          const SizedBox(height: 30),
-          
-          // Schedule Discount Button
+          // Apply Discount Button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: _scheduleDiscount,
               icon: const Icon(Icons.schedule),
-              label: const Text('Schedule Discount'),
+              label: const Text(
+                'Apply Discount',
+                style: TextStyle(fontSize: 18),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green[700],
                 foregroundColor: Colors.white,
@@ -169,9 +163,12 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
               children: [
                 Icon(Icons.attach_money, color: Colors.green[700], size: 30),
                 const SizedBox(width: 12),
-                const Text(
-                  'Current Base Price',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    'Current Base Price',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -232,9 +229,12 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
               children: [
                 Icon(Icons.schedule, color: Colors.orange[700], size: 30),
                 const SizedBox(width: 12),
-                const Text(
-                  'Schedule New Discount',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    'Schedule New Discount',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -256,6 +256,7 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
                       _startDate != null
                           ? DateFormat('MMM dd, yyyy').format(_startDate!)
                           : 'Start Date',
+                      overflow: TextOverflow.ellipsis,
                     ),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.all(12),
@@ -272,54 +273,11 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
                       _endDate != null
                           ? DateFormat('MMM dd, yyyy').format(_endDate!)
                           : 'End Date (Optional)',
+                      overflow: TextOverflow.ellipsis,
                     ),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.all(12),
                       foregroundColor: Colors.green[700],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Time Selection
-            const Text(
-              'Select Time Range',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _selectTime(true),
-                    icon: const Icon(Icons.access_time),
-                    label: Text(
-                      _startTime != null
-                          ? _startTime!.format(context)
-                          : 'From Time',
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.all(12),
-                      foregroundColor: Colors.blue[700],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _selectTime(false),
-                    icon: const Icon(Icons.schedule),
-                    label: Text(
-                      _endTime != null
-                          ? _endTime!.format(context)
-                          : 'To Time',
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.all(12),
-                      foregroundColor: Colors.blue[700],
                     ),
                   ),
                 ),
@@ -377,69 +335,8 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'Label/Reason (Optional)',
-                hintText: 'e.g., "Independence Day Special", "Morning Rush"',
+                hintText: 'e.g., "Independence Day Special", "Kickoff Deals"',
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRulesControlsCard() {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.settings, color: Colors.purple[700], size: 30),
-                const SizedBox(width: 12),
-                const Text(
-                  'Rules & Controls',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            SwitchListTile(
-              title: const Text('Apply to Individual Bookings'),
-              subtitle: const Text('Single user bookings will get discount'),
-              value: _applyToIndividualBookings,
-              onChanged: (value) {
-                setState(() {
-                  _applyToIndividualBookings = value;
-                });
-              },
-              activeColor: Colors.green[700],
-            ),
-            
-            SwitchListTile(
-              title: const Text('Apply to Team Bookings/Tournaments'),
-              subtitle: const Text('Group bookings and tournaments will get discount'),
-              value: _applyToTeamBookings,
-              onChanged: (value) {
-                setState(() {
-                  _applyToTeamBookings = value;
-                });
-              },
-              activeColor: Colors.green[700],
-            ),
-            
-            SwitchListTile(
-              title: const Text('Allow Overlapping Discounts'),
-              subtitle: const Text('Multiple discounts can apply to same time slot'),
-              value: _allowOverlappingDiscounts,
-              onChanged: (value) {
-                setState(() {
-                  _allowOverlappingDiscounts = value;
-                });
-              },
-              activeColor: Colors.green[700],
             ),
           ],
         ),
@@ -527,21 +424,24 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isPercentage ? Colors.orange[100] : Colors.blue[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    discountText,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isPercentage ? Colors.orange[700] : Colors.blue[700],
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isPercentage ? Colors.orange[100] : Colors.blue[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      discountText,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isPercentage ? Colors.orange[700] : Colors.blue[700],
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'edit') {
@@ -590,7 +490,13 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
               children: [
                 const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
                 const SizedBox(width: 4),
-                Text(dateText, style: const TextStyle(color: Colors.grey)),
+                Expanded(
+                  child: Text(
+                    dateText,
+                    style: const TextStyle(color: Colors.grey),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 4),
@@ -598,7 +504,13 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
               children: [
                 const Icon(Icons.access_time, size: 16, color: Colors.grey),
                 const SizedBox(width: 4),
-                Text(timeText, style: const TextStyle(color: Colors.grey)),
+                Expanded(
+                  child: Text(
+                    timeText,
+                    style: const TextStyle(color: Colors.grey),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             if (discount.applyToIndividual || discount.applyToTeams) ...[
@@ -665,25 +577,6 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
     }
   }
 
-  Future<void> _selectTime(bool isStartTime) async {
-    final TimeOfDay? pickedTime = await showTimePicker(
-      context: context,
-      initialTime: isStartTime 
-          ? (_startTime ?? const TimeOfDay(hour: 9, minute: 0))
-          : (_endTime ?? const TimeOfDay(hour: 17, minute: 0)),
-    );
-
-    if (pickedTime != null) {
-      setState(() {
-        if (isStartTime) {
-          _startTime = pickedTime;
-        } else {
-          _endTime = pickedTime;
-        }
-      });
-    }
-  }
-
   void _updateBasePrice() {
     showDialog(
       context: context,
@@ -741,11 +634,6 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
       return;
     }
     
-    if (_startTime == null || _endTime == null) {
-      _showError('Please select both start and end times');
-      return;
-    }
-    
     if (_discountValueController.text.isEmpty) {
       _showError('Please enter a discount value');
       return;
@@ -767,14 +655,14 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
         id: DateTime.now().millisecondsSinceEpoch,
         startDate: _startDate!,
         endDate: _endDate,
-        startTime: _startTime!,
-        endTime: _endTime!,
+        startTime: const TimeOfDay(hour: 0, minute: 0), // All day start
+        endTime: const TimeOfDay(hour: 23, minute: 59), // All day end
         discountType: _discountType == 'percentage' ? DiscountType.percentage : DiscountType.flat,
         discountValue: discountValue,
         label: _labelController.text,
-        applyToIndividual: _applyToIndividualBookings,
-        applyToTeams: _applyToTeamBookings,
-        allowOverlapping: _allowOverlappingDiscounts,
+        applyToIndividual: true,
+        applyToTeams: true,
+        allowOverlapping: false,
       );
 
       await _pricingService.addDiscountSchedule(newDiscount);
@@ -784,8 +672,6 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
       setState(() {
         _startDate = null;
         _endDate = null;
-        _startTime = null;
-        _endTime = null;
         _discountValueController.clear();
         _labelController.clear();
       });
