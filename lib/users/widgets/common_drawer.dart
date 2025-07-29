@@ -133,7 +133,10 @@ class CommonDrawer extends StatelessWidget {
           Divider(thickness: 1),
           ListTile(
             leading: Icon(Icons.logout, color: Colors.green.shade700),
-            title: Text('Logout', style: TextStyle(color: Colors.green.shade700)),
+            title: Text(
+              'Logout',
+              style: TextStyle(color: Colors.green.shade700),
+            ),
             onTap: () {
               // Show confirmation dialog
               showDialog(
