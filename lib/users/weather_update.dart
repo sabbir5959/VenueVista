@@ -43,7 +43,7 @@ class _WeatherPageState extends State<WeatherPage>
     'Khulna',
     'Rangpur',
     'Mymensingh',
-    'Cumilla'
+    'Cumilla',
   ];
 
   @override
@@ -76,7 +76,10 @@ class _WeatherPageState extends State<WeatherPage>
     );
 
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _cardAnimationController, curve: Curves.elasticOut),
+      CurvedAnimation(
+        parent: _cardAnimationController,
+        curve: Curves.elasticOut,
+      ),
     );
 
     _cardAnimationController.forward();
@@ -210,23 +213,109 @@ class _WeatherPageState extends State<WeatherPage>
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const CommonDrawer(),
-      appBar: AppBar(
-        title: const Text(
-          'Weather Forecast',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.blue.shade600.withOpacity(0.9),
+                Colors.purple.shade600.withOpacity(0.8),
+                Colors.indigo.shade700.withOpacity(0.9),
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: AppBar(
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  child: Icon(Icons.cloud_queue, color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Weather & Forecast',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Text(
+                      'Real-time Updates',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            iconTheme: const IconThemeData(color: Colors.white),
+            actions: [
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.refresh_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                  onPressed: fetchWeather,
+                  tooltip: 'Refresh Weather',
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.location_on_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                  onPressed: () {
+                    // Optional: Add location-based weather functionality
+                  },
+                  tooltip: 'Current Location',
+                ),
+              ),
+            ],
           ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: Colors.white),
-            onPressed: fetchWeather,
-          ),
-        ],
       ),
       body: AnimatedBuilder(
         animation: _backgroundAnimationController,
@@ -279,6 +368,29 @@ class _WeatherPageState extends State<WeatherPage>
                     ),
 
                     const SizedBox(height: 20),
+
+                    // Weather Details Section Title
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text(
+                        'Weather Details',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                          shadows: [
+                            Shadow(
+                              blurRadius: 8,
+                              color: Colors.black.withOpacity(0.3),
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 15),
 
                     // Weather Details Grid
                     FadeTransition(
@@ -337,7 +449,7 @@ class _WeatherPageState extends State<WeatherPage>
               ),
               const SizedBox(width: 15),
               Text(
-                'Select City',
+                'Choose Your Location',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -360,7 +472,10 @@ class _WeatherPageState extends State<WeatherPage>
                 ],
               ),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.5),
+                width: 1.5,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.1),
@@ -376,28 +491,33 @@ class _WeatherPageState extends State<WeatherPage>
                 dropdownColor: Colors.blueGrey.shade800,
                 style: const TextStyle(color: Colors.white, fontSize: 16),
                 iconEnabledColor: Colors.white,
-                items: cities.map((String city) {
-                  return DropdownMenuItem<String>(
-                    value: city,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        children: [
-                          Icon(Icons.location_city, color: Colors.white.withOpacity(0.7), size: 20),
-                          const SizedBox(width: 10),
-                          Text(
-                            city,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
+                items:
+                    cities.map((String city) {
+                      return DropdownMenuItem<String>(
+                        value: city,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.location_city,
+                                color: Colors.white.withOpacity(0.7),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                city,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+                        ),
+                      );
+                    }).toList(),
                 onChanged: (String? newValue) {
                   setState(() {
                     selectedCity = newValue;
@@ -481,12 +601,10 @@ class _WeatherPageState extends State<WeatherPage>
 
                 // Temperature
                 ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [
-                      Colors.white,
-                      Colors.white.withOpacity(0.8),
-                    ],
-                  ).createShader(bounds),
+                  shaderCallback:
+                      (bounds) => LinearGradient(
+                        colors: [Colors.white, Colors.white.withOpacity(0.8)],
+                      ).createShader(bounds),
                   child: Text(
                     temperature,
                     style: TextStyle(
@@ -503,7 +621,10 @@ class _WeatherPageState extends State<WeatherPage>
 
                 // Description
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -570,10 +691,30 @@ class _WeatherPageState extends State<WeatherPage>
 
   Widget _buildWeatherDetailsGrid() {
     final details = [
-      {'icon': Icons.water_drop, 'label': 'Humidity', 'value': humidity, 'color': Colors.blue},
-      {'icon': Icons.air, 'label': 'Wind Speed', 'value': windSpeed, 'color': Colors.cyan},
-      {'icon': Icons.speed, 'label': 'Pressure', 'value': pressure, 'color': Colors.orange},
-      {'icon': Icons.visibility, 'label': 'Visibility', 'value': visibility, 'color': Colors.green},
+      {
+        'icon': Icons.water_drop,
+        'label': 'Humidity',
+        'value': humidity,
+        'color': Colors.blue,
+      },
+      {
+        'icon': Icons.air,
+        'label': 'Wind Speed',
+        'value': windSpeed,
+        'color': Colors.cyan,
+      },
+      {
+        'icon': Icons.speed,
+        'label': 'Pressure',
+        'value': pressure,
+        'color': Colors.orange,
+      },
+      {
+        'icon': Icons.visibility,
+        'label': 'Visibility',
+        'value': visibility,
+        'color': Colors.green,
+      },
     ];
 
     return GridView.builder(
@@ -600,7 +741,10 @@ class _WeatherPageState extends State<WeatherPage>
               ],
             ),
             borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.4),
+              width: 1.5,
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.1),
@@ -625,8 +769,8 @@ class _WeatherPageState extends State<WeatherPage>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(
-                  detail['icon'] as IconData, 
-                  color: Colors.white, 
+                  detail['icon'] as IconData,
+                  color: Colors.white,
                   size: 32,
                 ),
               ),
@@ -683,10 +827,21 @@ class _WeatherPageState extends State<WeatherPage>
         children: [
           Row(
             children: [
-              Icon(Icons.calendar_today, color: Colors.white, size: 24),
-              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(
+                  Icons.calendar_today,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 15),
               Text(
-                'Forecast Date',
+                'Select Forecast Date',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
