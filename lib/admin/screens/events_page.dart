@@ -117,7 +117,7 @@ class AdminEventsPage extends StatelessWidget {
               SizedBox(height: 24),
 
               // Events List
-              Container(
+              SizedBox(
                 height: isMobile ? 400 : 500,
                 child: Container(
                   decoration: BoxDecoration(
