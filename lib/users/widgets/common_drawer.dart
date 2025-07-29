@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../search_grounds.dart';
 import '../screens/schedule_page.dart';
-import '../weather_update.dart';
 import '../dashboard.dart';
+import '../weather_update.dart';
 
 class CommonDrawer extends StatelessWidget {
   const CommonDrawer({super.key});
@@ -103,7 +103,7 @@ class CommonDrawer extends StatelessWidget {
               Navigator.pop(context);
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => WeatherPage()),
+                MaterialPageRoute(builder: (context) => WeatherUpdate()),
               );
             },
           ),
