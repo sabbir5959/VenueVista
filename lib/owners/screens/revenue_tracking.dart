@@ -42,42 +42,44 @@ class RevenueTrackingScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Current Value',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Current Value',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          '\u09F3 25,000',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                          SizedBox(height: 8),
+                          Text(
+                            '\u09F3 25,000',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          '+ \u09F3 15,000',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.greenAccent,
+                          SizedBox(height: 8),
+                          Text(
+                            '+ \u09F3 15,000',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.greenAccent,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Revenue in this Month',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
+                          SizedBox(height: 4),
+                          Text(
+                            'Revenue in this Month',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     Stack(
                       alignment: Alignment.center,
@@ -109,21 +111,26 @@ class RevenueTrackingScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Time Filter Bar
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                for (String range in ['1W', '1M', '3M', '6M', '9M', '1Y'])
-                  ChoiceChip(
-                    label: Text(range),
-                    selected: range == '1W',
-                    onSelected: (bool selected) {},
-                    selectedColor: Colors.green[700],
-                    backgroundColor: Colors.grey[200],
-                    labelStyle: TextStyle(
-                      color: range == '1W' ? Colors.white : Colors.black,
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (String range in ['1W', '1M', '3M', '6M', '9M', '1Y'])
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: ChoiceChip(
+                        label: Text(range),
+                        selected: range == '1W',
+                        onSelected: (bool selected) {},
+                        selectedColor: Colors.green[700],
+                        backgroundColor: Colors.grey[200],
+                        labelStyle: TextStyle(
+                          color: range == '1W' ? Colors.white : Colors.black,
+                        ),
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
 
             const SizedBox(height: 16),
