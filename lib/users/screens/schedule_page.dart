@@ -424,9 +424,9 @@
 //   }
 // }
 
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/common_drawer.dart';
 
 class SchedulePage extends StatelessWidget {
   const SchedulePage({super.key});
@@ -474,6 +474,7 @@ class SchedulePage extends StatelessWidget {
     ];
 
     return Scaffold(
+      drawer: const CommonDrawer(),
       appBar: AppBar(
         title: Text('My Schedules', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.green.shade700,
@@ -507,19 +508,24 @@ class SchedulePage extends StatelessWidget {
                         ),
                       ),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: schedule['status'] == 'Confirmed'
-                              ? Colors.green.shade100
-                              : Colors.orange.shade100,
+                          color:
+                              schedule['status'] == 'Confirmed'
+                                  ? Colors.green.shade100
+                                  : Colors.orange.shade100,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           schedule['status'],
                           style: TextStyle(
-                            color: schedule['status'] == 'Confirmed'
-                                ? Colors.green.shade700
-                                : Colors.orange.shade700,
+                            color:
+                                schedule['status'] == 'Confirmed'
+                                    ? Colors.green.shade700
+                                    : Colors.orange.shade700,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -529,24 +535,49 @@ class SchedulePage extends StatelessWidget {
                   SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Colors.grey.shade600,
+                      ),
                       SizedBox(width: 8),
-                      Text(schedule['date'], style: TextStyle(color: Colors.grey.shade700)),
+                      Text(
+                        schedule['date'],
+                        style: TextStyle(color: Colors.grey.shade700),
+                      ),
                       SizedBox(width: 16),
-                      Icon(Icons.access_time, size: 16, color: Colors.grey.shade600),
+                      Icon(
+                        Icons.access_time,
+                        size: 16,
+                        color: Colors.grey.shade600,
+                      ),
                       SizedBox(width: 8),
-                      Text(schedule['time'], style: TextStyle(color: Colors.grey.shade700)),
+                      Text(
+                        schedule['time'],
+                        style: TextStyle(color: Colors.grey.shade700),
+                      ),
                     ],
                   ),
                   SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.sports_soccer, size: 16, color: Colors.grey.shade600),
+                      Icon(
+                        Icons.sports_soccer,
+                        size: 16,
+                        color: Colors.grey.shade600,
+                      ),
                       SizedBox(width: 8),
-                      Text(schedule['type'], style: TextStyle(color: Colors.grey.shade700)),
+                      Text(
+                        schedule['type'],
+                        style: TextStyle(color: Colors.grey.shade700),
+                      ),
                       Spacer(),
                       IconButton(
-                        icon: Icon(Icons.cloud_outlined, color: Colors.blue.shade700, size: 24),
+                        icon: Icon(
+                          Icons.cloud_outlined,
+                          color: Colors.blue.shade700,
+                          size: 24,
+                        ),
                         onPressed: () {
                           showDialog(
                             context: context,
@@ -554,16 +585,31 @@ class SchedulePage extends StatelessWidget {
                               return AlertDialog(
                                 title: Row(
                                   children: [
-                                    Icon(Icons.cloud_outlined, color: Colors.blue.shade700, size: 28),
+                                    Icon(
+                                      Icons.cloud_outlined,
+                                      color: Colors.blue.shade700,
+                                      size: 28,
+                                    ),
                                     SizedBox(width: 8),
-                                    Text('Weather Forecast', style: TextStyle(color: Colors.blue.shade700)),
+                                    Text(
+                                      'Weather Forecast',
+                                      style: TextStyle(
+                                        color: Colors.blue.shade700,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 content: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(schedule['groundName'], style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                    Text(
+                                      schedule['groundName'],
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
                                     SizedBox(height: 16),
                                     Row(
                                       children: [
@@ -574,26 +620,50 @@ class SchedulePage extends StatelessWidget {
                                     ),
                                     SizedBox(height: 16),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
                                       children: [
                                         Column(
                                           children: [
-                                            Icon(Icons.thermostat_outlined, size: 32, color: Colors.orange),
-                                            Text('28°C', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                            Icon(
+                                              Icons.thermostat_outlined,
+                                              size: 32,
+                                              color: Colors.orange,
+                                            ),
+                                            Text(
+                                              '28°C',
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                             Text('Temperature'),
                                           ],
                                         ),
                                         Column(
                                           children: [
-                                            Icon(Icons.water_drop_outlined, size: 32, color: Colors.blue),
-                                            Text('65%', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                            Icon(
+                                              Icons.water_drop_outlined,
+                                              size: 32,
+                                              color: Colors.blue,
+                                            ),
+                                            Text(
+                                              '65%',
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                             Text('Humidity'),
                                           ],
                                         ),
                                       ],
                                     ),
                                     SizedBox(height: 16),
-                                    Text('Weather Condition: Partly Cloudy', style: TextStyle(fontSize: 16)),
+                                    Text(
+                                      'Weather Condition: Partly Cloudy',
+                                      style: TextStyle(fontSize: 16),
+                                    ),
                                   ],
                                 ),
                                 actions: [
@@ -611,7 +681,11 @@ class SchedulePage extends StatelessWidget {
                       ),
                       SizedBox(width: 8),
                       IconButton(
-                        icon: Icon(Icons.location_on, color: Colors.green.shade700, size: 24),
+                        icon: Icon(
+                          Icons.location_on,
+                          color: Colors.green.shade700,
+                          size: 24,
+                        ),
                         onPressed: () {
                           _openDirections(schedule['locationQuery']);
                         },
@@ -636,14 +710,23 @@ class SchedulePage extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Booking Details:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(
+                            'Booking Details:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
                           SizedBox(height: 8),
                           Text('Date: ${schedule['date']}'),
                           Text('Time: ${schedule['time']}'),
                           Text('Event: ${schedule['type']}'),
                           Text('Status: ${schedule['status']}'),
                           SizedBox(height: 16),
-                          Text('Would you like to cancel this booking?', style: TextStyle(color: Colors.black87)),
+                          Text(
+                            'Would you like to cancel this booking?',
+                            style: TextStyle(color: Colors.black87),
+                          ),
                         ],
                       ),
                       actions: [
@@ -652,7 +735,13 @@ class SchedulePage extends StatelessWidget {
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                         TextButton(
-                          child: Text('Confirm Cancellation', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                          child: Text(
+                            'Confirm Cancellation',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           onPressed: () {
                             Navigator.of(context).pop();
                             showDialog(
@@ -661,46 +750,84 @@ class SchedulePage extends StatelessWidget {
                                 return AlertDialog(
                                   title: Row(
                                     children: [
-                                      Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+                                      Icon(
+                                        Icons.warning_amber_rounded,
+                                        color: Colors.red,
+                                        size: 28,
+                                      ),
                                       SizedBox(width: 8),
-                                      Text('Warning', style: TextStyle(color: Colors.red)),
+                                      Text(
+                                        'Warning',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
                                     ],
                                   ),
                                   content: Column(
                                     mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text('Please note:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      Text(
+                                        'Please note:',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
                                       SizedBox(height: 8),
                                       Text('• Cancellation fee may apply'),
-                                      Text('• Refund will take 3-5 business days'),
+                                      Text(
+                                        '• Refund will take 3-5 business days',
+                                      ),
                                       Text('• This action cannot be undone'),
                                       SizedBox(height: 16),
-                                      Text('Are you sure you want to cancel this booking?', style: TextStyle(color: Colors.red.shade700)),
+                                      Text(
+                                        'Are you sure you want to cancel this booking?',
+                                        style: TextStyle(
+                                          color: Colors.red.shade700,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                   actions: [
                                     TextButton(
                                       child: Text('No, Keep Booking'),
-                                      onPressed: () => Navigator.of(context).pop(),
+                                      onPressed:
+                                          () => Navigator.of(context).pop(),
                                     ),
                                     TextButton(
-                                      child: Text('Yes, Cancel', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                      child: Text(
+                                        'Yes, Cancel',
+                                        style: TextStyle(
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                       onPressed: () {
                                         Navigator.of(context).pop();
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
-                                            content: Text('Cancellation request sent for ${schedule['groundName']}'),
-                                            backgroundColor: Colors.red.shade700,
+                                            content: Text(
+                                              'Cancellation request sent for ${schedule['groundName']}',
+                                            ),
+                                            backgroundColor:
+                                                Colors.red.shade700,
                                             duration: Duration(seconds: 2),
                                             action: SnackBarAction(
                                               label: 'UNDO',
                                               textColor: Colors.white,
                                               onPressed: () {
-                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
                                                   SnackBar(
-                                                    content: Text('Cancellation request withdrawn'),
-                                                    backgroundColor: Colors.green.shade700,
+                                                    content: Text(
+                                                      'Cancellation request withdrawn',
+                                                    ),
+                                                    backgroundColor:
+                                                        Colors.green.shade700,
                                                   ),
                                                 );
                                               },

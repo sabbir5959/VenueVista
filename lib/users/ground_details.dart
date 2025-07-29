@@ -554,9 +554,8 @@
 //   }
 // }
 
-
-
 import 'package:flutter/material.dart';
+import 'widgets/common_drawer.dart';
 
 class GroundDetails extends StatefulWidget {
   final String name;
@@ -617,6 +616,7 @@ class _GroundDetailsState extends State<GroundDetails> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
+      drawer: const CommonDrawer(),
       appBar: AppBar(
         title: Text(
           widget.name,
@@ -771,23 +771,24 @@ class _GroundDetailsState extends State<GroundDetails> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: widget.facilities.split(', ').map((facility) {
-                      return Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          border: Border.all(color: Colors.green.shade200),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          facility,
-                          style: TextStyle(color: Colors.green.shade900),
-                        ),
-                      );
-                    }).toList(),
+                    children:
+                        widget.facilities.split(', ').map((facility) {
+                          return Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              border: Border.all(color: Colors.green.shade200),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              facility,
+                              style: TextStyle(color: Colors.green.shade900),
+                            ),
+                          );
+                        }).toList(),
                   ),
                   const SizedBox(height: 24),
 
@@ -808,11 +809,11 @@ class _GroundDetailsState extends State<GroundDetails> {
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 3,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
+                          crossAxisCount: 2,
+                          childAspectRatio: 3,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
                     itemCount: timeSlots.length,
                     itemBuilder: (context, index) {
                       final timeSlot = timeSlots[index];
@@ -826,13 +827,15 @@ class _GroundDetailsState extends State<GroundDetails> {
                         },
                         child: Container(
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? Colors.green.shade100
-                                : Colors.white,
+                            color:
+                                isSelected
+                                    ? Colors.green.shade100
+                                    : Colors.white,
                             border: Border.all(
-                              color: isSelected
-                                  ? Colors.green.shade700
-                                  : Colors.green.shade200,
+                              color:
+                                  isSelected
+                                      ? Colors.green.shade700
+                                      : Colors.green.shade200,
                               width: isSelected ? 2 : 1,
                             ),
                             borderRadius: BorderRadius.circular(8),
@@ -841,11 +844,14 @@ class _GroundDetailsState extends State<GroundDetails> {
                           child: Text(
                             timeSlot,
                             style: TextStyle(
-                              color: isSelected
-                                  ? Colors.green.shade900
-                                  : Colors.black87,
+                              color:
+                                  isSelected
+                                      ? Colors.green.shade900
+                                      : Colors.black87,
                               fontWeight:
-                                  isSelected ? FontWeight.bold : FontWeight.normal,
+                                  isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                             ),
                           ),
                         ),
@@ -895,9 +901,10 @@ class _GroundDetailsState extends State<GroundDetails> {
                                     onTap: () {
                                       showDialog(
                                         context: context,
-                                        builder: (context) => _RatingDialog(
-                                          groundName: widget.name,
-                                        ),
+                                        builder:
+                                            (context) => _RatingDialog(
+                                              groundName: widget.name,
+                                            ),
                                       );
                                     },
                                     child: Icon(
@@ -948,7 +955,7 @@ class _GroundDetailsState extends State<GroundDetails> {
                                   color: Colors.black.withOpacity(0.05),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
-                                )
+                                ),
                               ],
                             ),
                             child: Column(
@@ -969,7 +976,8 @@ class _GroundDetailsState extends State<GroundDetails> {
                                 Padding(
                                   padding: const EdgeInsets.all(8),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         suggestion['name']!,
@@ -999,7 +1007,7 @@ class _GroundDetailsState extends State<GroundDetails> {
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
-                                          )
+                                          ),
                                         ],
                                       ),
                                     ],
@@ -1032,18 +1040,19 @@ class _GroundDetailsState extends State<GroundDetails> {
           ],
         ),
         child: ElevatedButton(
-          onPressed: selectedTimeSlot == null
-              ? null
-              : () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Booking confirmed for $selectedTimeSlot',
+          onPressed:
+              selectedTimeSlot == null
+                  ? null
+                  : () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Booking confirmed for $selectedTimeSlot',
+                        ),
+                        backgroundColor: Colors.green.shade900,
                       ),
-                      backgroundColor: Colors.green.shade900,
-                    ),
-                  );
-                },
+                    );
+                  },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green.shade900,
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1153,18 +1162,19 @@ class _RatingDialogState extends State<_RatingDialog> {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: _rating == 0
-                      ? null
-                      : () {
-                          // TODO: Submit rating and feedback to backend
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Thank you for your feedback!'),
-                              backgroundColor: Colors.green.shade900,
-                            ),
-                          );
-                        },
+                  onPressed:
+                      _rating == 0
+                          ? null
+                          : () {
+                            // TODO: Submit rating and feedback to backend
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Thank you for your feedback!'),
+                                backgroundColor: Colors.green.shade900,
+                              ),
+                            );
+                          },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade900,
                     shape: RoundedRectangleBorder(
@@ -1224,4 +1234,3 @@ class _InfoCard extends StatelessWidget {
     );
   }
 }
-
