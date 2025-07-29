@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../screens/search_grounds.dart';
+import './search_grounds.dart';
 import 'screens/schedule_page.dart';
 
 class HomeActivity extends StatefulWidget {
