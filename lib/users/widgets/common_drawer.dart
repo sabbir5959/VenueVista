@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../search_grounds.dart';
 import '../screens/schedule_page.dart';
+import '../screens/tournaments_page.dart';
 import '../dashboard.dart';
 import '../weather_update.dart';
 
@@ -79,9 +80,9 @@ class CommonDrawer extends StatelessWidget {
             title: Text('Tournaments'),
             onTap: () {
               Navigator.pop(context);
-              // Navigate to tournaments page when available
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Tournaments page coming soon!')),
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => TournamentsPage()),
               );
             },
           ),
@@ -107,30 +108,6 @@ class CommonDrawer extends StatelessWidget {
               );
             },
           ),
-          Divider(),
-          ListTile(
-            leading: Icon(Icons.person, color: Colors.green.shade700),
-            title: Text('Account'),
-            onTap: () {
-              Navigator.pop(context);
-              // Navigate to account page when available
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Account page coming soon!')),
-              );
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.settings, color: Colors.green.shade700),
-            title: Text('Settings'),
-            onTap: () {
-              Navigator.pop(context);
-              // Navigate to settings page when available
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Settings page coming soon!')),
-              );
-            },
-          ),
-          Divider(thickness: 1),
           ListTile(
             leading: Icon(Icons.logout, color: Colors.green.shade700),
             title: Text(
