@@ -36,15 +36,3 @@ android {
 flutter {
     source = "../.."
 }
-
-dependencies {
-    // ✅ Firebase BoM - auto-manages library versions
-    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
-
-    // ✅ Example Firebase features - add as needed:
-    implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-firestore")
-
-    // ⚠️ Add other dependencies here if needed
-}

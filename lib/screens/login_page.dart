@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../users/dashboard.dart';
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -70,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.of(context).pushReplacementNamed('/admin');
         }
         // Owner login check
-        else if (phone == "01798155815" && password == "owner123") {
+        else if (phone == "01700594133" && password == "owner123") {
           _showSuccessMessage('Owner login successful! Welcome Owner.');
           Navigator.of(context).pushReplacementNamed('/owner');
         }
@@ -195,42 +196,9 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 8),
 
                       Text(
-                        'Sign in to continue to VenueVista\n(Admin, Owner, or User)',
+                        'Sign in to continue to VenueVista',
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // Demo credentials info
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.green[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.green[200]!),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Demo Credentials:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green[700],
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Owner: 01798155815 / owner123\nAdmin: 01798155814 / sabbir55\nUser: 01533985291 / kawsar47',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.green[600],
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
 
                       const SizedBox(height: 32),
@@ -395,9 +363,13 @@ class _LoginPageState extends State<LoginPage> {
                               alignment: Alignment.centerRight,
                               child: TextButton(
                                 onPressed: () {
-                                  // Handle forgot password
-                                  _showSuccessMessage(
-                                    'Forgot password feature coming soon!',
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              const ForgotPasswordPage(),
+                                    ),
                                   );
                                 },
                                 child: Text(

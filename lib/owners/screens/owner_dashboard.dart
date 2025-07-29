@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'create_tournament.dart';
+import '../widgets/venue_owner_sidebar.dart';
 
 class OwnerDashboard extends StatefulWidget {
   const OwnerDashboard({super.key});
@@ -9,8 +10,6 @@ class OwnerDashboard extends StatefulWidget {
 }
 
 class _OwnerDashboardState extends State<OwnerDashboard> {
-  int _selectedIndex = 0;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,125 +30,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
           ),
         ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: Colors.green[700]),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.sports_soccer_rounded,
-                      size: 35,
-                      color: Colors.green,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Venue Owner',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home_rounded),
-              title: const Text('Dashboard'),
-              selected: _selectedIndex == 0,
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 0;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.calendar_month_rounded),
-              title: const Text('Manage Bookings'),
-              selected: _selectedIndex == 1,
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 1;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.emoji_events_rounded),
-              title: const Text('Tournaments & Events'),
-              selected: _selectedIndex == 2,
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 2;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.price_change_rounded),
-              title: const Text('Dynamic Pricing'),
-              selected: _selectedIndex == 3,
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 3;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.attach_money_rounded),
-              title: const Text('Revenue'),
-              selected: _selectedIndex == 4,
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 4;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.build_rounded),
-              title: const Text(' Maintenance Schedule'),
-              selected: _selectedIndex == 5,
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 5;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.cancel_rounded),
-              title: const Text(' Cancellations Request'),
-              selected: _selectedIndex == 6,
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 6;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
-              onTap: () {
-                Navigator.pushReplacementNamed(context, '/');
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: const VenueOwnerSidebar(currentPage: 'dashboard'),
       body: Stack(
         children: [
           // Main content area
