@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
+import 'overview_page.dart';
+import 'users_page.dart';
+import 'owners_page.dart';
+import 'bookings_page.dart';
+import 'events_page.dart';
+import 'payments_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -25,7 +31,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       title: 'Bookings',
       index: 4,
     ),
-    AdminMenuItem(icon: Icons.analytics_outlined, title: 'Analytics', index: 5),
+    AdminMenuItem(icon: Icons.event_outlined, title: 'Events', index: 5),
     AdminMenuItem(icon: Icons.payment_outlined, title: 'Payments', index: 6),
     AdminMenuItem(icon: Icons.settings_outlined, title: 'Settings', index: 7),
   ];
@@ -48,7 +54,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
-                Icons.location_city,
+                Icons.sports_soccer,
                 color: Colors.white,
                 size: 24,
               ),
@@ -101,7 +107,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.location_city,
+                          Icons.sports_soccer,
                           color: Colors.white,
                           size: 24,
                         ),
@@ -149,36 +155,39 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 vertical: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppColors.primary.withOpacity(0.1)
-                                    : Colors.transparent,
+                                color:
+                                    isSelected
+                                        ? AppColors.primary.withOpacity(0.1)
+                                        : Colors.transparent,
                                 borderRadius: BorderRadius.circular(12),
-                                border: isSelected
-                                    ? Border.all(
-                                        color: AppColors.primary.withOpacity(
-                                          0.3,
-                                        ),
-                                        width: 1,
-                                      )
-                                    : null,
+                                border:
+                                    isSelected
+                                        ? Border.all(
+                                          color: AppColors.primary.withOpacity(
+                                            0.3,
+                                          ),
+                                          width: 1,
+                                        )
+                                        : null,
                               ),
                               child: Row(
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? AppColors.primary
-                                          : AppColors.textSecondary.withOpacity(
-                                              0.1,
-                                            ),
+                                      color:
+                                          isSelected
+                                              ? AppColors.primary
+                                              : AppColors.textSecondary
+                                                  .withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Icon(
                                       item.icon,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : AppColors.textSecondary,
+                                      color:
+                                          isSelected
+                                              ? Colors.white
+                                              : AppColors.textSecondary,
                                       size: 18,
                                     ),
                                   ),
@@ -186,12 +195,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   Text(
                                     item.title,
                                     style: TextStyle(
-                                      color: isSelected
-                                          ? AppColors.primary
-                                          : AppColors.textPrimary,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w600
-                                          : FontWeight.w500,
+                                      color:
+                                          isSelected
+                                              ? AppColors.primary
+                                              : AppColors.textPrimary,
+                                      fontWeight:
+                                          isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
                                       fontSize: 15,
                                     ),
                                   ),
@@ -302,7 +313,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case 4:
         return const AdminBookingsPage();
       case 5:
-        return const AdminAnalyticsPage();
+        return const AdminEventsPage();
       case 6:
         return const AdminPaymentsPage();
       case 7:
@@ -400,235 +411,7 @@ class AdminMenuItem {
   AdminMenuItem({required this.icon, required this.title, required this.index});
 }
 
-// Modern Admin Pages
-class AdminOverviewPage extends StatelessWidget {
-  const AdminOverviewPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      color: AppColors.background,
-      child: Padding(
-        padding: EdgeInsets.all(isMobile ? 16 : 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.dashboard_outlined,
-                  size: isMobile ? 24 : 32,
-                  color: AppColors.primary,
-                ),
-                SizedBox(width: isMobile ? 12 : 16),
-                Expanded(
-                  child: Text(
-                    'Dashboard Overview',
-                    style: TextStyle(
-                      fontSize: isMobile ? 24 : 32,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Welcome to VenueVista Admin Panel',
-              style: TextStyle(
-                fontSize: isMobile ? 14 : 16,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: isMobile ? 24 : 40),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.analytics_outlined,
-                      size: isMobile ? 48 : 64,
-                      color: AppColors.textSecondary,
-                    ),
-                    SizedBox(height: isMobile ? 16 : 24),
-                    Text(
-                      'Overview content will be added here',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: isMobile ? 16 : 18,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Dashboard metrics and analytics coming soon',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: isMobile ? 12 : 14,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AdminUsersPage extends StatelessWidget {
-  const AdminUsersPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFF5F7FA),
-      child: const Padding(
-        padding: EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.people_outline, size: 32, color: Color(0xFF2E7D32)),
-                SizedBox(width: 16),
-                Text(
-                  'Users Management',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E1E1E),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Manage all registered users',
-              style: TextStyle(
-                fontSize: 16,
-                color: Color(0xFF757575),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: 40),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.group_outlined,
-                      size: 64,
-                      color: Color(0xFF757575),
-                    ),
-                    SizedBox(height: 24),
-                    Text(
-                      'Users management content will be added here',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Color(0xFF757575),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AdminOwnersPage extends StatelessWidget {
-  const AdminOwnersPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      color: AppColors.background,
-      child: Padding(
-        padding: EdgeInsets.all(isMobile ? 16 : 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.business_outlined,
-                  size: isMobile ? 24 : 32,
-                  color: AppColors.primary,
-                ),
-                SizedBox(width: isMobile ? 12 : 16),
-                Expanded(
-                  child: Text(
-                    'Venue Owners Management',
-                    style: TextStyle(
-                      fontSize: isMobile ? 24 : 32,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Manage venue owners and their properties',
-              style: TextStyle(
-                fontSize: isMobile ? 14 : 16,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: isMobile ? 24 : 40),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.store_outlined,
-                      size: isMobile ? 48 : 64,
-                      color: AppColors.textSecondary,
-                    ),
-                    SizedBox(height: isMobile ? 16 : 24),
-                    Text(
-                      'Venue owners management content will be added here',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: isMobile ? 16 : 18,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
+// Placeholder pages for sections that don't have separate files yet
 class AdminVenuesPage extends StatelessWidget {
   const AdminVenuesPage({super.key});
 
@@ -643,26 +426,14 @@ class AdminVenuesPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: isMobile ? 24 : 32,
-                  color: AppColors.primary,
-                ),
-                SizedBox(width: isMobile ? 12 : 16),
-                Expanded(
-                  child: Text(
-                    'Venues Management',
-                    style: TextStyle(
-                      fontSize: isMobile ? 24 : 32,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              'Venues Management',
+              style: TextStyle(
+                fontSize: isMobile ? 24 : 32,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.5,
+              ),
             ),
             SizedBox(height: 12),
             Text(
@@ -680,7 +451,7 @@ class AdminVenuesPage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.domain_outlined,
+                      Icons.location_city_outlined,
                       size: isMobile ? 48 : 64,
                       color: AppColors.textSecondary,
                     ),
@@ -705,271 +476,39 @@ class AdminVenuesPage extends StatelessWidget {
   }
 }
 
-class AdminBookingsPage extends StatelessWidget {
-  const AdminBookingsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      color: AppColors.background,
-      child: Padding(
-        padding: EdgeInsets.all(isMobile ? 16 : 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.calendar_today_outlined,
-                  size: isMobile ? 24 : 32,
-                  color: AppColors.primary,
-                ),
-                SizedBox(width: isMobile ? 12 : 16),
-                Expanded(
-                  child: Text(
-                    'Bookings Management',
-                    style: TextStyle(
-                      fontSize: isMobile ? 24 : 32,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Track and manage all venue bookings',
-              style: TextStyle(
-                fontSize: isMobile ? 14 : 16,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: isMobile ? 24 : 40),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.event_outlined,
-                      size: isMobile ? 48 : 64,
-                      color: AppColors.textSecondary,
-                    ),
-                    SizedBox(height: isMobile ? 16 : 24),
-                    Text(
-                      'Bookings management content will be added here',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: isMobile ? 16 : 18,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AdminAnalyticsPage extends StatelessWidget {
-  const AdminAnalyticsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFF5F7FA),
-      child: const Padding(
-        padding: EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.analytics_outlined,
-                  size: 32,
-                  color: Color(0xFF2E7D32),
-                ),
-                SizedBox(width: 16),
-                Text(
-                  'Analytics & Reports',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E1E1E),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Text(
-              'View detailed analytics and generate reports',
-              style: TextStyle(
-                fontSize: 16,
-                color: Color(0xFF757575),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: 40),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.insert_chart_outlined,
-                      size: 64,
-                      color: Color(0xFF757575),
-                    ),
-                    SizedBox(height: 24),
-                    Text(
-                      'Analytics and reports content will be added here',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Color(0xFF757575),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AdminPaymentsPage extends StatelessWidget {
-  const AdminPaymentsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      color: AppColors.background,
-      child: Padding(
-        padding: EdgeInsets.all(isMobile ? 16 : 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.payment_outlined,
-                  size: isMobile ? 24 : 32,
-                  color: AppColors.primary,
-                ),
-                SizedBox(width: isMobile ? 12 : 16),
-                Expanded(
-                  child: Text(
-                    'Payments Management',
-                    style: TextStyle(
-                      fontSize: isMobile ? 24 : 32,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Monitor transactions and payment history',
-              style: TextStyle(
-                fontSize: isMobile ? 14 : 16,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: isMobile ? 24 : 40),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.account_balance_wallet_outlined,
-                      size: isMobile ? 48 : 64,
-                      color: AppColors.textSecondary,
-                    ),
-                    SizedBox(height: isMobile ? 16 : 24),
-                    Text(
-                      'Payments management content will be added here',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: isMobile ? 16 : 18,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-
 class AdminSettingsPage extends StatelessWidget {
   const AdminSettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
     return Container(
-      color: const Color(0xFFF5F7FA),
-      child: const Padding(
-        padding: EdgeInsets.all(32),
+      color: AppColors.background,
+      child: Padding(
+        padding: EdgeInsets.all(isMobile ? 16 : 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.settings_outlined,
-                  size: 32,
-                  color: Color(0xFF2E7D32),
-                ),
-                SizedBox(width: 16),
-                Text(
-                  'System Settings',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E1E1E),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
+            Text(
+              'System Settings',
+              style: TextStyle(
+                fontSize: isMobile ? 24 : 32,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.5,
+              ),
             ),
             SizedBox(height: 12),
             Text(
               'Configure system preferences and settings',
               style: TextStyle(
-                fontSize: 16,
-                color: Color(0xFF757575),
+                fontSize: isMobile ? 14 : 16,
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: 40),
+            SizedBox(height: isMobile ? 24 : 40),
             Expanded(
               child: Center(
                 child: Column(
@@ -977,15 +516,16 @@ class AdminSettingsPage extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.tune_outlined,
-                      size: 64,
-                      color: Color(0xFF757575),
+                      size: isMobile ? 48 : 64,
+                      color: AppColors.textSecondary,
                     ),
-                    SizedBox(height: 24),
+                    SizedBox(height: isMobile ? 16 : 24),
                     Text(
                       'System settings content will be added here',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 18,
-                        color: Color(0xFF757575),
+                        fontSize: isMobile ? 16 : 18,
+                        color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
