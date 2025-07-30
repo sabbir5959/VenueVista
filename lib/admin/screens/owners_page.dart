@@ -125,21 +125,35 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                     ),
                   ),
                   const Spacer(),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isMobile ? 8 : 12,
-                      vertical: isMobile ? 4 : 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Add New',
-                      style: TextStyle(
-                        color: AppColors.white,
-                        fontSize: isMobile ? 12 : 14,
-                        fontWeight: FontWeight.w500,
+                  GestureDetector(
+                    onTap: () => _showAddVenueOwnerDialog(context, isMobile),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 8 : 12,
+                        vertical: isMobile ? 4 : 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add,
+                            color: AppColors.white,
+                            size: isMobile ? 14 : 16,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Add New',
+                            style: TextStyle(
+                              color: AppColors.white,
+                              fontSize: isMobile ? 12 : 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -552,6 +566,97 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                       ),
                     ],
                   ),
+                  // Additional info for new venue owners
+                  if (owner.containsKey('phone') ||
+                      owner.containsKey('groundSize') ||
+                      owner.containsKey('capacity') ||
+                      owner.containsKey('pricePerHour')) ...[
+                    SizedBox(height: 8),
+                    Divider(color: AppColors.borderLight, height: 1),
+                    SizedBox(height: 8),
+                    Wrap(
+                      runSpacing: 4,
+                      spacing: 12,
+                      children: [
+                        if (owner.containsKey('phone'))
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.phone_outlined,
+                                size: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                owner['phone'],
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (owner.containsKey('groundSize'))
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.aspect_ratio_outlined,
+                                size: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                owner['groundSize'],
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (owner.containsKey('capacity'))
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.people_outline,
+                                size: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                '${owner['capacity']} players',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (owner.containsKey('pricePerHour'))
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.schedule_outlined,
+                                size: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                '৳${owner['pricePerHour']}/hr',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
               )
               : Column(
@@ -694,6 +799,99 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                       ),
                     ],
                   ),
+                  // Additional info for new venue owners
+                  if (owner.containsKey('phone') ||
+                      owner.containsKey('groundSize') ||
+                      owner.containsKey('capacity') ||
+                      owner.containsKey('pricePerHour')) ...[
+                    SizedBox(height: 12),
+                    Divider(color: AppColors.borderLight, height: 1),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        if (owner.containsKey('phone'))
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.phone_outlined,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  owner['phone'],
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (owner.containsKey('groundSize'))
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.aspect_ratio_outlined,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  owner['groundSize'],
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (owner.containsKey('capacity'))
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.people_outline,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '${owner['capacity']} players',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (owner.containsKey('pricePerHour'))
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.schedule_outlined,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '৳${owner['pricePerHour']}/hr',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
     );
@@ -708,6 +906,381 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
       default:
         return AppColors.textSecondary;
     }
+  }
+
+  void _showAddVenueOwnerDialog(BuildContext context, bool isMobile) {
+    final TextEditingController idController = TextEditingController();
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController phoneController = TextEditingController();
+    final TextEditingController emailController = TextEditingController();
+    final TextEditingController groundSizeController = TextEditingController();
+    final TextEditingController capacityController = TextEditingController();
+    final TextEditingController priceController = TextEditingController();
+    String? selectedGroundPicture;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.add_business,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Add New Venue Owner',
+                      style: TextStyle(
+                        fontSize: isMobile ? 18 : 20,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: Container(
+                width: isMobile ? MediaQuery.of(context).size.width * 0.9 : 500,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Owner ID
+                      Text(
+                        'Owner ID',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: idController,
+                        decoration: InputDecoration(
+                          hintText: 'Enter unique owner ID',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Owner Name
+                      Text(
+                        'Owner Name',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          hintText: 'Enter owner/business name',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Phone Number
+                      Text(
+                        'Phone Number',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          hintText: 'Enter phone number',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Email
+                      Text(
+                        'Email Address',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          hintText: 'Enter email address',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Ground Picture
+                      Text(
+                        'Ground Picture',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () {
+                          // TODO: Implement image picker
+                          setDialogState(() {
+                            selectedGroundPicture = 'sample_ground.jpg';
+                          });
+                        },
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                child: Icon(
+                                  Icons.add_photo_alternate_outlined,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  selectedGroundPicture ??
+                                      'Select ground picture',
+                                  style: TextStyle(
+                                    color:
+                                        selectedGroundPicture != null
+                                            ? AppColors.textPrimary
+                                            : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Ground Size
+                      Text(
+                        'Ground Size',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: groundSizeController,
+                        decoration: InputDecoration(
+                          hintText: 'e.g., 100x60 meters',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Player Capacity
+                      Text(
+                        'Player Capacity',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: capacityController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          hintText: 'How many players can play',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Price/Rate
+                      Text(
+                        'Price per Hour (৳)',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: priceController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          hintText: 'Enter price per hour',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    // Validate fields
+                    if (idController.text.isEmpty ||
+                        nameController.text.isEmpty ||
+                        phoneController.text.isEmpty ||
+                        emailController.text.isEmpty ||
+                        groundSizeController.text.isEmpty ||
+                        capacityController.text.isEmpty ||
+                        priceController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Please fill all required fields'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Add new venue owner to the list
+                    setState(() {
+                      _demoOwners.add({
+                        'id': idController.text,
+                        'name': nameController.text,
+                        'phone': phoneController.text,
+                        'email': emailController.text,
+                        'groundPicture': selectedGroundPicture ?? 'default.jpg',
+                        'groundSize': groundSizeController.text,
+                        'capacity': int.tryParse(capacityController.text) ?? 0,
+                        'pricePerHour': int.tryParse(priceController.text) ?? 0,
+                        'venues': 1, // Default value for compatibility
+                        'revenue': '৳0', // Default value
+                        'status': 'Active',
+                        'joinDate': DateTime.now().toString().substring(0, 10),
+                      });
+                    });
+
+                    Navigator.of(context).pop();
+
+                    // Show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Venue owner added successfully!'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'Add Owner',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   static final List<Map<String, dynamic>> _demoOwners = [
