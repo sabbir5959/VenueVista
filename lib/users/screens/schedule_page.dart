@@ -432,15 +432,48 @@ class SchedulePage extends StatelessWidget {
   const SchedulePage({super.key});
 
   // Function to open directions in Google Maps
-  Future<void> _openDirections(String destinationQuery) async {
-    final Uri directionsUrl = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(destinationQuery)}',
-    );
+  Future<void> _openDirections(
+    BuildContext context,
+    String destinationQuery,
+  ) async {
+    try {
+      // Try Google Maps app first
+      final Uri googleMapsUrl = Uri.parse(
+        'google.navigation:q=${Uri.encodeComponent(destinationQuery)}',
+      );
 
-    if (await canLaunchUrl(directionsUrl)) {
-      await launchUrl(directionsUrl, mode: LaunchMode.externalApplication);
-    } else {
-      throw 'Could not launch Google Maps directions.';
+      if (await canLaunchUrl(googleMapsUrl)) {
+        await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+        return;
+      }
+
+      // Fallback to web Google Maps
+      final Uri webMapsUrl = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(destinationQuery)}',
+      );
+
+      if (await canLaunchUrl(webMapsUrl)) {
+        await launchUrl(webMapsUrl, mode: LaunchMode.externalApplication);
+        return;
+      }
+
+      // Final fallback to browser
+      final Uri browserUrl = Uri.parse(
+        'https://www.google.com/maps/search/${Uri.encodeComponent(destinationQuery)}',
+      );
+
+      await launchUrl(browserUrl, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      // Show user-friendly error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to open directions. Please install Google Maps or check your internet connection.',
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -687,7 +720,7 @@ class SchedulePage extends StatelessWidget {
                           size: 24,
                         ),
                         onPressed: () {
-                          _openDirections(schedule['locationQuery']);
+                          _openDirections(context, schedule['locationQuery']);
                         },
                       ),
                     ],
