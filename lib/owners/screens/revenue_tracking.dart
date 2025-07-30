@@ -115,17 +115,17 @@ class RevenueTrackingScreen extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  for (String range in ['1W', '1M', '3M', '6M', '9M', '1Y'])
+                  for (String range in ['1M', '3M', '6M', '9M', '1Y'])
                     Padding(
                       padding: const EdgeInsets.only(right: 8.0),
                       child: ChoiceChip(
                         label: Text(range),
-                        selected: range == '1W',
+                        selected: range == '1M',
                         onSelected: (bool selected) {},
                         selectedColor: Colors.green[700],
                         backgroundColor: Colors.grey[200],
                         labelStyle: TextStyle(
-                          color: range == '1W' ? Colors.white : Colors.black,
+                          color: range == '1M' ? Colors.white : Colors.black,
                         ),
                       ),
                     ),
