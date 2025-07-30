@@ -55,7 +55,7 @@ class RevenueTrackingScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            '\u09F3 25,000',
+                            '\u09F3 2,50000',
                             style: TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
