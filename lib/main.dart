@@ -6,6 +6,7 @@ import 'screens/login_page.dart';
 import 'screens/registration_page.dart';
 import 'admin/screens/admin_dashboard.dart';
 import 'owners/screens/owner_dashboard.dart';
+import 'widgets/route_guards.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,8 +37,8 @@ class MyApp extends StatelessWidget {
         '/': (context) => const LandingPage(),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegistrationPage(),
-        '/admin': (context) => const AdminDashboard(),
-        '/owner': (context) => const OwnerDashboard(),
+        '/admin': (context) => const AdminRouteGuard(child: AdminDashboard()),
+        '/owner': (context) => const OwnerRouteGuard(child: OwnerDashboard()),
       },
     );
   }

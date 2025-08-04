@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../users/dashboard.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
 import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -12,7 +13,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
@@ -20,17 +21,17 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  String? _validatePhone(String? value) {
+  String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Phone number is required';
+      return 'Email is required';
     }
-    if (value.length != 11) {
-      return 'Phone number must be 11 digits';
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+      return 'Please enter a valid email';
     }
     return null;
   }
@@ -51,45 +52,49 @@ class _LoginPageState extends State<LoginPage> {
         _isLoading = true;
       });
 
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (mounted) {
-        // Check for admin, owner and user credentials
-        String phone = _phoneController.text.trim();
+      try {
+        String email = _emailController.text.trim();
         String password = _passwordController.text.trim();
 
-        // Debug prints
-        print('Entered phone: "$phone"');
-        print('Entered password: "$password"');
-        print('Phone length: ${phone.length}');
-        print('Password length: ${password.length}');
+        // Supabase Authentication
+        final AuthResponse response = await Supabase.instance.client.auth
+            .signInWithPassword(email: email, password: password);
 
-        // Admin login check
-        if (phone == "01798155814" && password == "sabbir55") {
-          _showSuccessMessage('Admin login successful! Welcome Admin.');
-          Navigator.of(context).pushReplacementNamed('/admin');
+        if (mounted && response.user != null) {
+          // Check user role using AuthService
+          final userRole = AuthService.getUserRole();
+
+          switch (userRole) {
+            case 'admin':
+              _showSuccessMessage('Admin login successful! Welcome Admin.');
+              Navigator.of(context).pushReplacementNamed('/admin');
+              break;
+            case 'owner':
+              _showSuccessMessage('Owner login successful! Welcome Owner.');
+              Navigator.of(context).pushReplacementNamed('/owner');
+              break;
+            case 'user':
+            default:
+              _showSuccessMessage('Login successful! Welcome to VenueVista.');
+              Navigator.of(context).pushReplacementNamed('/');
+              break;
+          }
         }
-        // Owner login check
-        else if (phone == "01700594133" && password == "owner123") {
-          _showSuccessMessage('Owner login successful! Welcome Owner.');
-          Navigator.of(context).pushReplacementNamed('/owner');
+      } on AuthException catch (error) {
+        if (mounted) {
+          _showErrorMessage(error.message);
         }
-        // User login check
-        else if (phone == "01533985291" && password == "kawsar47") {
-          _showSuccessMessage('User login successful! Welcome to VenueVista.');
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomeActivity()),
-          );
-        } else {
-          _showErrorMessage('Invalid credentials. Please try again.');
+      } catch (error) {
+        if (mounted) {
+          _showErrorMessage('An unexpected error occurred. Please try again.');
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
         }
       }
-
-      setState(() {
-        _isLoading = false;
-      });
     } else {
       _showErrorMessage('Please fill all fields correctly.');
     }
@@ -293,18 +298,14 @@ class _LoginPageState extends State<LoginPage> {
                         key: _formKey,
                         child: Column(
                           children: [
-                            // Phone Number Field
+                            // Email Field
                             TextFormField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(11),
-                              ],
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
                               decoration: InputDecoration(
-                                labelText: 'Phone Number',
-                                hintText: 'phone number',
-                                prefixIcon: const Icon(Icons.phone),
+                                labelText: 'Email',
+                                hintText: 'Enter your email',
+                                prefixIcon: const Icon(Icons.email),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -315,7 +316,7 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ),
-                              validator: _validatePhone,
+                              validator: _validateEmail,
                             ),
 
                             const SizedBox(height: 16),

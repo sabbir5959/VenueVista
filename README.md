@@ -38,6 +38,25 @@ The project uses `.env.development` file which is shared among team members. Thi
 **Development Setup (Team Members):**
 No additional setup needed! The `.env.development` file is already configured and shared.
 
+**Create Admin User in Supabase:**
+1. Go to your Supabase project dashboard
+2. Navigate to Authentication > Users
+3. Click "Add user" or "Invite user"
+4. Create user with any email and password you want
+5. **Important:** After creating the user, edit the user and add metadata:
+   ```json
+   {
+     "role": "admin"
+   }
+   ```
+6. That user will now be able to login as admin through the app
+
+**Create Owner User:**
+- Follow same steps but use `"role": "owner"` in metadata
+
+**Regular Users:**
+- Users without role metadata or with `"role": "user"` will be treated as regular users
+
 ### Installation
 
 1. **Clone the repository:**
@@ -58,19 +77,41 @@ No additional setup needed! The `.env.development` file is already configured an
 
 **That's it!** The `.env.development` file is already configured with Supabase credentials, so your friends can start working immediately after these steps.
 
+## User Registration
+
+### 📝 **Registration Process:**
+- Users can register with email, password, name, and phone
+- Default role is automatically set to `"user"`
+- Registration data is stored in Supabase Auth
+- Auto-login after successful registration
+
+### 🔐 **User Data Storage:**
+```json
+{
+  "email": "user@example.com",
+  "user_metadata": {
+    "name": "John Doe",
+    "phone": "01234567890", 
+    "role": "user"
+  }
+}
+```
+
 ## Default Login Credentials
 
-### Admin
-- Phone: `01798155814`
-- Password: `sabbir55`
+### Admin (Supabase Authentication)
+- Email: Use any email you created in Supabase Auth dashboard
+- Password: The password you set for that user in Supabase
 
-### Owner
+### Owner (Hardcoded - will be migrated to Supabase)
 - Phone: `01700594133`
 - Password: `owner123`
 
-### User
+### User (Hardcoded - will be migrated to Supabase)
 - Phone: `01533985291`
 - Password: `kawsar47`
+
+**Note:** Admin login uses Supabase authentication. Any user created in Supabase Auth dashboard can login as admin.
 
 ## Security Notes
 

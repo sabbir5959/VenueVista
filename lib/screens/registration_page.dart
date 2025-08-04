@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -89,19 +91,57 @@ class _RegistrationPageState extends State<RegistrationPage> {
         _isLoading = true;
       });
 
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 2));
+      try {
+        String name = _nameController.text.trim();
+        String email = _emailController.text.trim();
+        String phone = _phoneController.text.trim();
+        String password = _passwordController.text.trim();
 
-      if (mounted) {
-        _showSuccessMessage(
-          'Registration successful! Please login to continue.',
+        // Supabase Registration using AuthService
+        final AuthResponse response = await AuthService.registerUser(
+          email: email,
+          password: password,
+          name: name,
+          phone: phone,
         );
-        Navigator.pushReplacementNamed(context, '/login');
-      }
 
-      setState(() {
-        _isLoading = false;
-      });
+        if (mounted && response.user != null) {
+          _showSuccessMessage(
+            'Registration successful! Welcome to VenueVista!',
+          );
+          // Auto-login after successful registration
+          Navigator.pushReplacementNamed(context, '/');
+        } else {
+          _showErrorMessage('Registration failed. Please try again.');
+        }
+      } on AuthException catch (error) {
+        if (mounted) {
+          String errorMessage = error.message;
+
+          // Make error messages more user-friendly
+          if (errorMessage.contains('already registered')) {
+            errorMessage =
+                'This email is already registered. Please try login instead.';
+          } else if (errorMessage.contains('weak password')) {
+            errorMessage =
+                'Password is too weak. Please use a stronger password.';
+          } else if (errorMessage.contains('invalid email')) {
+            errorMessage = 'Please enter a valid email address.';
+          }
+
+          _showErrorMessage(errorMessage);
+        }
+      } catch (error) {
+        if (mounted) {
+          _showErrorMessage('An unexpected error occurred. Please try again.');
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     } else if (!_agreeToTerms) {
       _showErrorMessage('Please agree to Terms and Conditions');
     }
@@ -368,16 +408,17 @@ class _RegistrationPageState extends State<RegistrationPage> {
                               ),
                             ),
                             onPressed: _isLoading ? null : _register,
-                            child: _isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Text('Create Account'),
+                            child:
+                                _isLoading
+                                    ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                    : const Text('Create Account'),
                           ),
                         ),
 
