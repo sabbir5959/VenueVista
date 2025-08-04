@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/venue_owner_sidebar.dart';
+import '../widgets/owner_profile_widget.dart';
 import 'tournament_list.dart';
 
 class TournamentsAndEventsPage extends StatefulWidget {
@@ -18,6 +19,9 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
       appBar: AppBar(
         title: const Text('Tournaments & Events'),
         backgroundColor: Colors.green[700],
+        actions: [
+          OwnerProfileWidget(),
+        ],
       ),
       drawer: const VenueOwnerSidebar(currentPage: 'tournaments'),
       body: SingleChildScrollView(
