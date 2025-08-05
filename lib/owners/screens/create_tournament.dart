@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 // import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
+import '../widgets/owner_profile_widget.dart';
 
 class CreateTournamentPage extends StatefulWidget {
   const CreateTournamentPage({super.key});
@@ -115,17 +116,7 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
         title: const Text('Create Tournament'),
         backgroundColor: Colors.green[700],
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.person,
-                color: Colors.green[700],
-                size: 24,
-              ),
-            ),
-          ),
+          OwnerProfileWidget(),
         ],
       ),
       body: Container(

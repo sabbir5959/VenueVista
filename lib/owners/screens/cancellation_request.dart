@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/venue_owner_sidebar.dart';
+import '../widgets/owner_profile_widget.dart';
 
 class CancellationRequest {
   final String userName;
@@ -41,17 +42,7 @@ class _CancellationRequestsPageState extends State<CancellationRequestsPage> {
         title: const Text("Cancellation Requests"),
         backgroundColor: Colors.green[700],
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.person,
-                color: Colors.green[700],
-                size: 24,
-              ),
-            ),
-          ),
+          OwnerProfileWidget(),
         ],
       ),
       drawer: const VenueOwnerSidebar(currentPage: 'cancellations'),
