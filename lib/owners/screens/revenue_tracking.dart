@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/venue_owner_sidebar.dart';
+import '../widgets/owner_profile_widget.dart';
 
 class RevenueTrackingScreen extends StatelessWidget {
   const RevenueTrackingScreen({Key? key}) : super(key: key);
