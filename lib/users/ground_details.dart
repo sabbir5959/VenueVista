@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'widgets/common_drawer.dart';
+import 'screens/ground_booking_payment_page.dart';
 
 class GroundDetails extends StatefulWidget {
   final String name;
@@ -33,10 +36,33 @@ class _GroundDetailsState extends State<GroundDetails> {
     return '${startHour.toString().padLeft(2, '0')}:00 to ${(startHour + 1).toString().padLeft(2, '0')}:00';
   });
 
+  // Sample suggestions data — you can replace this with real data later
+  final List<Map<String, String>> suggestions = [
+    {
+      'name': 'Greenfield Ground',
+      'imageUrl':
+          'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+      'location': 'Downtown',
+    },
+    {
+      'name': 'Sunrise Arena',
+      'imageUrl':
+          'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
+      'location': 'Uptown',
+    },
+    {
+      'name': 'City Sports Hub',
+      'imageUrl':
+          'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=800&q=80',
+      'location': 'Midtown',
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
+      drawer: const CommonDrawer(),
       appBar: AppBar(
         title: Text(
           widget.name,
@@ -49,6 +75,19 @@ class _GroundDetailsState extends State<GroundDetails> {
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.green.shade900),
         actions: [
+          IconButton(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder:
+                    (context) => _LocationDialog(
+                      groundName: widget.name,
+                      location: widget.location,
+                    ),
+              );
+            },
+            icon: Icon(Icons.location_on, color: Colors.green.shade900),
+          ),
           TextButton.icon(
             onPressed: () {
               showDialog(
@@ -171,7 +210,7 @@ class _GroundDetailsState extends State<GroundDetails> {
                         child: _InfoCard(
                           icon: Icons.attach_money,
                           title: 'Price',
-                          value: widget.price,
+                          value: 'Tk ${widget.price}',
                         ),
                       ),
                     ],
@@ -340,6 +379,107 @@ class _GroundDetailsState extends State<GroundDetails> {
                       ],
                     ),
                   ),
+
+                  // ** NEW: Suggestions Section **
+                  const SizedBox(height: 32),
+                  Text(
+                    'You might also like',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade900,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 160,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: suggestions.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 16),
+                      itemBuilder: (context, index) {
+                        final suggestion = suggestions[index];
+                        return GestureDetector(
+                          onTap: () {
+                            // Optional: Navigate to the suggestion ground details page
+                            // Navigator.push(...);
+                          },
+                          child: Container(
+                            width: 140,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(16),
+                                    topRight: Radius.circular(16),
+                                  ),
+                                  child: Image.network(
+                                    suggestion['imageUrl']!,
+                                    height: 90,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        suggestion['name']!,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade900,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.location_on,
+                                            size: 16,
+                                            color: Colors.green.shade700,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Flexible(
+                                            child: Text(
+                                              suggestion['location']!,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.green.shade700,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -363,12 +503,31 @@ class _GroundDetailsState extends State<GroundDetails> {
               selectedTimeSlot == null
                   ? null
                   : () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Booking confirmed for $selectedTimeSlot',
-                        ),
-                        backgroundColor: Colors.green.shade900,
+                    // Create booking data
+                    final bookingData = {
+                      'name': widget.name,
+                      'location': widget.location,
+                      'price': widget.price,
+                      'timeSlot': selectedTimeSlot!,
+                      'date':
+                          DateTime.now().day.toString() +
+                          '/' +
+                          DateTime.now().month.toString() +
+                          '/' +
+                          DateTime.now().year.toString(),
+                      'size': widget.size,
+                      'facilities': widget.facilities,
+                      'rating': widget.rating,
+                      'description': widget.description,
+                    };
+
+                    // Navigate to payment page
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) =>
+                                GroundBookingPaymentPage(booking: bookingData),
                       ),
                     );
                   },
@@ -381,7 +540,11 @@ class _GroundDetailsState extends State<GroundDetails> {
           ),
           child: const Text(
             'Confirm Booking',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
         ),
       ),
@@ -496,7 +659,10 @@ class _RatingDialogState extends State<_RatingDialog> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('Submit'),
+                  child: const Text(
+                    'Submit',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),
@@ -543,6 +709,106 @@ class _InfoCard extends StatelessWidget {
           Text(value, style: TextStyle(color: Colors.black87, fontSize: 16)),
         ],
       ),
+    );
+  }
+}
+
+class _LocationDialog extends StatelessWidget {
+  final String groundName;
+  final String location;
+
+  const _LocationDialog({required this.groundName, required this.location});
+
+  Future<void> _openDirections(
+    BuildContext context,
+    String destinationQuery,
+  ) async {
+    final Uri directionsUrl = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(destinationQuery)}',
+    );
+
+    try {
+      await launchUrl(directionsUrl, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open Google Maps'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(
+        'Location',
+        style: TextStyle(
+          color: Colors.green.shade900,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green.shade200),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.location_on, size: 48, color: Colors.green.shade700),
+                SizedBox(height: 12),
+                Text(
+                  groundName,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green.shade900,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  location,
+                  style: TextStyle(fontSize: 16, color: Colors.green.shade700),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: () {
+              _openDirections(context, '$groundName, $location, Dhaka');
+              Navigator.pop(context);
+            },
+            icon: Icon(Icons.directions, color: Colors.white),
+            label: Text(
+              'Get Directions',
+              style: TextStyle(color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade900,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Close', style: TextStyle(color: Colors.green.shade900)),
+        ),
+      ],
     );
   }
 }

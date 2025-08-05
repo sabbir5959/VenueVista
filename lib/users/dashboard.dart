@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'search_grounds.dart';
+import 'widgets/common_drawer.dart';
+import 'screens/tournaments_page.dart';
 
 class HomeActivity extends StatefulWidget {
   const HomeActivity({super.key});
@@ -21,38 +23,12 @@ class _HomeActivityState extends State<HomeActivity> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: Colors.red,
-        unselectedItemColor: Colors.grey,
-        currentIndex: index,
-        onTap: (i) {
-          setState(() => index = i);
-          if (i == 1) {
-            // Index 1 is for Playgrounds
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => SearchGrounds()),
-            );
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.sports_soccer),
-            label: 'Playgrounds',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event),
-            label: 'Tournaments',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Account'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
+      appBar: AppBar(
+        backgroundColor: Colors.green.shade700,
+        title: Text('VenueVista', style: TextStyle(color: Colors.white)),
+        iconTheme: IconThemeData(color: Colors.white),
       ),
+      drawer: const CommonDrawer(),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,7 +168,14 @@ class _HomeActivityState extends State<HomeActivity> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TournamentsPage(),
+                        ),
+                      );
+                    },
                     child: Text("SEE ALL", style: TextStyle(color: Colors.red)),
                   ),
                 ],
@@ -322,7 +305,7 @@ class _HomeActivityState extends State<HomeActivity> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: Colors.red.shade900,
+                    color: Colors.green.shade900,
                   ),
                   textAlign: TextAlign.center,
                 ),
