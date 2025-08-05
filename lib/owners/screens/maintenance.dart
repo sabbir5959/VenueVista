@@ -212,7 +212,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                       Icon(Icons.edit_note, color: Colors.grey),
                       SizedBox(width: 8),
                       Text(
-                        'Reason for Maintenance (Optional)',
+                        'Reason for Maintenance',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ],

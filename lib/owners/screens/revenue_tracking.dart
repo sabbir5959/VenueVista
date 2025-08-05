@@ -9,7 +9,7 @@ class RevenueTrackingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Revenue Tracking'),
+        title: const Text('Earning Overview'),
         backgroundColor: Colors.green[700],
         actions: [
           Padding(
@@ -73,7 +73,7 @@ class RevenueTrackingScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Revenue in this Month',
+                            'Profit in this Month',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.white70,
@@ -138,7 +138,7 @@ class RevenueTrackingScreen extends StatelessWidget {
 
             // Sales Revenue Section
             const Text(
-              'Booking Revenue',
+              'Booking Income',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

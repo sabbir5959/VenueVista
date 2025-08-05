@@ -244,7 +244,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                             Icon(Icons.search, color: Colors.green[700]),
                             const SizedBox(width: 8),
                             Text(
-                              'Revenue Search by Date Range',
+                              'Earnings by Date Range',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -295,7 +295,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                             child: Column(
                               children: [
                                 Text(
-                                  'Total Revenue for Selected Period',
+                                  'Total Earnings for Selected Period',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.green[700],
@@ -485,7 +485,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     ),
                     const Spacer(),
                     Text(
-                      'Revenue',
+                      'Earnings',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[500],
