@@ -31,7 +31,12 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
   void _editOwner(int index) {
     final owner = _demoOwners[index];
     final isMobile = MediaQuery.of(context).size.width < 768;
-    _showAddVenueOwnerDialog(context, isMobile, editingOwner: owner, editingIndex: index);
+    _showAddVenueOwnerDialog(
+      context,
+      isMobile,
+      editingOwner: owner,
+      editingIndex: index,
+    );
   }
 
   // Delete owner function
@@ -60,7 +65,9 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Owner "${owner['name']}" deleted successfully'),
+                    content: Text(
+                      'Owner "${owner['name']}" deleted successfully',
+                    ),
                     backgroundColor: AppColors.success,
                   ),
                 );
@@ -593,7 +600,8 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            onPressed: () => _editOwner(_demoOwners.indexOf(owner)),
+                            onPressed:
+                                () => _editOwner(_demoOwners.indexOf(owner)),
                             icon: Icon(
                               Icons.edit_outlined,
                               size: 16,
@@ -604,7 +612,8 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                           ),
                           SizedBox(width: 4),
                           IconButton(
-                            onPressed: () => _deleteOwner(_demoOwners.indexOf(owner)),
+                            onPressed:
+                                () => _deleteOwner(_demoOwners.indexOf(owner)),
                             icon: Icon(
                               Icons.delete_outline,
                               size: 16,
@@ -826,7 +835,8 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            onPressed: () => _editOwner(_demoOwners.indexOf(owner)),
+                            onPressed:
+                                () => _editOwner(_demoOwners.indexOf(owner)),
                             icon: Icon(
                               Icons.edit_outlined,
                               size: 20,
@@ -837,7 +847,8 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                           ),
                           SizedBox(width: 8),
                           IconButton(
-                            onPressed: () => _deleteOwner(_demoOwners.indexOf(owner)),
+                            onPressed:
+                                () => _deleteOwner(_demoOwners.indexOf(owner)),
                             icon: Icon(
                               Icons.delete_outline,
                               size: 20,
@@ -959,14 +970,33 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
     }
   }
 
-  void _showAddVenueOwnerDialog(BuildContext context, bool isMobile, {Map<String, dynamic>? editingOwner, int? editingIndex}) {
-    final TextEditingController idController = TextEditingController(text: editingOwner?['id'] ?? '');
-    final TextEditingController nameController = TextEditingController(text: editingOwner?['name'] ?? '');
-    final TextEditingController phoneController = TextEditingController(text: editingOwner?['phone'] ?? '');
-    final TextEditingController emailController = TextEditingController(text: editingOwner?['email'] ?? '');
-    final TextEditingController groundSizeController = TextEditingController(text: editingOwner?['groundSize'] ?? '');
-    final TextEditingController capacityController = TextEditingController(text: editingOwner?['capacity']?.toString() ?? '');
-    final TextEditingController priceController = TextEditingController(text: editingOwner?['pricePerHour']?.toString() ?? '');
+  void _showAddVenueOwnerDialog(
+    BuildContext context,
+    bool isMobile, {
+    Map<String, dynamic>? editingOwner,
+    int? editingIndex,
+  }) {
+    final TextEditingController idController = TextEditingController(
+      text: editingOwner?['id'] ?? '',
+    );
+    final TextEditingController nameController = TextEditingController(
+      text: editingOwner?['name'] ?? '',
+    );
+    final TextEditingController phoneController = TextEditingController(
+      text: editingOwner?['phone'] ?? '',
+    );
+    final TextEditingController emailController = TextEditingController(
+      text: editingOwner?['email'] ?? '',
+    );
+    final TextEditingController groundSizeController = TextEditingController(
+      text: editingOwner?['groundSize'] ?? '',
+    );
+    final TextEditingController capacityController = TextEditingController(
+      text: editingOwner?['capacity']?.toString() ?? '',
+    );
+    final TextEditingController priceController = TextEditingController(
+      text: editingOwner?['pricePerHour']?.toString() ?? '',
+    );
     String? selectedGroundPicture = editingOwner?['groundPicture'];
     dynamic selectedImageFile; // Can be File or Uint8List
     Uint8List? webImageBytes;
@@ -998,7 +1028,9 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      editingOwner != null ? 'Edit Venue Owner' : 'Add New Venue Owner',
+                      editingOwner != null
+                          ? 'Edit Venue Owner'
+                          : 'Add New Venue Owner',
                       style: TextStyle(
                         fontSize: isMobile ? 18 : 20,
                         fontWeight: FontWeight.w600,
@@ -1424,10 +1456,16 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                         'groundSize': groundSizeController.text,
                         'capacity': int.tryParse(capacityController.text) ?? 0,
                         'pricePerHour': int.tryParse(priceController.text) ?? 0,
-                        'venues': editingOwner?['venues'] ?? 1, // Keep existing or default
-                        'revenue': editingOwner?['revenue'] ?? '৳0', // Keep existing or default
+                        'venues':
+                            editingOwner?['venues'] ??
+                            1, // Keep existing or default
+                        'revenue':
+                            editingOwner?['revenue'] ??
+                            '৳0', // Keep existing or default
                         'status': editingOwner?['status'] ?? 'Active',
-                        'joinDate': editingOwner?['joinDate'] ?? DateTime.now().toString().substring(0, 10),
+                        'joinDate':
+                            editingOwner?['joinDate'] ??
+                            DateTime.now().toString().substring(0, 10),
                       };
 
                       if (editingIndex != null) {
@@ -1444,9 +1482,11 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                     // Show success message
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(editingIndex != null 
-                            ? 'Venue owner updated successfully!' 
-                            : 'Venue owner added successfully!'),
+                        content: Text(
+                          editingIndex != null
+                              ? 'Venue owner updated successfully!'
+                              : 'Venue owner added successfully!',
+                        ),
                         backgroundColor: AppColors.success,
                       ),
                     );
@@ -1477,40 +1517,65 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
 
   static final List<Map<String, dynamic>> _demoOwners = [
     {
+      'id': 'GV001',
       'name': 'Green Valley Football Club',
+      'phone': '+880-1234-567890',
       'email': 'info@greenvalley.com',
+      'groundSize': '100x70 meters',
+      'capacity': 22,
+      'pricePerHour': 1500,
       'venues': 3,
       'revenue': '৳45,000',
       'status': 'Active',
       'joinDate': '2024-01-10',
     },
     {
+      'id': 'DFC001',
       'name': 'Dhanmondi Football Complex',
+      'phone': '+880-1987-654321',
       'email': 'admin@dhanmondifootball.com',
+      'groundSize': '110x70 meters',
+      'capacity': 24,
+      'pricePerHour': 2000,
       'venues': 5,
       'revenue': '৳78,500',
       'status': 'Active',
       'joinDate': '2024-01-25',
     },
     {
+      'id': 'EFA001',
       'name': 'Elite Football Arena',
+      'phone': '+880-1555-123456',
       'email': 'info@elitefootball.com',
+      'groundSize': '105x68 meters',
+      'capacity': 20,
+      'pricePerHour': 1800,
       'venues': 4,
       'revenue': '৳67,200',
       'status': 'Active',
       'joinDate': '2024-02-12',
     },
     {
+      'id': 'MFG001',
       'name': 'Metro Football Ground',
+      'phone': '+880-1333-789012',
       'email': 'admin@metrofootball.com',
+      'groundSize': '95x65 meters',
+      'capacity': 18,
+      'pricePerHour': 1200,
       'venues': 1,
       'revenue': '৳15,800',
       'status': 'Suspended',
       'joinDate': '2024-03-20',
     },
     {
+      'id': 'GFC001',
       'name': 'Gulshan Football Center',
+      'phone': '+880-1444-567890',
       'email': 'contact@gulshanfootball.com',
+      'groundSize': '100x68 meters',
+      'capacity': 22,
+      'pricePerHour': 1600,
       'venues': 2,
       'revenue': '৳38,400',
       'status': 'Active',
