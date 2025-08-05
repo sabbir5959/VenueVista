@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/auth_service.dart';
 import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -18,6 +16,13 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
+
+  // Demo credentials
+  final List<Map<String, String>> _demoUsers = [
+    {'email': 'kawsar47@gmail.com', 'password': 'kawsar47', 'role': 'user'},
+    {'email': 'admin@gmail.com', 'password': 'admin00', 'role': 'admin'},
+    {'email': 'tasnuva@gmail.com', 'password': 'tasnuva103', 'role': 'owner'},
+  ];
 
   @override
   void dispose() {
@@ -56,14 +61,14 @@ class _LoginPageState extends State<LoginPage> {
         String email = _emailController.text.trim();
         String password = _passwordController.text.trim();
 
-        // Supabase Authentication
-        final AuthResponse response = await Supabase.instance.client.auth
-            .signInWithPassword(email: email, password: password);
+        // Local demo authentication
+        final user = _demoUsers.firstWhere(
+          (u) => u['email'] == email && u['password'] == password,
+          orElse: () => {},
+        );
 
-        if (mounted && response.user != null) {
-          // Check user role using AuthService
-          final userRole = AuthService.getUserRole();
-
+        if (user.isNotEmpty) {
+          final userRole = user['role'];
           switch (userRole) {
             case 'admin':
               _showSuccessMessage('Admin login successful! Welcome Admin.');
@@ -79,21 +84,15 @@ class _LoginPageState extends State<LoginPage> {
               Navigator.of(context).pushReplacementNamed('/');
               break;
           }
-        }
-      } on AuthException catch (error) {
-        if (mounted) {
-          _showErrorMessage(error.message);
+        } else {
+          _showErrorMessage('Invalid email or password!');
         }
       } catch (error) {
-        if (mounted) {
-          _showErrorMessage('An unexpected error occurred. Please try again.');
-        }
+        _showErrorMessage('An unexpected error occurred. Please try again.');
       } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+        setState(() {
+          _isLoading = false;
+        });
       }
     } else {
       _showErrorMessage('Please fill all fields correctly.');

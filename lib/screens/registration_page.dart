@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/auth_service.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -92,44 +90,17 @@ class _RegistrationPageState extends State<RegistrationPage> {
       });
 
       try {
-        String name = _nameController.text.trim();
-        String email = _emailController.text.trim();
-        String phone = _phoneController.text.trim();
-        String password = _passwordController.text.trim();
+        // Demo registration - just show success and navigate
+        await Future.delayed(
+          const Duration(seconds: 1),
+        ); // Simulate registration delay
 
-        // Supabase Registration using AuthService
-        final AuthResponse response = await AuthService.registerUser(
-          email: email,
-          password: password,
-          name: name,
-          phone: phone,
-        );
-
-        if (mounted && response.user != null) {
+        if (mounted) {
           _showSuccessMessage(
             'Registration successful! Welcome to VenueVista!',
           );
           // Auto-login after successful registration
           Navigator.pushReplacementNamed(context, '/');
-        } else {
-          _showErrorMessage('Registration failed. Please try again.');
-        }
-      } on AuthException catch (error) {
-        if (mounted) {
-          String errorMessage = error.message;
-
-          // Make error messages more user-friendly
-          if (errorMessage.contains('already registered')) {
-            errorMessage =
-                'This email is already registered. Please try login instead.';
-          } else if (errorMessage.contains('weak password')) {
-            errorMessage =
-                'Password is too weak. Please use a stronger password.';
-          } else if (errorMessage.contains('invalid email')) {
-            errorMessage = 'Please enter a valid email address.';
-          }
-
-          _showErrorMessage(errorMessage);
         }
       } catch (error) {
         if (mounted) {
