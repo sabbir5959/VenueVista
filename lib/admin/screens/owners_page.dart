@@ -85,7 +85,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 SizedBox(width: 16),
                 Expanded(
                   child: _buildOwnerStatCard(
-                    'Monthly Revenue',
+                    'Total Income',
                     '৳2.5L',
                     Icons.monetization_on_outlined,
                     AppColors.secondary,

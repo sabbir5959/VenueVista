@@ -31,6 +31,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  supabase_flutter: ^2.9.1
+  flutter_dotenv: ^5.1.0
   shared_preferences: ^2.2.0
   intl: ^0.18.1
   http: ^1.1.0
@@ -63,6 +65,7 @@ flutter:
   assets:
     - assets/icons/
     - assets/images/grounds/
+    - .env.development
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

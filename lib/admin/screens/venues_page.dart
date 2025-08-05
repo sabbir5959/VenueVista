@@ -858,7 +858,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                       Icons.trending_up,
                     ),
                     _buildVenueDetailItem(
-                      'Revenue',
+                      'Total Income',
                       '৳${venue['revenue']}',
                       Icons.account_balance_wallet,
                     ),
