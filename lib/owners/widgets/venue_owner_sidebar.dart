@@ -105,7 +105,7 @@ class VenueOwnerSidebar extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.attach_money_rounded),
-            title: const Text('Revenue'),
+            title: const Text('Total Earnings'),
             selected: currentPage == 'revenue',
             onTap: () {
               Navigator.pop(context);

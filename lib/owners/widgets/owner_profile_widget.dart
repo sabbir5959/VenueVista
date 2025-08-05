@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../screens/edit_profile_page.dart';
 
 class OwnerProfileWidget extends StatelessWidget {
   const OwnerProfileWidget({Key? key}) : super(key: key);
@@ -134,9 +135,12 @@ class OwnerProfileWidget extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: () {
                           Navigator.pop(context);
-                          // Handle edit profile
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Edit profile functionality')),
+                          // Navigate to edit profile page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const EditProfilePage(),
+                            ),
                           );
                         },
                         icon: const Icon(Icons.edit_outlined),
