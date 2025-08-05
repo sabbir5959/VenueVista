@@ -6,11 +6,23 @@ class AuthService {
   // Get current user
   static User? get currentUser => _client.auth.currentUser;
 
-  // Get user role from metadata
+  // Get user role from metadata or hardcoded admin emails
   static String getUserRole() {
     final user = currentUser;
     if (user == null) return 'guest';
 
+    // Check if this is a hardcoded admin email
+    final adminEmails = [
+      'admin@venuevista.com',
+      'sabbir5959@gmail.com', // Your admin email - change this to your actual admin email
+      // Add more admin emails here if needed
+    ];
+
+    if (adminEmails.contains(user.email?.toLowerCase())) {
+      return 'admin';
+    }
+
+    // Check metadata for role
     final role = user.userMetadata?['role'] as String?;
     return role ?? 'user'; // default to 'user' if no role is set
   }
@@ -72,5 +84,36 @@ class AuthService {
   // Get user phone from metadata
   static String? getUserPhone() {
     return currentUser?.userMetadata?['phone'] as String?;
+  }
+
+  // Update user role (for admin setup)
+  static Future<void> updateUserRole(String role) async {
+    final user = currentUser;
+    if (user != null) {
+      await _client.auth.updateUser(
+        UserAttributes(data: {...user.userMetadata ?? {}, 'role': role}),
+      );
+    }
+  }
+
+  // Create admin user (for initial setup)
+  static Future<void> createAdminUser({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    try {
+      final response = await _client.auth.signUp(
+        email: email,
+        password: password,
+        data: {'name': name, 'role': 'admin'},
+      );
+
+      if (response.user != null) {
+        print('Admin user created successfully: ${response.user!.email}');
+      }
+    } catch (error) {
+      print('Error creating admin user: $error');
+    }
   }
 }

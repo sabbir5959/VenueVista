@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/landing_page.dart';
 import 'screens/login_page.dart';
 import 'screens/registration_page.dart';
+import 'screens/admin_setup_page.dart';
 import 'admin/screens/admin_dashboard.dart';
 import 'owners/screens/owner_dashboard.dart';
 import 'widgets/route_guards.dart';
@@ -20,7 +21,24 @@ void main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
+  // Uncomment this line to create an admin user once
+  await createInitialAdmin();
+
   runApp(const MyApp());
+}
+
+// Temporary function to create admin user
+Future<void> createInitialAdmin() async {
+  try {
+    final response = await Supabase.instance.client.auth.signUp(
+      email: 'admin@venuevista.com',
+      password: 'admin123',
+      data: {'name': 'System Admin', 'role': 'admin'},
+    );
+    print('Admin user created: ${response.user?.email}');
+  } catch (error) {
+    print('Admin user might already exist: $error');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -37,6 +55,7 @@ class MyApp extends StatelessWidget {
         '/': (context) => const LandingPage(),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegistrationPage(),
+        '/admin-setup': (context) => const AdminSetupPage(),
         '/admin': (context) => const AdminRouteGuard(child: AdminDashboard()),
         '/owner': (context) => const OwnerRouteGuard(child: OwnerDashboard()),
       },
