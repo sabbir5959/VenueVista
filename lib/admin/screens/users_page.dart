@@ -11,17 +11,142 @@ class AdminUsersPage extends StatefulWidget {
 class _AdminUsersPageState extends State<AdminUsersPage> {
   int _currentPage = 1;
   final int _itemsPerPage = 8; // Users এর জন্য একটু বেশি রাখলাম
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedFilter = 'All'; // All, Active, Inactive
+
+  // Demo users list (converted from static to instance variable)
+  List<Map<String, dynamic>> _demoUsers = [
+    {
+      'name': 'Ahmed Rahman',
+      'email': 'ahmed.rahman@email.com',
+      'phone': '+8801712345678',
+      'status': 'Active',
+      'joinDate': '2024-01-15',
+    },
+    {
+      'name': 'Fatima Khan',
+      'email': 'fatima.khan@email.com',
+      'phone': '+8801987654321',
+      'status': 'Active',
+      'joinDate': '2024-02-20',
+    },
+    {
+      'name': 'Mohammad Ali',
+      'email': 'mohammad.ali@email.com',
+      'phone': '+8801555666777',
+      'status': 'Inactive',
+      'joinDate': '2024-01-30',
+    },
+    {
+      'name': 'Nasreen Sultana',
+      'email': 'nasreen.sultana@email.com',
+      'phone': '+8801444555666',
+      'status': 'Active',
+      'joinDate': '2024-03-10',
+    },
+    {
+      'name': 'Rafiq Ahmed',
+      'email': 'rafiq.ahmed@email.com',
+      'phone': '+8801333444555',
+      'status': 'Active',
+      'joinDate': '2024-02-28',
+    },
+    {
+      'name': 'Shahida Begum',
+      'email': 'shahida.begum@email.com',
+      'phone': '+8801222333444',
+      'status': 'Inactive',
+      'joinDate': '2024-03-15',
+    },
+    {
+      'name': 'Abdul Karim',
+      'email': 'abdul.karim@email.com',
+      'phone': '+8801111222333',
+      'status': 'Active',
+      'joinDate': '2024-04-01',
+    },
+    {
+      'name': 'Rashida Begum',
+      'email': 'rashida.begum@email.com',
+      'phone': '+8801666789012',
+      'status': 'Active',
+      'joinDate': '2024-03-25',
+    },
+    {
+      'name': 'Karim Hassan',
+      'email': 'karim.hassan@email.com',
+      'phone': '+8801777890123',
+      'status': 'Active',
+      'joinDate': '2024-04-05',
+    },
+    {
+      'name': 'Salma Khatun',
+      'email': 'salma.khatun@email.com',
+      'phone': '+8801888901234',
+      'status': 'Inactive',
+      'joinDate': '2024-04-18',
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase();
+      _currentPage = 1; // Reset to first page when searching
+    });
+  }
+
+  List<Map<String, dynamic>> get _filteredUsers {
+    List<Map<String, dynamic>> filtered = _demoUsers;
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      filtered =
+          filtered.where((user) {
+            final name = user['name'].toString().toLowerCase();
+            final email = user['email'].toString().toLowerCase();
+            final phone = user['phone'].toString().toLowerCase();
+            return name.contains(_searchQuery) ||
+                email.contains(_searchQuery) ||
+                phone.contains(_searchQuery);
+          }).toList();
+    }
+
+    // Apply status filter
+    if (_selectedFilter != 'All') {
+      filtered =
+          filtered.where((user) {
+            return user['status'].toString() == _selectedFilter;
+          }).toList();
+    }
+
+    return filtered;
+  }
 
   List<Map<String, dynamic>> get _paginatedUsers {
+    final filtered = _filteredUsers;
     final startIndex = (_currentPage - 1) * _itemsPerPage;
     final endIndex = startIndex + _itemsPerPage;
-    return _demoUsers.sublist(
+    return filtered.sublist(
       startIndex,
-      endIndex > _demoUsers.length ? _demoUsers.length : endIndex,
+      endIndex > filtered.length ? filtered.length : endIndex,
     );
   }
 
-  int get _totalPages => (_demoUsers.length / _itemsPerPage).ceil();
+  int get _totalPages => (_filteredUsers.length / _itemsPerPage).ceil();
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +198,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       ],
                     ),
                     child: TextField(
+                      controller: _searchController,
                       decoration: InputDecoration(
                         hintText: isMobile ? 'Search...' : 'Search users...',
                         prefixIcon: Icon(
@@ -89,16 +215,22 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                   ),
                 ),
                 SizedBox(width: isMobile ? 8 : 16),
-                Container(
-                  padding: EdgeInsets.all(isMobile ? 10 : 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.filter_list,
-                    color: AppColors.white,
-                    size: isMobile ? 18 : 24,
+                GestureDetector(
+                  onTap: _showFilterDialog,
+                  child: Container(
+                    padding: EdgeInsets.all(isMobile ? 10 : 12),
+                    decoration: BoxDecoration(
+                      color:
+                          _selectedFilter != 'All'
+                              ? AppColors.success
+                              : AppColors.primary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.filter_list,
+                      color: AppColors.white,
+                      size: isMobile ? 18 : 24,
+                    ),
                   ),
                 ),
               ],
@@ -134,7 +266,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     child: Row(
                       children: [
                         Text(
-                          'Users (${_demoUsers.length})',
+                          'Users (${_filteredUsers.length})',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
@@ -150,19 +282,53 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     ),
                   ),
                   // User List
-                  Column(
-                    children:
-                        _paginatedUsers.map((user) {
-                          return _buildUserCard(user, isMobile);
-                        }).toList(),
-                  ),
+                  _filteredUsers.isEmpty
+                      ? Container(
+                        padding: const EdgeInsets.all(40),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 64,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _searchQuery.isNotEmpty
+                                  ? 'No users found for "$_searchQuery"'
+                                  : 'No users found',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Try adjusting your search or filter criteria',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : Column(
+                        children:
+                            _paginatedUsers.map((user) {
+                              return _buildUserCard(user, isMobile);
+                            }).toList(),
+                      ),
                 ],
               ),
             ),
 
             // Pagination Controls
-            const SizedBox(height: 20),
-            _buildPaginationControls(isMobile),
+            if (_filteredUsers.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              _buildPaginationControls(isMobile),
+            ],
           ],
         ),
       ),
@@ -456,7 +622,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            onPressed: () {},
+                            onPressed: () => _editUser(user),
                             icon: Icon(
                               Icons.edit_outlined,
                               size: 16,
@@ -467,7 +633,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                           ),
                           SizedBox(width: 4),
                           IconButton(
-                            onPressed: () {},
+                            onPressed: () => _deleteUser(user),
                             icon: Icon(
                               Icons.delete_outline,
                               size: 16,
@@ -574,7 +740,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            onPressed: () {},
+                            onPressed: () => _editUser(user),
                             icon: Icon(
                               Icons.edit_outlined,
                               size: 20,
@@ -585,7 +751,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                           ),
                           SizedBox(width: 8),
                           IconButton(
-                            onPressed: () {},
+                            onPressed: () => _deleteUser(user),
                             icon: Icon(
                               Icons.delete_outline,
                               size: 20,
@@ -603,48 +769,224 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     );
   }
 
-  static final List<Map<String, dynamic>> _demoUsers = [
-    {
-      'name': 'Ahmed Rahman',
-      'email': 'ahmed.rahman@email.com',
-      'phone': '+8801712345678',
-      'status': 'Active',
-      'joinDate': '2024-01-15',
-    },
-    {
-      'name': 'Fatima Khan',
-      'email': 'fatima.khan@email.com',
-      'phone': '+8801987654321',
-      'status': 'Active',
-      'joinDate': '2024-02-20',
-    },
-    {
-      'name': 'Mohammad Ali',
-      'email': 'mohammad.ali@email.com',
-      'phone': '+8801555123456',
-      'status': 'Inactive',
-      'joinDate': '2024-03-10',
-    },
-    {
-      'name': 'Rashida Begum',
-      'email': 'rashida.begum@email.com',
-      'phone': '+8801666789012',
-      'status': 'Active',
-      'joinDate': '2024-03-25',
-    },
-    {
-      'name': 'Karim Hassan',
-      'email': 'karim.hassan@email.com',
-      'phone': '+8801777890123',
-      'status': 'Active',
-      'joinDate': '2024-04-05',
-    },
-    {
-      'name': 'Salma Khatun',
-      'email': 'salma.khatun@email.com',
-      'phone': '+8801888901234',
-      'status': 'Inactive',
-      'joinDate': '2024-04-18',
-    },
-  ];
+  void _showFilterDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Filter Users'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('All Users'),
+                leading: Radio<String>(
+                  value: 'All',
+                  groupValue: _selectedFilter,
+                  onChanged: (String? value) {
+                    setState(() {
+                      _selectedFilter = value!;
+                      _currentPage = 1;
+                    });
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+              ListTile(
+                title: const Text('Active Users'),
+                leading: Radio<String>(
+                  value: 'Active',
+                  groupValue: _selectedFilter,
+                  onChanged: (String? value) {
+                    setState(() {
+                      _selectedFilter = value!;
+                      _currentPage = 1;
+                    });
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+              ListTile(
+                title: const Text('Inactive Users'),
+                leading: Radio<String>(
+                  value: 'Inactive',
+                  groupValue: _selectedFilter,
+                  onChanged: (String? value) {
+                    setState(() {
+                      _selectedFilter = value!;
+                      _currentPage = 1;
+                    });
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _editUser(Map<String, dynamic> user) {
+    final nameController = TextEditingController(text: user['name']);
+    final emailController = TextEditingController(text: user['email']);
+    final phoneController = TextEditingController(text: user['phone']);
+    String selectedStatus = user['status'];
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Edit User'),
+              content: SizedBox(
+                width: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Name',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: phoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedStatus,
+                      decoration: const InputDecoration(
+                        labelText: 'Status',
+                        border: OutlineInputBorder(),
+                      ),
+                      items:
+                          ['Active', 'Inactive'].map((status) {
+                            return DropdownMenuItem(
+                              value: status,
+                              child: Text(status),
+                            );
+                          }).toList(),
+                      onChanged: (String? newValue) {
+                        setDialogState(() {
+                          selectedStatus = newValue!;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    // Update user data
+                    setState(() {
+                      final userIndex = _demoUsers.indexOf(user);
+                      if (userIndex != -1) {
+                        _demoUsers[userIndex] = {
+                          ..._demoUsers[userIndex],
+                          'name': nameController.text,
+                          'email': emailController.text,
+                          'phone': phoneController.text,
+                          'status': selectedStatus,
+                        };
+                      }
+                    });
+                    Navigator.of(context).pop();
+
+                    // Show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'User ${nameController.text} updated successfully!',
+                        ),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _deleteUser(Map<String, dynamic> user) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete User'),
+          content: Text(
+            'Are you sure you want to delete ${user['name']}? This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                setState(() {
+                  _demoUsers.remove(user);
+                  // Reset pagination if needed
+                  if (_paginatedUsers.isEmpty && _currentPage > 1) {
+                    _currentPage--;
+                  }
+                });
+                Navigator.of(context).pop();
+
+                // Show success message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('User ${user['name']} deleted successfully!'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
