@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io' if (dart.library.html) 'dart:html' as html;
-import 'dart:typed_data';
 import '../../constants/app_colors.dart';
 
 class AdminOwnersPage extends StatefulWidget {
