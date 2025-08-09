@@ -158,7 +158,10 @@ class TournamentListPage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => TournamentDetailsPage(tournament: event),
+                  builder: (context) => TournamentDetailsPage(
+                    tournament: event,
+                    filter: filter,
+                  ),
                 ),
               );
             },

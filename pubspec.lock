@@ -248,6 +248,9 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  http:
+    dependency: transitive
+    description:
   functions_client:
     dependency: transitive
     description:
