@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../screens/owner_dashboard.dart';
 import '../screens/tournaments_and_events.dart';
 import '../screens/revenue_tracking.dart';
@@ -159,7 +160,47 @@ class VenueOwnerSidebar extends StatelessWidget {
             leading: const Icon(Icons.logout),
             title: const Text('Logout'),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/');
+              // Show confirmation dialog
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: Text('Logout'),
+                    content: Text('Are you sure you want to logout?'),
+                    actions: [
+                      TextButton(
+                        child: Text('Cancel'),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      TextButton(
+                        child: Text(
+                          'Logout',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                        onPressed: () async {
+                          // Clear any existing snackbars
+                          ScaffoldMessenger.of(context).clearSnackBars();
+
+                          // Sign out from Supabase
+                          await Supabase.instance.client.auth.signOut();
+
+                          Navigator.of(context).pop(); // Close dialog
+                          Navigator.of(context).pop(); // Close drawer
+
+                          // Navigate to login page and clear all previous routes
+                          Navigator.pushNamedAndRemoveUntil(
+                            context,
+                            '/login',
+                            (route) => false,
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
+              );
             },
           ),
         ],

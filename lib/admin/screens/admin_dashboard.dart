@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/app_colors.dart';
 import 'overview_page.dart';
 import 'users_page.dart';
@@ -374,9 +375,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                // Clear any existing snackbars
+                ScaffoldMessenger.of(context).clearSnackBars();
+
+                // Sign out from Supabase
+                await Supabase.instance.client.auth.signOut();
+
                 Navigator.of(context).pop();
-                Navigator.of(context).pushReplacementNamed('/login');
+                // Navigate to login page and clear all previous routes
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
