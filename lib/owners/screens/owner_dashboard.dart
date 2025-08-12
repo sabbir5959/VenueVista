@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'create_tournament.dart';
 import '../widgets/venue_owner_sidebar.dart';
+import '../widgets/owner_profile_widget.dart';
 
 // Models for tournament and booking data
 class Tournament {
@@ -166,17 +167,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
         title: const Text('Venue Owner Dashboard'),
         backgroundColor: Colors.green,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.sports_soccer_rounded,
-                color: Colors.green[700],
-                size: 24,
-              ),
-            ),
-          ),
+          OwnerProfileWidget(),
         ],
       ),
       drawer: const VenueOwnerSidebar(currentPage: 'dashboard'),
@@ -253,7 +244,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                             Icon(Icons.search, color: Colors.green[700]),
                             const SizedBox(width: 8),
                             Text(
-                              'Revenue Search by Date Range',
+                              'Earnings by Date Range',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -304,7 +295,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                             child: Column(
                               children: [
                                 Text(
-                                  'Total Revenue for Selected Period',
+                                  'Total Earnings for Selected Period',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.green[700],
@@ -494,7 +485,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     ),
                     const Spacer(),
                     Text(
-                      'Revenue',
+                      'Earnings',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[500],

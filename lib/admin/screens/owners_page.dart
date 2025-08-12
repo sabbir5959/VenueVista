@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../constants/app_colors.dart';
 
 class AdminOwnersPage extends StatefulWidget {
@@ -22,6 +24,60 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
   }
 
   int get _totalPages => (_demoOwners.length / _itemsPerPage).ceil();
+
+  // Edit owner function
+  void _editOwner(int index) {
+    final owner = _demoOwners[index];
+    final isMobile = MediaQuery.of(context).size.width < 768;
+    _showAddVenueOwnerDialog(
+      context,
+      isMobile,
+      editingOwner: owner,
+      editingIndex: index,
+    );
+  }
+
+  // Delete owner function
+  void _deleteOwner(int index) {
+    final owner = _demoOwners[index];
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Owner'),
+          content: Text('Are you sure you want to delete "${owner['name']}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _demoOwners.removeAt(index);
+                  // Adjust current page if needed
+                  if (_paginatedOwners.isEmpty && _currentPage > 1) {
+                    _currentPage--;
+                  }
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Owner "${owner['name']}" deleted successfully',
+                    ),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              },
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +141,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 SizedBox(width: 16),
                 Expanded(
                   child: _buildOwnerStatCard(
-                    'Monthly Revenue',
+                    'Total Income',
                     '৳2.5L',
                     Icons.monetization_on_outlined,
                     AppColors.secondary,
@@ -542,7 +598,8 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            onPressed: () {},
+                            onPressed:
+                                () => _editOwner(_demoOwners.indexOf(owner)),
                             icon: Icon(
                               Icons.edit_outlined,
                               size: 16,
@@ -553,7 +610,8 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                           ),
                           SizedBox(width: 4),
                           IconButton(
-                            onPressed: () {},
+                            onPressed:
+                                () => _deleteOwner(_demoOwners.indexOf(owner)),
                             icon: Icon(
                               Icons.delete_outline,
                               size: 16,
@@ -775,7 +833,8 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            onPressed: () {},
+                            onPressed:
+                                () => _editOwner(_demoOwners.indexOf(owner)),
                             icon: Icon(
                               Icons.edit_outlined,
                               size: 20,
@@ -786,7 +845,8 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                           ),
                           SizedBox(width: 8),
                           IconButton(
-                            onPressed: () {},
+                            onPressed:
+                                () => _deleteOwner(_demoOwners.indexOf(owner)),
                             icon: Icon(
                               Icons.delete_outline,
                               size: 20,
@@ -908,15 +968,36 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
     }
   }
 
-  void _showAddVenueOwnerDialog(BuildContext context, bool isMobile) {
-    final TextEditingController idController = TextEditingController();
-    final TextEditingController nameController = TextEditingController();
-    final TextEditingController phoneController = TextEditingController();
-    final TextEditingController emailController = TextEditingController();
-    final TextEditingController groundSizeController = TextEditingController();
-    final TextEditingController capacityController = TextEditingController();
-    final TextEditingController priceController = TextEditingController();
-    String? selectedGroundPicture;
+  void _showAddVenueOwnerDialog(
+    BuildContext context,
+    bool isMobile, {
+    Map<String, dynamic>? editingOwner,
+    int? editingIndex,
+  }) {
+    final TextEditingController idController = TextEditingController(
+      text: editingOwner?['id'] ?? '',
+    );
+    final TextEditingController nameController = TextEditingController(
+      text: editingOwner?['name'] ?? '',
+    );
+    final TextEditingController phoneController = TextEditingController(
+      text: editingOwner?['phone'] ?? '',
+    );
+    final TextEditingController emailController = TextEditingController(
+      text: editingOwner?['email'] ?? '',
+    );
+    final TextEditingController groundSizeController = TextEditingController(
+      text: editingOwner?['groundSize'] ?? '',
+    );
+    final TextEditingController capacityController = TextEditingController(
+      text: editingOwner?['capacity']?.toString() ?? '',
+    );
+    final TextEditingController priceController = TextEditingController(
+      text: editingOwner?['pricePerHour']?.toString() ?? '',
+    );
+    String? selectedGroundPicture = editingOwner?['groundPicture'];
+    dynamic selectedImageFile; // Can be File or Uint8List
+    Uint8List? webImageBytes;
 
     showDialog(
       context: context,
@@ -945,7 +1026,9 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Add New Venue Owner',
+                      editingOwner != null
+                          ? 'Edit Venue Owner'
+                          : 'Add New Venue Owner',
                       style: TextStyle(
                         fontSize: isMobile ? 18 : 20,
                         fontWeight: FontWeight.w600,
@@ -1075,41 +1158,170 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                       ),
                       const SizedBox(height: 8),
                       GestureDetector(
-                        onTap: () {
-                          // TODO: Implement image picker
-                          setDialogState(() {
-                            selectedGroundPicture = 'sample_ground.jpg';
-                          });
+                        onTap: () async {
+                          final ImagePicker picker = ImagePicker();
+
+                          // Show option to pick from gallery or camera
+                          final ImageSource? source =
+                              await showDialog<ImageSource>(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: const Text('Select Image Source'),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        ListTile(
+                                          leading: const Icon(
+                                            Icons.photo_library,
+                                          ),
+                                          title: const Text('Gallery'),
+                                          onTap:
+                                              () => Navigator.pop(
+                                                context,
+                                                ImageSource.gallery,
+                                              ),
+                                        ),
+                                        ListTile(
+                                          leading: const Icon(Icons.camera_alt),
+                                          title: const Text('Camera'),
+                                          onTap:
+                                              () => Navigator.pop(
+                                                context,
+                                                ImageSource.camera,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+
+                          if (source != null) {
+                            try {
+                              final XFile? image = await picker.pickImage(
+                                source: source,
+                              );
+                              if (image != null) {
+                                if (kIsWeb) {
+                                  // For web platform, read as bytes
+                                  final bytes = await image.readAsBytes();
+                                  setDialogState(() {
+                                    webImageBytes = bytes;
+                                    selectedImageFile = bytes;
+                                    selectedGroundPicture = image.name;
+                                  });
+                                } else {
+                                  // For mobile/desktop platforms
+                                  setDialogState(() {
+                                    selectedImageFile = image.path;
+                                    selectedGroundPicture = image.name;
+                                  });
+                                }
+                              }
+                            } catch (e) {
+                              // Show error message
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error picking image: $e'),
+                                ),
+                              );
+                            }
+                          }
                         },
                         child: Container(
-                          height: 50,
+                          height: selectedImageFile != null ? 120 : 50,
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade400),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                child: Icon(
-                                  Icons.add_photo_alternate_outlined,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  selectedGroundPicture ??
-                                      'Select ground picture',
-                                  style: TextStyle(
-                                    color:
-                                        selectedGroundPicture != null
-                                            ? AppColors.textPrimary
-                                            : AppColors.textSecondary,
+                          child:
+                              selectedImageFile != null
+                                  ? Stack(
+                                    children: [
+                                      // Image preview
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child:
+                                            kIsWeb
+                                                ? Image.memory(
+                                                  webImageBytes!,
+                                                  width: double.infinity,
+                                                  height: 120,
+                                                  fit: BoxFit.cover,
+                                                )
+                                                : Image.network(
+                                                  selectedImageFile!,
+                                                  width: double.infinity,
+                                                  height: 120,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (
+                                                    context,
+                                                    error,
+                                                    stackTrace,
+                                                  ) {
+                                                    return Container(
+                                                      width: double.infinity,
+                                                      height: 120,
+                                                      color:
+                                                          Colors.grey.shade200,
+                                                      child: const Icon(
+                                                        Icons.error,
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                      ),
+                                      // Remove button
+                                      Positioned(
+                                        top: 4,
+                                        right: 4,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            setDialogState(() {
+                                              selectedImageFile = null;
+                                              webImageBytes = null;
+                                              selectedGroundPicture = null;
+                                            });
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red.withOpacity(
+                                                0.8,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: const Icon(
+                                              Icons.close,
+                                              color: Colors.white,
+                                              size: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                  : Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Icon(
+                                          Icons.add_photo_alternate_outlined,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          'Select ground picture',
+                                          style: TextStyle(
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -1231,9 +1443,9 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                       return;
                     }
 
-                    // Add new venue owner to the list
+                    // Add or update venue owner
                     setState(() {
-                      _demoOwners.add({
+                      final ownerData = {
                         'id': idController.text,
                         'name': nameController.text,
                         'phone': phoneController.text,
@@ -1242,11 +1454,25 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                         'groundSize': groundSizeController.text,
                         'capacity': int.tryParse(capacityController.text) ?? 0,
                         'pricePerHour': int.tryParse(priceController.text) ?? 0,
-                        'venues': 1, // Default value for compatibility
-                        'revenue': '৳0', // Default value
-                        'status': 'Active',
-                        'joinDate': DateTime.now().toString().substring(0, 10),
-                      });
+                        'venues':
+                            editingOwner?['venues'] ??
+                            1, // Keep existing or default
+                        'revenue':
+                            editingOwner?['revenue'] ??
+                            '৳0', // Keep existing or default
+                        'status': editingOwner?['status'] ?? 'Active',
+                        'joinDate':
+                            editingOwner?['joinDate'] ??
+                            DateTime.now().toString().substring(0, 10),
+                      };
+
+                      if (editingIndex != null) {
+                        // Update existing owner
+                        _demoOwners[editingIndex] = ownerData;
+                      } else {
+                        // Add new owner
+                        _demoOwners.add(ownerData);
+                      }
                     });
 
                     Navigator.of(context).pop();
@@ -1254,7 +1480,11 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                     // Show success message
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Venue owner added successfully!'),
+                        content: Text(
+                          editingIndex != null
+                              ? 'Venue owner updated successfully!'
+                              : 'Venue owner added successfully!',
+                        ),
                         backgroundColor: AppColors.success,
                       ),
                     );
@@ -1271,7 +1501,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                     ),
                   ),
                   child: Text(
-                    'Add Owner',
+                    editingIndex != null ? 'Update Owner' : 'Add Owner',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -1285,40 +1515,65 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
 
   static final List<Map<String, dynamic>> _demoOwners = [
     {
+      'id': 'GV001',
       'name': 'Green Valley Football Club',
+      'phone': '+880-1234-567890',
       'email': 'info@greenvalley.com',
+      'groundSize': '100x70 meters',
+      'capacity': 22,
+      'pricePerHour': 1500,
       'venues': 3,
       'revenue': '৳45,000',
       'status': 'Active',
       'joinDate': '2024-01-10',
     },
     {
+      'id': 'DFC001',
       'name': 'Dhanmondi Football Complex',
+      'phone': '+880-1987-654321',
       'email': 'admin@dhanmondifootball.com',
+      'groundSize': '110x70 meters',
+      'capacity': 24,
+      'pricePerHour': 2000,
       'venues': 5,
       'revenue': '৳78,500',
       'status': 'Active',
       'joinDate': '2024-01-25',
     },
     {
+      'id': 'EFA001',
       'name': 'Elite Football Arena',
+      'phone': '+880-1555-123456',
       'email': 'info@elitefootball.com',
+      'groundSize': '105x68 meters',
+      'capacity': 20,
+      'pricePerHour': 1800,
       'venues': 4,
       'revenue': '৳67,200',
       'status': 'Active',
       'joinDate': '2024-02-12',
     },
     {
+      'id': 'MFG001',
       'name': 'Metro Football Ground',
+      'phone': '+880-1333-789012',
       'email': 'admin@metrofootball.com',
+      'groundSize': '95x65 meters',
+      'capacity': 18,
+      'pricePerHour': 1200,
       'venues': 1,
       'revenue': '৳15,800',
       'status': 'Suspended',
       'joinDate': '2024-03-20',
     },
     {
+      'id': 'GFC001',
       'name': 'Gulshan Football Center',
+      'phone': '+880-1444-567890',
       'email': 'contact@gulshanfootball.com',
+      'groundSize': '100x68 meters',
+      'capacity': 22,
+      'pricePerHour': 1600,
       'venues': 2,
       'revenue': '৳38,400',
       'status': 'Active',

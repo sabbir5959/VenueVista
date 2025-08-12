@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../widgets/venue_owner_sidebar.dart';
+import '../widgets/owner_profile_widget.dart';
 import '../models/discount_schedule.dart';
 import '../services/dynamic_pricing_service.dart';
 
@@ -85,6 +86,9 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
       appBar: AppBar(
         title: const Text('Dynamic Pricing'),
         backgroundColor: Colors.green[700],
+        actions: [
+          OwnerProfileWidget(),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -251,15 +255,16 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => _selectDate(true),
-                    icon: const Icon(Icons.calendar_today),
+                    icon: const Icon(Icons.calendar_today, size: 16),
                     label: Text(
                       _startDate != null
                           ? DateFormat('MMM dd, yyyy').format(_startDate!)
                           : 'Start Date',
                       overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
                     ),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                       foregroundColor: Colors.green[700],
                     ),
                   ),
@@ -268,15 +273,16 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => _selectDate(false),
-                    icon: const Icon(Icons.event),
+                    icon: const Icon(Icons.event, size: 16),
                     label: Text(
                       _endDate != null
                           ? DateFormat('MMM dd, yyyy').format(_endDate!)
                           : 'End Date (Optional)',
                       overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
                     ),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                       foregroundColor: Colors.green[700],
                     ),
                   ),
@@ -303,7 +309,7 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
                     ),
                     items: const [
                       DropdownMenuItem(value: 'percentage', child: Text('% Off')),
-                      DropdownMenuItem(value: 'flat', child: Text('Flat Amount Off')),
+                      DropdownMenuItem(value: 'flat', child: Text('Flat Off')),
                     ],
                     onChanged: (value) {
                       setState(() {
@@ -425,6 +431,7 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
             Row(
               children: [
                 Expanded(
+                  flex: 2,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -438,6 +445,7 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
                         color: isPercentage ? Colors.orange[700] : Colors.blue[700],
                       ),
                       overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
                 ),

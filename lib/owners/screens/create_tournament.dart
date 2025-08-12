@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
+import '../widgets/owner_profile_widget.dart';
 
 class CreateTournamentPage extends StatefulWidget {
   const CreateTournamentPage({super.key});
@@ -25,24 +26,63 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
 
   Future<void> _pickImage() async {
     try {
-      // Temporarily disabled image picker
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Image picker temporarily disabled')),
-      );
-      /*
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      
+      // Show dialog to choose between camera and gallery
+      final source = await showDialog<ImageSource>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Select Image Source'),
+            content: const Text('Choose how you want to add the venue picture:'),
+            actions: [
+              TextButton.icon(
+                onPressed: () => Navigator.of(context).pop(ImageSource.camera),
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Camera'),
+              ),
+              TextButton.icon(
+                onPressed: () => Navigator.of(context).pop(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Gallery'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      );
 
-      if (image != null) {
-        setState(() {
-          _imageFile = File(image.path);
-        });
+      if (source != null) {
+        final XFile? image = await picker.pickImage(
+          source: source,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+
+        if (image != null) {
+          setState(() {
+            _imageFile = File(image.path);
+          });
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Venue picture added successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
-      */
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Failed to pick image')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to pick image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -115,17 +155,7 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
         title: const Text('Create Tournament'),
         backgroundColor: Colors.green[700],
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.person,
-                color: Colors.green[700],
-                size: 24,
-              ),
-            ),
-          ),
+          OwnerProfileWidget(),
         ],
       ),
       body: Container(
