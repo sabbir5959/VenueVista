@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'edit_tournament.dart';
 
 class TournamentDetailsPage extends StatelessWidget {
   final Map<String, dynamic> tournament;
@@ -272,9 +273,14 @@ class TournamentDetailsPage extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          // Handle edit tournament
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Edit tournament functionality')),
+                          // Navigate to edit tournament page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditTournamentPage(
+                                tournament: tournament,
+                              ),
+                            ),
                           );
                         },
                         icon: const Icon(Icons.edit),
