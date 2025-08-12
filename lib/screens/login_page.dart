@@ -81,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
             case 'user':
             default:
               _showSuccessMessage('Login successful! Welcome to VenueVista.');
-              Navigator.of(context).pushReplacementNamed('/');
+              Navigator.of(context).pushReplacementNamed('/user');
               break;
           }
         } else {
