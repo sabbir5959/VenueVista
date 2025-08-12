@@ -78,7 +78,7 @@ class _TournamentsPageState extends State<TournamentsPage> {
     {
       'name': 'Weekend Warriors League',
       'image':
-          'https://images.unsplash.com/photo-1579952363873-27d3bfad9c0d?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=800&q=80',
       'date': '2025-08-30',
       'time': '8:00 AM',
       'location': 'Dhanmondi Lake Ground',
