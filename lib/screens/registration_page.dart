@@ -89,19 +89,30 @@ class _RegistrationPageState extends State<RegistrationPage> {
         _isLoading = true;
       });
 
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 2));
+      try {
+        // Demo registration - just show success and navigate
+        await Future.delayed(
+          const Duration(seconds: 1),
+        ); // Simulate registration delay
 
-      if (mounted) {
-        _showSuccessMessage(
-          'Registration successful! Please login to continue.',
-        );
-        Navigator.pushReplacementNamed(context, '/login');
+        if (mounted) {
+          _showSuccessMessage(
+            'Registration successful! Welcome to VenueVista!',
+          );
+          // Auto-login after successful registration
+          Navigator.pushReplacementNamed(context, '/');
+        }
+      } catch (error) {
+        if (mounted) {
+          _showErrorMessage('An unexpected error occurred. Please try again.');
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
-
-      setState(() {
-        _isLoading = false;
-      });
     } else if (!_agreeToTerms) {
       _showErrorMessage('Please agree to Terms and Conditions');
     }
@@ -368,16 +379,17 @@ class _RegistrationPageState extends State<RegistrationPage> {
                               ),
                             ),
                             onPressed: _isLoading ? null : _register,
-                            child: _isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Text('Create Account'),
+                            child:
+                                _isLoading
+                                    ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                    : const Text('Create Account'),
                           ),
                         ),
 

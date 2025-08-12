@@ -65,6 +65,24 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                     ],
                   ),
                 ),
+                if (!isMobile) SizedBox(width: 16),
+                ElevatedButton.icon(
+                  onPressed: () => _showRecordCashPaymentDialog(),
+                  icon: Icon(Icons.receipt_long),
+                  label: Text(isMobile ? 'Record Cash' : 'Record Cash Payment'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 12 : 20,
+                      vertical: isMobile ? 8 : 12,
+                    ),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
               ],
             ),
 
@@ -1292,6 +1310,299 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showRecordCashPaymentDialog() {
+    final _formKey = GlobalKey<FormState>();
+    final _amountController = TextEditingController();
+    final _descriptionController = TextEditingController();
+    final _personController = TextEditingController();
+    final _contactController = TextEditingController();
+    final _bookingIdController = TextEditingController();
+    final _paymentReasonController = TextEditingController();
+    String _selectedOwner = 'Green Valley Sports Club';
+
+    final List<String> _owners = [
+      'Green Valley Sports Club',
+      'Elite Futsal Academy',
+      'BKSP Sports Authority',
+      'Dhanmondi Futsal Ground',
+      'Rajshahi Sports Council',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.receipt_long, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Text('Record Cash Payment'),
+                ],
+              ),
+              content: Container(
+                width: 500,
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Info Header
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppColors.primary.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: AppColors.primary,
+                                    size: 16,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Manual Cash Payment Record',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                '📝 Fill this form AFTER giving cash to owner to keep proper records',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 20),
+
+                        // Owner Selection
+                        DropdownButtonFormField<String>(
+                          value: _selectedOwner,
+                          decoration: InputDecoration(
+                            labelText: 'Venue Owner',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.business),
+                          ),
+                          items:
+                              _owners.map((owner) {
+                                return DropdownMenuItem(
+                                  value: owner,
+                                  child: Text(owner),
+                                );
+                              }).toList(),
+                          onChanged: (String? newValue) {
+                            setDialogState(() {
+                              _selectedOwner = newValue!;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please select venue owner';
+                            }
+                            return null;
+                          },
+                        ),
+                        SizedBox(height: 16),
+
+                        // Amount
+                        TextFormField(
+                          controller: _amountController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Cash Amount Given (৳)',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.attach_money),
+                            hintText: 'Amount you gave in cash',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter cash amount';
+                            }
+                            if (double.tryParse(value) == null) {
+                              return 'Please enter valid amount';
+                            }
+                            return null;
+                          },
+                        ),
+                        SizedBox(height: 16),
+
+                        // Payment Purpose
+                        TextFormField(
+                          controller: _paymentReasonController,
+                          decoration: InputDecoration(
+                            labelText: 'Payment Purpose',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.note),
+                            hintText: 'Monthly commission, Equipment fee, etc.',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter payment purpose';
+                            }
+                            return null;
+                          },
+                        ),
+                        SizedBox(height: 16),
+
+                        // Received By
+                        TextFormField(
+                          controller: _personController,
+                          decoration: InputDecoration(
+                            labelText: 'Received By',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.person),
+                            hintText: 'Person who received the cash',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter receiver name';
+                            }
+                            return null;
+                          },
+                        ),
+                        SizedBox(height: 16),
+
+                        // Contact Number
+                        TextFormField(
+                          controller: _contactController,
+                          decoration: InputDecoration(
+                            labelText: 'Contact Number',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.phone),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter contact number';
+                            }
+                            return null;
+                          },
+                        ),
+                        SizedBox(height: 16),
+
+                        // Related Booking (Optional)
+                        TextFormField(
+                          controller: _bookingIdController,
+                          decoration: InputDecoration(
+                            labelText: 'Related Booking ID (Optional)',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.confirmation_number),
+                            hintText: 'e.g., BK006',
+                          ),
+                        ),
+                        SizedBox(height: 16),
+
+                        // Additional Notes
+                        TextFormField(
+                          controller: _descriptionController,
+                          maxLines: 2,
+                          decoration: InputDecoration(
+                            labelText: 'Additional Notes',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.description),
+                            hintText:
+                                'Any additional details about this payment',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter some notes';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      // Create cash payment record
+                      final newPayment = {
+                        'id': 'CASH${DateTime.now().millisecondsSinceEpoch}',
+                        'description':
+                            'Cash Payment: ${_paymentReasonController.text}',
+                        'amount': double.parse(_amountController.text),
+                        'type': 'To Owner (Cash)',
+                        'status': 'Completed',
+                        'method': 'Cash',
+                        'person': _personController.text,
+                        'contact': _contactController.text,
+                        'date':
+                            '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}',
+                        'time':
+                            '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+                        'transactionId':
+                            'CASH${DateTime.now().millisecondsSinceEpoch}',
+                        'venue': _selectedOwner,
+                        'bookingId':
+                            _bookingIdController.text.isNotEmpty
+                                ? _bookingIdController.text
+                                : 'N/A',
+                        'paymentReason': _paymentReasonController.text,
+                        'paidBy': 'Admin (Manual Cash)',
+                        'notes': _descriptionController.text,
+                        'recordedAt': DateTime.now().toIso8601String(),
+                      };
+
+                      setState(() {
+                        _demoPayments.insert(0, newPayment);
+                      });
+
+                      Navigator.of(context).pop();
+
+                      // Show success message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '✅ Cash payment recorded! ৳${_amountController.text} to ${_personController.text}',
+                          ),
+                          backgroundColor: AppColors.success,
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.white,
+                  ),
+                  child: Text('Record Payment'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

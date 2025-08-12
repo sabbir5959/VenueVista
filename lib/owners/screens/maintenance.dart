@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/maintenance_schedule.dart';
 import '../services/maintenance_service.dart';
 import '../widgets/venue_owner_sidebar.dart';
+import '../widgets/owner_profile_widget.dart';
 
 class MaintenancePage extends StatefulWidget {
   const MaintenancePage({Key? key}) : super(key: key);
@@ -75,6 +76,9 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
       appBar: AppBar(
         title: const Text('Maintenance Schedule'),
         backgroundColor: Colors.green[700],
+        actions: [
+          OwnerProfileWidget(),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -208,7 +212,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                       Icon(Icons.edit_note, color: Colors.grey),
                       SizedBox(width: 8),
                       Text(
-                        'Reason for Maintenance (Optional)',
+                        'Reason for Maintenance',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ],

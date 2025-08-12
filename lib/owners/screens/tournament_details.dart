@@ -3,8 +3,13 @@ import 'package:intl/intl.dart';
 
 class TournamentDetailsPage extends StatelessWidget {
   final Map<String, dynamic> tournament;
+  final String? filter;
 
-  const TournamentDetailsPage({Key? key, required this.tournament}) : super(key: key);
+  const TournamentDetailsPage({
+    Key? key, 
+    required this.tournament,
+    this.filter,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -261,30 +266,31 @@ class TournamentDetailsPage extends StatelessWidget {
 
                   const SizedBox(height: 24),
 
-                  // Action Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        // Handle edit tournament
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Edit tournament functionality')),
-                        );
-                      },
-                      icon: const Icon(Icons.edit),
-                      label: const Text('Edit Tournament'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[600],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                  // Action Button (only show for non-past tournaments)
+                  if (filter != 'Past') ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // Handle edit tournament
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Edit tournament functionality')),
+                          );
+                        },
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Edit Tournament'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
+                  ],
                 ],
               ),
             ),

@@ -81,7 +81,7 @@ class AdminOverviewPage extends StatelessWidget {
                           AppColors.success,
                         ),
                         _buildStatCard(
-                          'Revenue',
+                          'Total Income',
                           '৳12,45,000',
                           Icons.monetization_on_outlined,
                           AppColors.warning,
@@ -141,7 +141,7 @@ class AdminOverviewPage extends StatelessWidget {
                         SizedBox(width: 18),
                         Expanded(
                           child: _buildQuickStatCard(
-                            'Monthly Revenue',
+                            'Total Income',
                             '৳2.5L',
                             Icons.monetization_on_outlined,
                             AppColors.success,
