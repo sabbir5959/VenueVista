@@ -432,15 +432,52 @@ class SchedulePage extends StatelessWidget {
   const SchedulePage({super.key});
 
   // Function to open directions in Google Maps
-  Future<void> _openDirections(String destinationQuery) async {
-    final Uri directionsUrl = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(destinationQuery)}',
-    );
+  Future<void> _openDirections(
+    BuildContext context,
+    String destinationQuery,
+  ) async {
+    try {
+      // Try Google Maps app first (using geo: scheme)
+      final Uri geoUri = Uri.parse(
+        'geo:0,0?q=${Uri.encodeComponent(destinationQuery)}',
+      );
 
-    if (await canLaunchUrl(directionsUrl)) {
-      await launchUrl(directionsUrl, mode: LaunchMode.externalApplication);
-    } else {
-      throw 'Could not launch Google Maps directions.';
+      if (await canLaunchUrl(geoUri)) {
+        await launchUrl(geoUri, mode: LaunchMode.externalApplication);
+        return;
+      }
+
+      // Fallback to Google Maps web
+      final Uri webMapsUri = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(destinationQuery)}',
+      );
+
+      if (await canLaunchUrl(webMapsUri)) {
+        await launchUrl(webMapsUri, mode: LaunchMode.externalApplication);
+        return;
+      }
+
+      // If all else fails, try the original directions URL
+      final Uri directionsUrl = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(destinationQuery)}',
+      );
+
+      if (await canLaunchUrl(directionsUrl)) {
+        await launchUrl(directionsUrl, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Could not launch Google Maps directions.';
+      }
+    } catch (e) {
+      // Show user-friendly error message instead of throwing
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not open directions. Please check if Google Maps is installed.',
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -687,7 +724,7 @@ class SchedulePage extends StatelessWidget {
                           size: 24,
                         ),
                         onPressed: () {
-                          _openDirections(schedule['locationQuery']);
+                          _openDirections(context, schedule['locationQuery']);
                         },
                       ),
                     ],
