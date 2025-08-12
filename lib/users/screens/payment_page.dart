@@ -200,32 +200,40 @@ class _PaymentPageState extends State<PaymentPage> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'bKash',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'bKash',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Pay with your bKash account',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
+                          Text(
+                            'Pay with your bKash account',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    if (selectedPaymentMethod == 'bKash')
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.pink.shade400,
-                        size: 24,
+                        ],
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 24,
+                      child:
+                          selectedPaymentMethod == 'bKash'
+                              ? Icon(
+                                Icons.check_circle,
+                                color: Colors.pink.shade400,
+                                size: 24,
+                              )
+                              : null,
+                    ),
                   ],
                 ),
               ),
@@ -276,32 +284,40 @@ class _PaymentPageState extends State<PaymentPage> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Nagad',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Nagad',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Pay with your Nagad account',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
+                          Text(
+                            'Pay with your Nagad account',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    if (selectedPaymentMethod == 'Nagad')
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.orange.shade400,
-                        size: 24,
+                        ],
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 24,
+                      child:
+                          selectedPaymentMethod == 'Nagad'
+                              ? Icon(
+                                Icons.check_circle,
+                                color: Colors.orange.shade400,
+                                size: 24,
+                              )
+                              : null,
+                    ),
                   ],
                 ),
               ),
