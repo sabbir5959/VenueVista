@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
       title: 'VenueVista',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.green, useMaterial3: true),
-      initialRoute: '/',
+      initialRoute: '/landing',
       routes: {
         '/': (context) => const HomeActivity(),
         '/landing': (context) => const LandingPage(),

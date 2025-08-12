@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../search_grounds.dart';
 import '../screens/schedule_page.dart';
 import '../screens/tournaments_page.dart';
@@ -134,11 +135,22 @@ class CommonDrawer extends StatelessWidget {
                           'Logout',
                           style: TextStyle(color: Colors.green.shade700),
                         ),
-                        onPressed: () {
+                        onPressed: () async {
+                          // Clear any existing snackbars
+                          ScaffoldMessenger.of(context).clearSnackBars();
+
+                          // Sign out from Supabase
+                          await Supabase.instance.client.auth.signOut();
+
                           Navigator.of(context).pop(); // Close dialog
                           Navigator.of(context).pop(); // Close drawer
-                          // Navigate to login page
-                          Navigator.pushReplacementNamed(context, '/login');
+
+                          // Navigate to login page and clear all previous routes
+                          Navigator.pushNamedAndRemoveUntil(
+                            context,
+                            '/login',
+                            (route) => false,
+                          );
                         },
                       ),
                     ],
