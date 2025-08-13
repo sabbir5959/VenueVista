@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
+import '../services/database_service.dart';
 import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -65,20 +67,17 @@ class _LoginPageState extends State<LoginPage> {
         String email = _emailController.text.trim();
         String password = _passwordController.text.trim();
 
-        // Authenticate with Supabase
-        final response = await Supabase.instance.client.auth.signInWithPassword(
+        // Authenticate with Supabase using AuthService
+        final response = await AuthService.signIn(
           email: email,
           password: password,
         );
 
         if (response.user != null) {
-          // Get user profile from database
-          final userProfile =
-              await Supabase.instance.client
-                  .from('user_profiles')
-                  .select('*')
-                  .eq('id', response.user!.id)
-                  .single();
+          // Get user profile from database using DatabaseService
+          final userProfile = await DatabaseService.getUserProfile(
+            response.user!.id,
+          );
 
           // Check if role matches selected role
           if (userProfile['role'] == _selectedRole) {
@@ -119,14 +118,14 @@ class _LoginPageState extends State<LoginPage> {
             _showErrorMessage(
               'Invalid role! Your account role is: ${userProfile['role']}',
             );
-            await Supabase.instance.client.auth.signOut();
+            await AuthService.signOut();
           }
         }
       } on AuthException catch (error) {
         _showErrorMessage('Login failed: ${error.message}');
       } on PostgrestException catch (_) {
         _showErrorMessage('Account not found or inactive');
-        await Supabase.instance.client.auth.signOut();
+        await AuthService.signOut();
       } catch (error) {
         _showErrorMessage('Login failed. Please try again.');
       } finally {
