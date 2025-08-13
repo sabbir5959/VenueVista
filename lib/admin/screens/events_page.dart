@@ -109,7 +109,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
 
             SizedBox(height: isMobile ? 20 : 32),
 
-            // Stats Cards (Clickable Filters)
+            
             GridView.count(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
