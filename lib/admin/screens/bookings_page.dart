@@ -35,7 +35,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Section
+            
             Row(
               children: [
                 Expanded(
@@ -65,7 +65,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     ],
                   ),
                 ),
-                // Export Button
+               
                 Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: isMobile ? 12 : 16,
@@ -110,7 +110,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
             SizedBox(height: isMobile ? 20 : 32),
 
-            // Stats Cards (Clickable Filters)
+            
             GridView.count(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
@@ -156,7 +156,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
             SizedBox(height: isMobile ? 20 : 24),
 
-            // Bookings List
+       
             Container(
               decoration: BoxDecoration(
                 color: AppColors.surface,
@@ -171,7 +171,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
               ),
               child: Column(
                 children: [
-                  // List Header
+                  
                   Container(
                     padding: EdgeInsets.all(isMobile ? 16 : 20),
                     decoration: BoxDecoration(
@@ -205,7 +205,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     ),
                   ),
 
-                  // Bookings List
+                  
                   ListView.separated(
                     shrinkWrap: true,
                     physics: NeverScrollableScrollPhysics(),
@@ -221,7 +221,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     },
                   ),
 
-                  // Pagination
+                 
                   if (totalPages > 1)
                     Container(
                       padding: EdgeInsets.all(isMobile ? 16 : 20),
@@ -235,7 +235,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Previous Button
+                         
                           IconButton(
                             onPressed:
                                 _currentPage > 1
@@ -248,7 +248,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                                     : AppColors.textSecondary,
                           ),
 
-                          // Page Numbers
+                          
                           ...List.generate(totalPages, (index) {
                             final page = index + 1;
                             final isCurrentPage = page == _currentPage;
@@ -290,7 +290,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                             );
                           }),
 
-                          // Next Button
+                          
                           IconButton(
                             onPressed:
                                 _currentPage < totalPages
@@ -309,7 +309,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
               ),
             ),
 
-            SizedBox(height: 40), // Bottom spacing
+            SizedBox(height: 40), 
           ],
         ),
       ),
@@ -330,7 +330,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
       onTap: () {
         setState(() {
           _selectedStatus = filterStatus;
-          _currentPage = 1; // Reset to first page when filter changes
+          _currentPage = 1; 
         });
       },
       borderRadius: BorderRadius.circular(16),
@@ -420,7 +420,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
       padding: EdgeInsets.all(isMobile ? 16 : 20),
       child: Row(
         children: [
-          // Booking Info
+          
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,7 +510,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
             ),
           ),
           SizedBox(width: 12),
-          // Show Details Button
+          
           InkWell(
             onTap: () => _showBookingDetails(booking),
             borderRadius: BorderRadius.circular(8),
@@ -561,7 +561,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
               .toList();
     }
 
-    // Filter by date range
+    
     if (_startDate != null || _endDate != null) {
       filtered =
           filtered.where((booking) {
@@ -774,7 +774,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Export Format Options
+                      
                       Text(
                         'Export Format',
                         style: TextStyle(
@@ -793,7 +793,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                       ),
                       SizedBox(height: 16),
 
-                      // Export Options Row
+                     
                       Row(
                         children: [
                           Expanded(
@@ -822,7 +822,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                       SizedBox(height: 24),
 
-                      // Filter Section
+                      
                       Text(
                         'Filter Settings',
                         style: TextStyle(
@@ -833,7 +833,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                       ),
                       SizedBox(height: 16),
 
-                      // Status Filter
+                     
                       Text(
                         'Booking Status',
                         style: TextStyle(
@@ -936,7 +936,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                       SizedBox(height: 16),
 
-                      // Time Period Filters
+                      
                       Text(
                         'Time Period',
                         style: TextStyle(
@@ -1135,54 +1135,54 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
   }
 
   void _exportToExcel() async {
-    // Close export dialog and show progress
-    Navigator.of(context).pop(); // Close export dialog
+   
+    Navigator.of(context).pop(); 
 
-    // Show progress dialog
+   
     _showExportProgress('Excel');
 
     try {
-      // Filter bookings by date range
+      
       List<Map<String, dynamic>> filteredBookings = _getFilteredBookings();
 
-      // Close progress and show Excel viewer
+      
       await Future.delayed(Duration(seconds: 2));
       if (Navigator.canPop(context)) {
-        Navigator.of(context).pop(); // Close progress dialog
+        Navigator.of(context).pop(); 
       }
 
-      // Show Excel viewer
+      
       _showOnlineExcelViewer(filteredBookings);
     } catch (e) {
       if (Navigator.canPop(context)) {
-        Navigator.of(context).pop(); // Close progress dialog
+        Navigator.of(context).pop(); 
       }
       _showErrorDialog('Failed to generate Excel: $e');
     }
   }
 
   void _exportToPDF() async {
-    // Close export dialog and show progress
-    Navigator.of(context).pop(); // Close export dialog
+    
+    Navigator.of(context).pop();
 
-    // Show progress dialog
+    
     _showExportProgress('PDF');
 
     try {
-      // Filter bookings by date range
+     
       List<Map<String, dynamic>> filteredBookings = _getFilteredBookings();
 
-      // Close progress and show PDF viewer
+      
       await Future.delayed(Duration(seconds: 2));
       if (Navigator.canPop(context)) {
-        Navigator.of(context).pop(); // Close progress dialog
+        Navigator.of(context).pop(); 
       }
 
-      // Show PDF viewer
+      
       _showOnlinePDFViewer(filteredBookings);
     } catch (e) {
       if (Navigator.canPop(context)) {
-        Navigator.of(context).pop(); // Close progress dialog
+        Navigator.of(context).pop(); 
       }
       _showErrorDialog('Failed to generate PDF: $e');
     }
@@ -1194,7 +1194,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black54, // Ensure proper overlay
+      barrierColor: Colors.black54, 
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
@@ -1233,7 +1233,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
             height: MediaQuery.of(context).size.height * 0.6,
             child: Column(
               children: [
-                // Action buttons
+                
                 Row(
                   children: [
                     Expanded(
@@ -1252,7 +1252,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                 ),
                 SizedBox(height: 16),
 
-                // Excel-like Table
+                
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -1335,7 +1335,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                 SizedBox(height: 16),
 
-                // Summary
+                
                 Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -1387,7 +1387,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black54, // Ensure proper overlay
+      barrierColor: Colors.black54, 
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
@@ -1426,7 +1426,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
             height: MediaQuery.of(context).size.height * 0.6,
             child: Column(
               children: [
-                // Action buttons
+                
                 Row(
                   children: [
                     Expanded(
@@ -1445,7 +1445,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                 ),
                 SizedBox(height: 16),
 
-                // PDF Document Preview
+                
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -1465,7 +1465,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // PDF Header
+                          
                           Center(
                             child: Column(
                               children: [
@@ -1500,7 +1500,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                           SizedBox(height: 16),
 
-                          // PDF Content
+                         
                           Expanded(
                             child: SingleChildScrollView(
                               child: Column(
@@ -1602,7 +1602,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                 SizedBox(height: 16),
 
-                // Summary
+                
                 Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -1680,7 +1680,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
           '${booking['id']}\t${booking['venue']}\t${booking['user']}\t${booking['date']}\t${booking['time']}\t${booking['amount']}\t${booking['status']}\n';
     }
 
-    // Copy to clipboard
+    
     Clipboard.setData(ClipboardData(text: clipboardData));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1701,12 +1701,12 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          contentPadding: EdgeInsets.zero, // Remove default padding
+          contentPadding: EdgeInsets.zero, 
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           title: Padding(
-            padding: EdgeInsets.all(16), // Custom padding for title
+            padding: EdgeInsets.all(16), 
             child: Row(
               children: [
                 Container(
@@ -1767,14 +1767,14 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
             ),
           ),
           content: Container(
-            padding: EdgeInsets.all(16), // Add padding to content
+            padding: EdgeInsets.all(16), 
             width: isMobile ? double.maxFinite : 400,
-            height: MediaQuery.of(context).size.height * 0.6, // Fixed height
+            height: MediaQuery.of(context).size.height * 0.6, 
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Venue Information
+                  
                   _buildDetailSection('Venue Information', [
                     _buildDetailItem(
                       'Venue Name',
@@ -1790,7 +1790,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                   SizedBox(height: 12),
 
-                  // Customer Information
+                  
                   _buildDetailSection('Customer Information', [
                     _buildDetailItem(
                       'Customer Name',
@@ -1811,7 +1811,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                   SizedBox(height: 12),
 
-                  // Booking Information
+                  
                   _buildDetailSection('Booking Information', [
                     _buildDetailItem(
                       'Date',
@@ -1837,7 +1837,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                   SizedBox(height: 12),
 
-                  // Status Information
+                  
                   _buildDetailSection('Status Information', [
                     _buildDetailItem(
                       'Current Status',
@@ -1856,7 +1856,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     ),
                   ], isMobile),
 
-                  // Show Cancellation Information only for cancelled bookings
+                  
                   if (booking['status'] == 'Cancelled') ...[
                     SizedBox(height: 12),
                     _buildDetailSection('Cancellation Details', [
@@ -1928,7 +1928,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, // Align items to start
+        crossAxisAlignment: CrossAxisAlignment.start, 
         children: [
           Icon(icon, size: 14, color: AppColors.textSecondary),
           SizedBox(width: 8),
@@ -2042,7 +2042,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
       },
     );
 
-    // Simulate export process
+    
     Future.delayed(Duration(seconds: 2), () {
       Navigator.of(context).pop();
     });

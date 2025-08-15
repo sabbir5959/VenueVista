@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -20,6 +21,10 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String _selectedRole = 'user'; // Default role
+  StreamSubscription<AuthState>? _authSubscription;
+  bool _isHandlingAuth = false; // Flag to prevent duplicate auth handling
+  String? _lastHandledUserId; // Track last handled user to prevent duplicates
+  bool _isGoogleAuthInProgress = false; // Track if Google OAuth is in progress
 
   @override
   void initState() {
@@ -28,12 +33,106 @@ class _LoginPageState extends State<LoginPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ScaffoldMessenger.of(context).clearSnackBars();
     });
+
+    // Listen for auth state changes (for Google OAuth)
+    _setupAuthListener();
+  }
+
+  void _setupAuthListener() {
+    _authSubscription = AuthService.client.auth.onAuthStateChange.listen((
+      data,
+    ) async {
+      // Only handle Google OAuth events
+      if (data.event == AuthChangeEvent.signedIn &&
+          data.session?.user != null &&
+          !_isHandlingAuth &&
+          _isGoogleAuthInProgress) {
+        final user = data.session!.user;
+
+        // Check if we already handled this user
+        if (_lastHandledUserId == user.id) {
+          print('⏭️ Skipping duplicate auth event for: ${user.email}');
+          return;
+        }
+
+        _isHandlingAuth = true; // Set flag to prevent duplicate handling
+        _lastHandledUserId = user.id; // Track this user
+        print('🔄 Auth state changed - user signed in: ${user.email}');
+
+        // Handle successful authentication
+        await _handleSuccessfulAuth(user);
+
+        _isHandlingAuth = false; // Reset flag after handling
+        _isGoogleAuthInProgress = false; // Reset Google OAuth flag
+      }
+    });
+  }
+
+  Future<void> _handleSuccessfulAuth(User user) async {
+    try {
+      // Check if user profile exists in database
+      final userProfile = await DatabaseService.getUserProfile(user.id);
+
+      // User exists, check role match
+      if (userProfile['role'] == _selectedRole) {
+        String userName =
+            userProfile['full_name'] ??
+            user.userMetadata?['full_name'] ??
+            'User';
+        print('✅ Role matched - navigating as ${userProfile['role']}');
+        await _navigateBasedOnRole(userName);
+      } else {
+        _showErrorMessage(
+          'Invalid credentials. Please check your role selection and try again.',
+        );
+        await AuthService.signOut();
+      }
+    } catch (e) {
+      // User profile doesn't exist, this is first time Google sign-in
+      final userName =
+          user.userMetadata?['full_name'] ??
+          user.userMetadata?['name'] ??
+          user.email?.split('@')[0] ??
+          'User';
+
+      // Only create profile if selected role is 'user' (default for new signups)
+      if (_selectedRole == 'user') {
+        try {
+          print('🆕 Creating new user profile for: ${user.email}');
+          await DatabaseService.createUserProfile(
+            userId: user.id,
+            fullName: userName,
+            email: user.email!,
+            role: 'user',
+            phone: '', // Google sign-in doesn't provide phone
+          );
+
+          await _navigateBasedOnRole(userName);
+        } catch (createError) {
+          _showErrorMessage('Failed to create user profile. Please try again.');
+          await AuthService.signOut();
+        }
+      } else {
+        _showErrorMessage(
+          'This Google account is not registered as ${_selectedRole}. Please use email login or sign up first.',
+        );
+        await AuthService.signOut();
+      }
+    }
+
+    // Reset loading state after auth handling is complete
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _authSubscription?.cancel();
     super.dispose();
   }
 
@@ -81,42 +180,22 @@ class _LoginPageState extends State<LoginPage> {
 
           // Check if role matches selected role
           if (userProfile['role'] == _selectedRole) {
-            String userName = userProfile['full_name'] ?? 'User';
-
-            // Navigate first without showing message
+            // Navigate based on role
             switch (_selectedRole) {
               case 'admin':
                 Navigator.of(context).pushReplacementNamed('/admin');
-                // Show message after navigation with delay
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  if (mounted) {
-                    _showSuccessMessage('Welcome Admin: $userName');
-                  }
-                });
                 break;
               case 'owner':
                 Navigator.of(context).pushReplacementNamed('/owner');
-                // Show message after navigation with delay
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  if (mounted) {
-                    _showSuccessMessage('Welcome Owner: $userName');
-                  }
-                });
                 break;
               case 'user':
               default:
                 Navigator.of(context).pushReplacementNamed('/');
-                // Show message after navigation with delay
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  if (mounted) {
-                    _showSuccessMessage('Welcome: $userName');
-                  }
-                });
                 break;
             }
           } else {
             _showErrorMessage(
-              'Invalid role! Your account role is: ${userProfile['role']}',
+              'Invalid credentials. Please check your role selection and try again.',
             );
             await AuthService.signOut();
           }
@@ -139,7 +218,70 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _loginWithGoogle() async {
-    _showErrorMessage('Social login not available. Please use email login.');
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+      _isGoogleAuthInProgress = true; // Set flag for Google OAuth
+    });
+
+    try {
+      // Start Supabase Google OAuth flow with account selection
+      final success = await AuthService.signInWithGoogle(
+        forceAccountSelection: true,
+      );
+
+      if (!success) {
+        _showErrorMessage('Failed to initiate Google sign-in.');
+        // Reset loading state only on failure
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _isGoogleAuthInProgress = false;
+          });
+        }
+      }
+      // On success, loading state will be reset by auth handler
+    } catch (error) {
+      print('Google sign-in error: $error');
+      _showErrorMessage('Google sign-in failed. Please try again.');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isGoogleAuthInProgress = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _navigateBasedOnRole(String userName) async {
+    // Clear any existing snackbars before navigation
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+    }
+
+    // Dismiss any loading state
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+
+    // Navigate based on selected role
+    switch (_selectedRole) {
+      case 'admin':
+        Navigator.of(context).pushReplacementNamed('/admin');
+        break;
+      case 'owner':
+        Navigator.of(context).pushReplacementNamed('/owner');
+        break;
+      case 'user':
+      default:
+        Navigator.of(context).pushReplacementNamed('/');
+        break;
+    }
+
+    // No welcome message after navigation to avoid persistent alerts
   }
 
   Future<void> _loginWithFacebook() async {
@@ -151,18 +293,7 @@ class _LoginPageState extends State<LoginPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showSuccessMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
+        duration: const Duration(seconds: 2), // Reduced from 4 to 2 seconds
         behavior: SnackBarBehavior.floating,
       ),
     );
