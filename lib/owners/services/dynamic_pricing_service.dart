@@ -203,7 +203,7 @@ class DynamicPricingService {
     await saveDiscountSchedules(activeSchedules);
   }
 
-  // Validate discount schedule
+  // Validate discount schedule (simplified for date-only logic)
   Future<String?> validateDiscountSchedule(DiscountSchedule schedule) async {
     // Check if start date is in the future
     final now = DateTime.now();
@@ -218,18 +218,15 @@ class DynamicPricingService {
       return 'Discount can only be scheduled for future dates';
     }
     
-    // Check if end date is after start date
-    if (schedule.endDate != null && schedule.endDate!.isBefore(schedule.startDate)) {
-      return 'End date must be after start date';
+    // Check if end date is after start date (must be at least 1 day later)
+    if (schedule.endDate != null) {
+      if (schedule.endDate!.isBefore(schedule.startDate) || 
+          schedule.endDate!.isAtSameMomentAs(schedule.startDate)) {
+        return 'End date must be after start date';
+      }
     }
     
-    // Check if start time is before end time
-    final startMinutes = schedule.startTime.hour * 60 + schedule.startTime.minute;
-    final endMinutes = schedule.endTime.hour * 60 + schedule.endTime.minute;
-    
-    if (startMinutes >= endMinutes) {
-      return 'Start time must be before end time';
-    }
+    // Note: Time validation removed since UI uses full-day (00:00-23:59) automatically
     
     // Check discount value validity
     if (schedule.discountValue <= 0) {

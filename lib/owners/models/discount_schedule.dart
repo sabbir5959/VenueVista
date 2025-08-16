@@ -34,7 +34,7 @@ class DiscountSchedule {
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
-  // Check if the discount is currently active
+  // Check if the discount is currently active (simplified for full-day discounts)
   bool get isActive {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -47,36 +47,23 @@ class DiscountSchedule {
       isInDateRange = isInDateRange && startDate.isAtSameMomentAs(today);
     }
     
-    if (!isInDateRange) return false;
-    
-    // Check if current time is within the time range
-    final currentTime = TimeOfDay.fromDateTime(now);
-    final currentMinutes = currentTime.hour * 60 + currentTime.minute;
-    final startMinutes = startTime.hour * 60 + startTime.minute;
-    final endMinutes = endTime.hour * 60 + endTime.minute;
-    
-    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+    // Since we use full-day discounts (00:00-23:59), no time check needed
+    return isInDateRange;
   }
 
-  // Check if this discount applies to a specific booking time
+  // Check if this discount applies to a specific booking (simplified for full-day)
   bool appliesToBooking(DateTime bookingDateTime, bool isTeamBooking) {
     if (isTeamBooking && !applyToTeams) return false;
     if (!isTeamBooking && !applyToIndividual) return false;
     
     final bookingDate = DateTime(bookingDateTime.year, bookingDateTime.month, bookingDateTime.day);
     
-    // Check date range
+    // Check date range only (no time check)
     if (bookingDate.isBefore(startDate)) return false;
     if (endDate != null && bookingDate.isAfter(endDate!)) return false;
     if (endDate == null && !bookingDate.isAtSameMomentAs(startDate)) return false;
     
-    // Check time range
-    final bookingTime = TimeOfDay.fromDateTime(bookingDateTime);
-    final bookingMinutes = bookingTime.hour * 60 + bookingTime.minute;
-    final startMinutes = startTime.hour * 60 + startTime.minute;
-    final endMinutes = endTime.hour * 60 + endTime.minute;
-    
-    return bookingMinutes >= startMinutes && bookingMinutes <= endMinutes;
+    return true; // Discount applies for the entire day
   }
 
   // Calculate discounted price
@@ -97,11 +84,11 @@ class DiscountSchedule {
     }
   }
 
-  // Check if this discount conflicts with another discount
+  // Check if this discount conflicts with another discount (date-only)
   bool conflictsWith(DiscountSchedule other) {
     if (allowOverlapping || other.allowOverlapping) return false;
     
-    // Check date overlap
+    // Check date overlap only (no time check)
     bool dateOverlap = false;
     if (endDate == null && other.endDate == null) {
       dateOverlap = startDate.isAtSameMomentAs(other.startDate);
@@ -113,15 +100,8 @@ class DiscountSchedule {
       dateOverlap = !startDate.isAfter(other.endDate!) && !endDate!.isBefore(other.startDate);
     }
     
-    if (!dateOverlap) return false;
-    
-    // Check time overlap
-    final startMinutes = startTime.hour * 60 + startTime.minute;
-    final endMinutes = endTime.hour * 60 + endTime.minute;
-    final otherStartMinutes = other.startTime.hour * 60 + other.startTime.minute;
-    final otherEndMinutes = other.endTime.hour * 60 + other.endTime.minute;
-    
-    return !(startMinutes >= otherEndMinutes || endMinutes <= otherStartMinutes);
+    // Since all discounts are full-day (00:00-23:59), date overlap = conflict
+    return dateOverlap;
   }
 
   // Convert to Map for storage

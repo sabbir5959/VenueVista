@@ -213,7 +213,7 @@ class TournamentListPage extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.lock, color: Colors.red),
                         onPressed: () {
-                          // Close registration
+                      
                         },
                       ),
                     ],
@@ -222,7 +222,7 @@ class TournamentListPage extends StatelessWidget {
                     ? IconButton(
                         icon: const Icon(Icons.people, color: Colors.green),
                         onPressed: () {
-                          // View participants
+                          
                         },
                       )
                     : const Icon(Icons.chevron_right, color: Colors.grey),

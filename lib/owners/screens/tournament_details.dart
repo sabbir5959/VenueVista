@@ -273,7 +273,7 @@ class TournamentDetailsPage extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          // Navigate to edit tournament page
+                          //  to edit tournament page
                           Navigator.push(
                             context,
                             MaterialPageRoute(
