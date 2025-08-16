@@ -6,6 +6,7 @@ import 'screens/login_page.dart';
 import 'screens/registration_page.dart';
 import 'admin/screens/admin_dashboard.dart';
 import 'owners/screens/owner_dashboard.dart';
+import 'users/dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,9 +32,10 @@ class MyApp extends StatelessWidget {
       title: 'VenueVista',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.green, useMaterial3: true),
-      initialRoute: '/',
+      initialRoute: '/landing',
       routes: {
-        '/': (context) => const LandingPage(),
+        '/': (context) => const HomeActivity(),
+        '/landing': (context) => const LandingPage(),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegistrationPage(),
         '/admin': (context) => const AdminDashboard(),

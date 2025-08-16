@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -90,21 +91,72 @@ class _RegistrationPageState extends State<RegistrationPage> {
       });
 
       try {
-        // Demo registration - just show success and navigate
-        await Future.delayed(
-          const Duration(seconds: 1),
-        ); // Simulate registration delay
+        String email = _emailController.text.trim();
+        String password = _passwordController.text.trim();
+        String fullName = _nameController.text.trim();
+        String phone = _phoneController.text.trim();
 
+        // Sign up with Supabase Auth with metadata
+        final response = await Supabase.instance.client.auth.signUp(
+          email: email,
+          password: password,
+          data: {
+            'full_name': fullName,
+            'role': 'user', // Default role for all registrations
+          },
+        );
+
+        if (response.user != null) {
+          // Wait a moment for trigger to create profile
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Update user profile with phone number if provided
+          if (phone.isNotEmpty) {
+            await Supabase.instance.client
+                .from('user_profiles')
+                .update({
+                  'phone': phone,
+                  'updated_at': DateTime.now().toIso8601String(),
+                })
+                .eq('id', response.user!.id);
+          }
+
+          if (mounted) {
+            _showSuccessMessage(
+              'Registration successful! 🎉\nYou can now login with your credentials.',
+            );
+            // Clear form
+            _nameController.clear();
+            _emailController.clear();
+            _phoneController.clear();
+            _passwordController.clear();
+            _confirmPasswordController.clear();
+            setState(() {
+              _agreeToTerms = false;
+            });
+
+            // Navigate to login page after delay
+            Future.delayed(const Duration(seconds: 2), () {
+              if (mounted) {
+                Navigator.pushReplacementNamed(context, '/login');
+              }
+            });
+          }
+        }
+      } on AuthException catch (error) {
         if (mounted) {
-          _showSuccessMessage(
-            'Registration successful! Welcome to VenueVista!',
-          );
-          // Auto-login after successful registration
-          Navigator.pushReplacementNamed(context, '/');
+          print('Auth Error: ${error.message}');
+          _showErrorMessage('Registration failed: ${error.message}');
+        }
+      } on PostgrestException catch (error) {
+        if (mounted) {
+          print('Database Error: ${error.message}');
+          _showErrorMessage('Database error: ${error.message}');
         }
       } catch (error) {
         if (mounted) {
-          _showErrorMessage('An unexpected error occurred. Please try again.');
+          print('General Error: $error');
+          _showErrorMessage('Registration failed. Please try again.');
         }
       } finally {
         if (mounted) {

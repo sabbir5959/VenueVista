@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -16,13 +17,16 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
+  String _selectedRole = 'user'; // Default role
 
-  // Demo credentials
-  final List<Map<String, String>> _demoUsers = [
-    {'email': 'kawsar47@gmail.com', 'password': 'kawsar47', 'role': 'user'},
-    {'email': 'admin@gmail.com', 'password': 'admin00', 'role': 'admin'},
-    {'email': 'tasnuva@gmail.com', 'password': 'tasnuva103', 'role': 'owner'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Clear any existing snackbars when login page loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+    });
+  }
 
   @override
   void dispose() {
@@ -61,34 +65,71 @@ class _LoginPageState extends State<LoginPage> {
         String email = _emailController.text.trim();
         String password = _passwordController.text.trim();
 
-        // Local demo authentication
-        final user = _demoUsers.firstWhere(
-          (u) => u['email'] == email && u['password'] == password,
-          orElse: () => {},
+        // Authenticate with Supabase
+        final response = await Supabase.instance.client.auth.signInWithPassword(
+          email: email,
+          password: password,
         );
 
-        if (user.isNotEmpty) {
-          final userRole = user['role'];
-          switch (userRole) {
-            case 'admin':
-              _showSuccessMessage('Admin login successful! Welcome Admin.');
-              Navigator.of(context).pushReplacementNamed('/admin');
-              break;
-            case 'owner':
-              _showSuccessMessage('Owner login successful! Welcome Owner.');
-              Navigator.of(context).pushReplacementNamed('/owner');
-              break;
-            case 'user':
-            default:
-              _showSuccessMessage('Login successful! Welcome to VenueVista.');
-              Navigator.of(context).pushReplacementNamed('/user');
-              break;
+
+        if (response.user != null) {
+          // Get user profile from database
+          final userProfile =
+              await Supabase.instance.client
+                  .from('user_profiles')
+                  .select('*')
+                  .eq('id', response.user!.id)
+                  .single();
+
+          // Check if role matches selected role
+          if (userProfile['role'] == _selectedRole) {
+            String userName = userProfile['full_name'] ?? 'User';
+
+            // Navigate first without showing message
+            switch (_selectedRole) {
+              case 'admin':
+                Navigator.of(context).pushReplacementNamed('/admin');
+                // Show message after navigation with delay
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  if (mounted) {
+                    _showSuccessMessage('Welcome Admin: $userName');
+                  }
+                });
+                break;
+              case 'owner':
+                Navigator.of(context).pushReplacementNamed('/owner');
+                // Show message after navigation with delay
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  if (mounted) {
+                    _showSuccessMessage('Welcome Owner: $userName');
+                  }
+                });
+                break;
+              case 'user':
+              default:
+                Navigator.of(context).pushReplacementNamed('/');
+                // Show message after navigation with delay
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  if (mounted) {
+                    _showSuccessMessage('Welcome: $userName');
+                  }
+                });
+                break;
+            }
+          } else {
+            _showErrorMessage(
+              'Invalid role! Your account role is: ${userProfile['role']}',
+            );
+            await Supabase.instance.client.auth.signOut();
           }
-        } else {
-          _showErrorMessage('Invalid email or password!');
         }
+      } on AuthException catch (error) {
+        _showErrorMessage('Login failed: ${error.message}');
+      } on PostgrestException catch (_) {
+        _showErrorMessage('Account not found or inactive');
+        await Supabase.instance.client.auth.signOut();
       } catch (error) {
-        _showErrorMessage('An unexpected error occurred. Please try again.');
+        _showErrorMessage('Login failed. Please try again.');
       } finally {
         setState(() {
           _isLoading = false;
@@ -100,50 +141,32 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _loginWithGoogle() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Simulate Google login
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      _showSuccessMessage('Google login successful!');
-      Navigator.of(context).pushReplacementNamed('/admin');
-    }
-
-    setState(() {
-      _isLoading = false;
-    });
+    _showErrorMessage('Social login not available. Please use email login.');
   }
 
   Future<void> _loginWithFacebook() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Simulate Facebook login
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      _showSuccessMessage('Facebook login successful!');
-      Navigator.of(context).pushReplacementNamed('/admin');
-    }
-
-    setState(() {
-      _isLoading = false;
-    });
+    _showErrorMessage('Social login not available. Please use email login.');
   }
 
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
   void _showSuccessMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -219,11 +242,9 @@ class _LoginPageState extends State<LoginPage> {
                                 color: Colors.red,
                                 size: 20,
                               ),
-                              label: const Flexible(
-                                child: Text(
-                                  'Google',
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                              label: const Text(
+                                'Google',
+                                overflow: TextOverflow.ellipsis,
                               ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.grey[700],
@@ -249,11 +270,9 @@ class _LoginPageState extends State<LoginPage> {
                                 color: Colors.blue[700],
                                 size: 20,
                               ),
-                              label: const Flexible(
-                                child: Text(
-                                  'Facebook',
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                              label: const Text(
+                                'Facebook',
+                                overflow: TextOverflow.ellipsis,
                               ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.grey[700],
@@ -297,6 +316,51 @@ class _LoginPageState extends State<LoginPage> {
                         key: _formKey,
                         child: Column(
                           children: [
+                            // Role Selection Dropdown
+                            DropdownButtonFormField<String>(
+                              value: _selectedRole,
+                              decoration: InputDecoration(
+                                labelText: 'Select Role',
+                                prefixIcon: const Icon(Icons.person_outline),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.green[700]!,
+                                  ),
+                                ),
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'user',
+                                  child: Text('User'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'admin',
+                                  child: Text('Admin'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'owner',
+                                  child: Text('Owner'),
+                                ),
+                              ],
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _selectedRole = newValue!;
+                                });
+                              },
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please select a role';
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
                             // Email Field
                             TextFormField(
                               controller: _emailController,
