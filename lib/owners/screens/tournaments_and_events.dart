@@ -39,7 +39,7 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
             ),
             const SizedBox(height: 20),
             
-            // Ongoing Tournaments Card (Green)
+            
             _buildCategoryCard(
               'Ongoing Tournaments',
               'Currently active tournaments',
@@ -50,7 +50,7 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
             
             const SizedBox(height: 16),
             
-            // Upcoming Tournaments Card (Blue)
+            
             _buildCategoryCard(
               'Upcoming Tournaments',
               'Tournaments scheduled for future',
@@ -61,7 +61,7 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
             
             const SizedBox(height: 16),
             
-            // Past Tournaments Card (Red)
+           
             _buildCategoryCard(
               'Past Tournaments',
               'Completed tournaments',

@@ -277,7 +277,7 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
                     label: Text(
                       _endDate != null
                           ? DateFormat('MMM dd, yyyy').format(_endDate!)
-                          : 'End Date (Optional)',
+                          : 'End Date',
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12),
                     ),
@@ -354,7 +354,7 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-
+    // show future discounts only
     final futureDiscounts = _discountSchedules.where((discount) {
       return discount.startDate.isAfter(DateTime.now());
     }).toList();
@@ -565,8 +565,12 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
     
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: isStartDate ? tomorrow : (_startDate ?? tomorrow),
-      firstDate: tomorrow,
+      initialDate: isStartDate 
+          ? tomorrow 
+          : (_startDate != null ? _startDate!.add(const Duration(days: 1)) : tomorrow),
+      firstDate: isStartDate 
+          ? tomorrow 
+          : (_startDate != null ? _startDate!.add(const Duration(days: 1)) : tomorrow),
       lastDate: DateTime(now.year + 2),
     );
 
@@ -574,11 +578,16 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
       setState(() {
         if (isStartDate) {
           _startDate = pickedDate;
-          // Reset end date if it's before the new start date
-          if (_endDate != null && _endDate!.isBefore(pickedDate)) {
+          // Reset end date if it's before or same as the new start date
+          if (_endDate != null && (_endDate!.isBefore(pickedDate) || _endDate!.isAtSameMomentAs(pickedDate))) {
             _endDate = null;
           }
         } else {
+          // Additional validation: End date must be after start date
+          if (_startDate != null && !pickedDate.isAfter(_startDate!)) {
+            _showError('End date must be after start date');
+            return;
+          }
           _endDate = pickedDate;
         }
       });
@@ -642,6 +651,14 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
       return;
     }
     
+    // Validate end date 
+    if (_endDate != null) {
+      if (_endDate!.isBefore(_startDate!) || _endDate!.isAtSameMomentAs(_startDate!)) {
+        _showError('End date must be after start date');
+        return;
+      }
+    }
+    
     if (_discountValueController.text.isEmpty) {
       _showError('Please enter a discount value');
       return;
@@ -663,6 +680,7 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
         id: DateTime.now().millisecondsSinceEpoch,
         startDate: _startDate!,
         endDate: _endDate,
+        // Fixed times for full-day discounts - shows date pickers
         startTime: const TimeOfDay(hour: 0, minute: 0), // All day start
         endTime: const TimeOfDay(hour: 23, minute: 59), // All day end
         discountType: _discountType == 'percentage' ? DiscountType.percentage : DiscountType.flat,
@@ -672,7 +690,7 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
         applyToTeams: true,
         allowOverlapping: false,
       );
-
+      //save using service
       await _pricingService.addDiscountSchedule(newDiscount);
       await _loadDiscountSchedules();
 

@@ -71,6 +71,7 @@ class _LoginPageState extends State<LoginPage> {
           password: password,
         );
 
+
         if (response.user != null) {
           // Get user profile from database
           final userProfile =
