@@ -9,6 +9,7 @@ class GroundDetails extends StatefulWidget {
   final String location;
   final String description;
   final String price;
+  final String groundPayment;
   final String rating;
   final String facilities;
   final String size;
@@ -20,6 +21,7 @@ class GroundDetails extends StatefulWidget {
     required this.location,
     required this.description,
     required this.price,
+    required this.groundPayment,
     required this.rating,
     required this.facilities,
     required this.size,
@@ -32,11 +34,10 @@ class GroundDetails extends StatefulWidget {
 class _GroundDetailsState extends State<GroundDetails> {
   String? selectedTimeSlot;
   final List<String> timeSlots = List.generate(13, (index) {
-    final startHour = index + 9; // Starts from 9 AM
+    final startHour = index + 9;
     return '${startHour.toString().padLeft(2, '0')}:00 to ${(startHour + 1).toString().padLeft(2, '0')}:00';
   });
 
-  // Sample suggestions data — you can replace this with real data later
   final List<Map<String, String>> suggestions = [
     {
       'name': 'Greenfield Ground',
@@ -110,7 +111,6 @@ class _GroundDetailsState extends State<GroundDetails> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ground Image
             Container(
               height: 250,
               width: double.infinity,
@@ -121,8 +121,6 @@ class _GroundDetailsState extends State<GroundDetails> {
                 ),
               ),
             ),
-
-            // Ground Details
             Container(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -152,13 +150,22 @@ class _GroundDetailsState extends State<GroundDetails> {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.star, color: Colors.amber, size: 20),
+                            Row(
+                              children: List.generate(5, (index) {
+                                return Icon(
+                                  index < 4 ? Icons.star : Icons.star_border,
+                                  color: const Color.fromARGB(255, 252, 198, 1),
+                                  size: 16,
+                                );
+                              }),
+                            ),
                             SizedBox(width: 4),
                             Text(
-                              widget.rating,
+                              '4.0',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.green.shade900,
+                                fontSize: 14,
                               ),
                             ),
                           ],
@@ -194,8 +201,6 @@ class _GroundDetailsState extends State<GroundDetails> {
                     ),
                   ),
                   const SizedBox(height: 24),
-
-                  // Ground Info Cards
                   Row(
                     children: [
                       Expanded(
@@ -216,8 +221,6 @@ class _GroundDetailsState extends State<GroundDetails> {
                     ],
                   ),
                   const SizedBox(height: 24),
-
-                  // Facilities
                   Text(
                     'Facilities',
                     style: TextStyle(
@@ -250,8 +253,6 @@ class _GroundDetailsState extends State<GroundDetails> {
                         }).toList(),
                   ),
                   const SizedBox(height: 24),
-
-                  // Time Slots Section
                   Text(
                     'Available Time Slots',
                     style: TextStyle(
@@ -261,8 +262,6 @@ class _GroundDetailsState extends State<GroundDetails> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Time Slots Grid
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -318,69 +317,6 @@ class _GroundDetailsState extends State<GroundDetails> {
                     },
                   ),
                   const SizedBox(height: 32),
-
-                  // Rating Section
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Rate This Ground',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade900,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Share your experience with other players',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.green.shade700,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              for (int i = 1; i <= 5; i++)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                  ),
-                                  child: InkWell(
-                                    onTap: () {
-                                      showDialog(
-                                        context: context,
-                                        builder:
-                                            (context) => _RatingDialog(
-                                              groundName: widget.name,
-                                            ),
-                                      );
-                                    },
-                                    child: Icon(
-                                      Icons.star,
-                                      size: 40,
-                                      color: Colors.amber,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ** NEW: Suggestions Section **
                   const SizedBox(height: 32),
                   Text(
                     'You might also like',
@@ -400,10 +336,7 @@ class _GroundDetailsState extends State<GroundDetails> {
                       itemBuilder: (context, index) {
                         final suggestion = suggestions[index];
                         return GestureDetector(
-                          onTap: () {
-                            // Optional: Navigate to the suggestion ground details page
-                            // Navigator.push(...);
-                          },
+                          onTap: () {},
                           child: Container(
                             width: 140,
                             decoration: BoxDecoration(
@@ -479,6 +412,71 @@ class _GroundDetailsState extends State<GroundDetails> {
                       },
                     ),
                   ),
+                  const SizedBox(height: 32),
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Rate This Ground',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade900,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Share your experience with other players',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              for (int i = 1; i <= 5; i++)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  child: InkWell(
+                                    onTap: () {
+                                      showDialog(
+                                        context: context,
+                                        builder:
+                                            (context) => _RatingDialog(
+                                              groundName: widget.name,
+                                            ),
+                                      );
+                                    },
+                                    child: Icon(
+                                      Icons.star,
+                                      size: 40,
+                                      color: const Color.fromARGB(
+                                        255,
+                                        187,
+                                        233,
+                                        186,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -503,11 +501,11 @@ class _GroundDetailsState extends State<GroundDetails> {
               selectedTimeSlot == null
                   ? null
                   : () {
-                    // Create booking data
                     final bookingData = {
                       'name': widget.name,
                       'location': widget.location,
                       'price': widget.price,
+                      'groundPayment': widget.groundPayment,
                       'timeSlot': selectedTimeSlot!,
                       'date':
                           DateTime.now().day.toString() +
@@ -520,8 +518,6 @@ class _GroundDetailsState extends State<GroundDetails> {
                       'rating': widget.rating,
                       'description': widget.description,
                     };
-
-                    // Navigate to payment page
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -600,7 +596,7 @@ class _RatingDialogState extends State<_RatingDialog> {
                 return IconButton(
                   icon: Icon(
                     index < _rating ? Icons.star : Icons.star_border,
-                    color: Colors.amber,
+                    color: const Color.fromARGB(255, 246, 165, 1),
                     size: 36,
                   ),
                   onPressed: () {
@@ -644,7 +640,6 @@ class _RatingDialogState extends State<_RatingDialog> {
                       _rating == 0
                           ? null
                           : () {
-                            // TODO: Submit rating and feedback to backend
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
