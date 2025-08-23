@@ -114,14 +114,24 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
   void _filterData() {
     setState(() {
       if (_startDate != null && _endDate != null) {
+        // Get date only (without time) for comparison
+        final startDateOnly = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+        final endDateOnly = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+        
         _filteredTournaments = _tournaments.where((tournament) {
-          return tournament.date.isAfter(_startDate!.subtract(const Duration(days: 1))) &&
-                 tournament.date.isBefore(_endDate!.add(const Duration(days: 1)));
+          final tournamentDateOnly = DateTime(tournament.date.year, tournament.date.month, tournament.date.day);
+          return (tournamentDateOnly.isAtSameMomentAs(startDateOnly) || 
+                  tournamentDateOnly.isAfter(startDateOnly)) &&
+                 (tournamentDateOnly.isAtSameMomentAs(endDateOnly) || 
+                  tournamentDateOnly.isBefore(endDateOnly));
         }).toList();
 
         _filteredBookings = _dailyBookings.where((booking) {
-          return booking.date.isAfter(_startDate!.subtract(const Duration(days: 1))) &&
-                 booking.date.isBefore(_endDate!.add(const Duration(days: 1)));
+          final bookingDateOnly = DateTime(booking.date.year, booking.date.month, booking.date.day);
+          return (bookingDateOnly.isAtSameMomentAs(startDateOnly) || 
+                  bookingDateOnly.isAfter(startDateOnly)) &&
+                 (bookingDateOnly.isAtSameMomentAs(endDateOnly) || 
+                  bookingDateOnly.isBefore(endDateOnly));
         }).toList();
       } else {
         _filteredTournaments = _tournaments;
