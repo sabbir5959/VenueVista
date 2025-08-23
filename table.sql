@@ -19,6 +19,16 @@ CREATE TABLE public.user_profiles (
 
 
 
+
+
+
+
+
+
+
+
+
+
 CREATE TABLE public.venues (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   owner_id uuid NOT NULL,
