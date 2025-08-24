@@ -63,7 +63,7 @@ class AdminOverviewPage extends StatelessWidget {
                       mainAxisSpacing: 16,
                       children: [
                         _buildStatCard(
-                          'Total Players',
+                          'Total Users',
                           '2,547',
                           Icons.people_outline,
                           AppColors.primary,

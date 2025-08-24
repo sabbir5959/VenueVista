@@ -109,7 +109,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
 
             SizedBox(height: isMobile ? 20 : 32),
 
-            // Stats Cards (Clickable Filters)
+            
             GridView.count(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
@@ -155,7 +155,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
 
             SizedBox(height: isMobile ? 20 : 24),
 
-            // Events List
+            
             Container(
               decoration: BoxDecoration(
                 color: AppColors.surface,
@@ -170,7 +170,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
               ),
               child: Column(
                 children: [
-                  // List Header
+                  
                   Container(
                     padding: EdgeInsets.all(isMobile ? 16 : 20),
                     decoration: BoxDecoration(
@@ -204,7 +204,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                     ),
                   ),
 
-                  // Events List
+                  
                   ListView.separated(
                     shrinkWrap: true,
                     physics: NeverScrollableScrollPhysics(),
@@ -220,7 +220,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                     },
                   ),
 
-                  // Pagination
+                
                   if (totalPages > 1)
                     Container(
                       padding: EdgeInsets.all(isMobile ? 16 : 20),
@@ -234,7 +234,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Previous Button
+                          
                           IconButton(
                             onPressed:
                                 _currentPage > 1
@@ -247,7 +247,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                                     : AppColors.textSecondary,
                           ),
 
-                          // Page Numbers
+                         
                           ...List.generate(totalPages, (index) {
                             final page = index + 1;
                             final isCurrentPage = page == _currentPage;
@@ -289,7 +289,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                             );
                           }),
 
-                          // Next Button
+                          
                           IconButton(
                             onPressed:
                                 _currentPage < totalPages
@@ -329,7 +329,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
       onTap: () {
         setState(() {
           _selectedStatus = filterStatus;
-          _currentPage = 1; // Reset to first page when filter changes
+          _currentPage = 1; 
         });
       },
       borderRadius: BorderRadius.circular(16),
@@ -622,7 +622,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
             ),
           ),
           SizedBox(width: isMobile ? 8 : 12),
-          // Show Details Button
+          
           InkWell(
             onTap: () => _showEventDetails(event),
             borderRadius: BorderRadius.circular(8),
@@ -1010,7 +1010,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
 
                       SizedBox(height: 24),
 
-                      // Filter Section
+                     
                       Text(
                         'Filter Settings',
                         style: TextStyle(
@@ -1124,7 +1124,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
 
                       SizedBox(height: 16),
 
-                      // Time Period Filters
+                      
                       Text(
                         'Time Period',
                         style: TextStyle(

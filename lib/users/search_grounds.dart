@@ -37,6 +37,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       'description':
           'Premier indoor football facility with FIFA-approved turf and professional lighting. Perfect for 5v5 and 7v7 matches.',
       'price': '2000/hour',
+      'groundPayment': '400',
       'rating': '4.8',
       'facilities':
           'Changing Rooms, Showers, Parking, Floodlights, Refreshments',
@@ -50,6 +51,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       'description':
           'State-of-the-art outdoor football ground with natural grass. Ideal for full-size matches and training sessions.',
       'price': '2500/hour',
+      'groundPayment': '600',
       'rating': '4.9',
       'facilities':
           'Locker Rooms, Cafe, First Aid, Training Equipment, Spectator Seating',
@@ -63,6 +65,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       'description':
           'Professional stadium with international standard facilities. Hosts major tournaments and events.',
       'price': '3000/hour',
+      'groundPayment': '750',
       'rating': '4.9',
       'facilities':
           'VIP Lounge, Media Room, Professional Lighting, Medical Center, Premium Seating',
@@ -76,6 +79,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       'description':
           'Multi-purpose sports facility with high-quality artificial turf. Suitable for both training and matches.',
       'price': '2200/hour',
+      'groundPayment': '500',
       'rating': '4.7',
       'facilities':
           'Training Equipment, Cafe, Changing Rooms, Floodlights, Parking',
@@ -89,6 +93,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       'description':
           'Indoor 5-a-side facility with climate control. Perfect for small group games and practice.',
       'price': '1800/hour',
+      'groundPayment': '350',
       'rating': '4.6',
       'facilities':
           'Air Conditioning, Lockers, Shop, First Aid, Water Dispensers',
@@ -102,6 +107,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       'description':
           'Community sports complex with multiple fields. Great for tournaments and events.',
       'price': '2400/hour',
+      'groundPayment': '550',
       'rating': '4.8',
       'facilities':
           'Multiple Fields, Event Space, Cafeteria, Training Areas, Security',
@@ -115,19 +121,21 @@ class _SearchGroundsState extends State<SearchGrounds> {
       'description':
           'Eco-friendly facility with natural grass. Includes professional coaching services.',
       'price': '2300/hour',
+      'groundPayment': '520',
       'rating': '4.7',
       'facilities':
           'Professional Coaching, Equipment Rental, Gym, Refreshments, Analysis Room',
       'size': '100m x 64m',
     },
     {
-      'name': 'VictoryArena',
+      'name': 'Kings Valley',
       'image':
           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRBgJlu4IYS6mZEEyLToTSTSUd8DY5Yj0mCNW95wQe-VZUNe7QiOyA_nqrEFzkKWX71tyw&usqp=CAU',
       'location': 'Gulshan',
       'description':
           'Premium sports facility with hybrid grass technology. Hosts professional matches.',
       'price': '2800/hour',
+      'groundPayment': '650',
       'rating': '4.9',
       'facilities':
           'Premium Grass, Professional Setup, VIP Area, Video Analysis, Recovery Zone',
@@ -141,6 +149,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       'description':
           'Modern sports complex with latest amenities. Suitable for all skill levels.',
       'price': '2100/hour',
+      'groundPayment': '450',
       'rating': '4.6',
       'facilities':
           'Modern Equipment, Training Programs, Cafe, Shop, Physio Room',
@@ -154,6 +163,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       'description':
           'Versatile football facility with multiple pitch sizes. Perfect for various game formats.',
       'price': '2000/hour',
+      'groundPayment': '400',
       'rating': '4.7',
       'facilities':
           'Multiple Pitches, Training Zones, Changing Rooms, Floodlights, Parking',
@@ -346,18 +356,22 @@ class _SearchGroundsState extends State<SearchGrounds> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Date: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.green.shade900,
+                        Expanded(
+                          child: Text(
+                            'Date: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.green.shade900,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        SizedBox(width: 8),
                         Icon(
                           Icons.calendar_today,
                           color: Colors.green.shade900,
+                          size: 20,
                         ),
                       ],
                     ),
@@ -394,6 +408,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
                               location: ground['location']!,
                               description: ground['description']!,
                               price: ground['price']!,
+                              groundPayment: ground['groundPayment']!,
                               rating: ground['rating']!,
                               facilities: ground['facilities']!,
                               size: ground['size']!,
