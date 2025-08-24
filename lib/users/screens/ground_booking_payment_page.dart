@@ -26,7 +26,7 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
       backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
         title: const Text(
-          'Ground Booking Payment',
+          'Payment',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.green.shade700,
@@ -201,26 +201,29 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'bKash',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'bKash',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Pay with your bKash account',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
+                          Text(
+                            'Pay with your bKash account',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     if (selectedPaymentMethod == 'bKash')
                       Icon(
                         Icons.check_circle,
@@ -277,26 +280,29 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Nagad',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Nagad',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Pay with your Nagad account',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
+                          Text(
+                            'Pay with your Nagad account',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     if (selectedPaymentMethod == 'Nagad')
                       Icon(
                         Icons.check_circle,
@@ -481,6 +487,20 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
+                  'Ground Payment:',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+                Text(
+                  '৳${3000}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
                   'Transaction Fee:',
                   style: TextStyle(color: Colors.grey.shade600),
                 ),
@@ -499,7 +519,7 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  _calculateTotal(),
+                  "৳${3010}",
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -550,8 +570,32 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
         .replaceAll('৳', '')
         .replaceAll(',', '');
     final bookingAmount = int.tryParse(bookingFee) ?? 0;
-    final total = bookingAmount + 10; // Adding transaction fee
+    final groundPayment = _getGroundPaymentAmount();
+    final total =
+        bookingAmount +
+        groundPayment +
+        10; // Adding ground payment and transaction fee
     return '৳${total.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}';
+  }
+
+  String _getGroundPayment() {
+    final amount = _getGroundPaymentAmount();
+    return amount.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
+  }
+
+  int _getGroundPaymentAmount() {
+    // Ground payment is typically 20% of the booking fee or minimum ৳50
+    final bookingFee = widget.booking['price']
+        .replaceAll('৳', '')
+        .replaceAll(',', '');
+    final bookingAmount = int.tryParse(bookingFee) ?? 0;
+    final groundPayment = (bookingAmount * 0.2).round();
+    return groundPayment < 50
+        ? 50
+        : groundPayment; // Minimum ৳50 ground payment
   }
 
   void _processPayment() async {

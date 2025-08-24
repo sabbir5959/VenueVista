@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/app_colors.dart';
 import 'overview_page.dart';
 import 'users_page.dart';
@@ -80,10 +81,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           child: SafeArea(
             child: Column(
               children: [
-                // Top spacing
                 const SizedBox(height: 20),
 
-                // Drawer Header
                 Container(
                   height: 70,
                   margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -128,7 +127,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
                 const SizedBox(height: 20),
 
-                // Menu Items
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -216,7 +214,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                 ),
 
-                // Logout Button
                 Container(
                   margin: const EdgeInsets.all(16),
                   child: Material(
@@ -374,9 +371,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                ScaffoldMessenger.of(context).clearSnackBars();
+
+                await Supabase.instance.client.auth.signOut();
+
                 Navigator.of(context).pop();
-                Navigator.of(context).pushReplacementNamed('/login');
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
+import '../services/database_service.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -90,21 +93,72 @@ class _RegistrationPageState extends State<RegistrationPage> {
       });
 
       try {
-        // Demo registration - just show success and navigate
-        await Future.delayed(
-          const Duration(seconds: 1),
-        ); // Simulate registration delay
+        String email = _emailController.text.trim();
+        String password = _passwordController.text.trim();
+        String fullName = _nameController.text.trim();
+        String phone = _phoneController.text.trim();
 
+        // Sign up with Supabase Auth with metadata
+        final response = await Supabase.instance.client.auth.signUp(
+          email: email,
+          password: password,
+          data: {
+            'full_name': fullName,
+            'role': 'user', // Default role for all registrations
+          },
+        );
+
+        if (response.user != null) {
+          // Wait a moment for trigger to create profile
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Update user profile with phone number if provided
+          if (phone.isNotEmpty) {
+            await Supabase.instance.client
+                .from('user_profiles')
+                .update({
+                  'phone': phone,
+                  'updated_at': DateTime.now().toIso8601String(),
+                })
+                .eq('id', response.user!.id);
+          }
+
+          if (mounted) {
+            _showSuccessMessage(
+              'Registration successful! 🎉\nYou can now login with your credentials.',
+            );
+            // Clear form
+            _nameController.clear();
+            _emailController.clear();
+            _phoneController.clear();
+            _passwordController.clear();
+            _confirmPasswordController.clear();
+            setState(() {
+              _agreeToTerms = false;
+            });
+
+            // Navigate to login page after delay
+            Future.delayed(const Duration(seconds: 2), () {
+              if (mounted) {
+                Navigator.pushReplacementNamed(context, '/login');
+              }
+            });
+          }
+        }
+      } on AuthException catch (error) {
         if (mounted) {
-          _showSuccessMessage(
-            'Registration successful! Welcome to VenueVista!',
-          );
-          // Auto-login after successful registration
-          Navigator.pushReplacementNamed(context, '/');
+          print('Auth Error: ${error.message}');
+          _showErrorMessage('Registration failed: ${error.message}');
+        }
+      } on PostgrestException catch (error) {
+        if (mounted) {
+          print('Database Error: ${error.message}');
+          _showErrorMessage('Database error: ${error.message}');
         }
       } catch (error) {
         if (mounted) {
-          _showErrorMessage('An unexpected error occurred. Please try again.');
+          print('General Error: $error');
+          _showErrorMessage('Registration failed. Please try again.');
         }
       } finally {
         if (mounted) {
@@ -115,6 +169,102 @@ class _RegistrationPageState extends State<RegistrationPage> {
       }
     } else if (!_agreeToTerms) {
       _showErrorMessage('Please agree to Terms and Conditions');
+    }
+  }
+
+  Future<void> _signUpWithGoogle() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Sign up with Google using Supabase OAuth
+      final success = await AuthService.signInWithGoogle(
+        forceAccountSelection: true,
+      );
+
+      if (success) {
+        // Get the current user after successful OAuth
+        final user = AuthService.currentUser;
+
+        if (user != null) {
+          // Check if user already exists in database
+          try {
+            await DatabaseService.getUserProfile(user.id);
+            // User already exists, show message and redirect to login
+            if (mounted) {
+              _showSuccessMessage(
+                'Account already exists! Please use the login page.',
+              );
+              await AuthService.signOut();
+              Future.delayed(const Duration(seconds: 2), () {
+                if (mounted) {
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
+              });
+            }
+          } catch (e) {
+            // User doesn't exist, create new profile
+            final userName =
+                user.userMetadata?['full_name'] ??
+                user.userMetadata?['name'] ??
+                user.email?.split('@')[0] ??
+                'User';
+
+            try {
+              await DatabaseService.createUserProfile(
+                userId: user.id,
+                fullName: userName,
+                email: user.email!,
+                role: 'user', // Default role for Google sign-ups
+                phone: '', // Google sign-in doesn't provide phone
+              );
+
+              if (mounted) {
+                _showSuccessMessage(
+                  'Account created successfully! 🎉\nYou can now login with Google.',
+                );
+
+                // Navigate to login page after delay
+                Future.delayed(const Duration(seconds: 2), () {
+                  if (mounted) {
+                    Navigator.pushReplacementNamed(context, '/login');
+                  }
+                });
+              }
+            } catch (createError) {
+              if (mounted) {
+                _showErrorMessage(
+                  'Failed to create user profile. Please try again.',
+                );
+                await AuthService.signOut();
+              }
+            }
+          }
+        } else {
+          if (mounted) {
+            _showErrorMessage(
+              'Failed to get user information after Google sign-up.',
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          _showErrorMessage('Google sign-up was cancelled or failed.');
+        }
+      }
+    } catch (error) {
+      if (mounted) {
+        _showErrorMessage('Google sign-up failed. Please try again.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -390,6 +540,58 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                       ),
                                     )
                                     : const Text('Create Account'),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // OR Divider
+                        Row(
+                          children: [
+                            Expanded(child: Divider(color: Colors.grey[400])),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                'OR',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: Colors.grey[400])),
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Google Sign-Up Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              side: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            onPressed: _isLoading ? null : _signUpWithGoogle,
+                            icon: Icon(
+                              Icons.g_mobiledata,
+                              color: Colors.red,
+                              size: 24,
+                            ),
+                            label: Text(
+                              'Sign up with Google',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[700],
+                              ),
+                            ),
                           ),
                         ),
 

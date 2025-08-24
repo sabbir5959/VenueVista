@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android OAuth Client ID for deep linking -->
+    <string name="default_web_client_id">696710869192-b3lh9icra4971vsr9k1ntib61fugd6b1.apps.googleusercontent.com</string>
+</resources>
