@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import 'forgot_password_page.dart';
@@ -25,6 +26,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isHandlingAuth = false; // Flag to prevent duplicate auth handling
   String? _lastHandledUserId; // Track last handled user to prevent duplicates
   bool _isGoogleAuthInProgress = false; // Track if Google OAuth is in progress
+  bool _rememberMe = false; // Remember me checkbox state
 
   @override
   void initState() {
@@ -33,6 +35,9 @@ class _LoginPageState extends State<LoginPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ScaffoldMessenger.of(context).clearSnackBars();
     });
+
+    // Just load remember me state, no auto-login
+    _checkSavedLogin();
 
     // Listen for auth state changes (for Google OAuth)
     _setupAuthListener();
@@ -68,13 +73,68 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
+  // Check for saved login credentials
+  Future<void> _checkSavedLogin() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rememberMe = prefs.getBool('remember_me') ?? false;
+      final savedRole = prefs.getString('saved_role');
+
+      // Load saved role if available
+      if (savedRole != null) {
+        setState(() {
+          _selectedRole = savedRole;
+        });
+        print('🔄 Loaded saved role: $savedRole');
+      }
+
+      // Only set remember me checkbox state
+      if (rememberMe) {
+        setState(() {
+          _rememberMe = true;
+        });
+      }
+    } catch (e) {
+      print('Error checking saved login: $e');
+    }
+  }
+
+  // Save login credentials
+  Future<void> _saveCredentials() async {
+    if (_rememberMe) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('saved_email', _emailController.text.trim());
+      await prefs.setString('saved_password', _passwordController.text);
+      await prefs.setString('saved_role', _selectedRole);
+      await prefs.setBool('remember_me', true);
+    }
+  }
+
+  // Clear saved credentials
+  Future<void> _clearSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('saved_email');
+    await prefs.remove('saved_password');
+    await prefs.remove('saved_role');
+    await prefs.setBool('remember_me', false);
+  }
+
   Future<void> _handleSuccessfulAuth(User user) async {
     try {
+      // Clear logout flag on successful authentication
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_out', false);
+
       // Check if user profile exists in database
       final userProfile = await DatabaseService.getUserProfile(user.id);
 
       // User exists, check role match
       if (userProfile['role'] == _selectedRole) {
+        // Save credentials if remember me is checked (for Google OAuth)
+        if (_rememberMe) {
+          await _saveCredentials();
+        }
+
         String userName =
             userProfile['full_name'] ??
             user.userMetadata?['full_name'] ??
@@ -106,6 +166,11 @@ class _LoginPageState extends State<LoginPage> {
             role: 'user',
             phone: '', // Google sign-in doesn't provide phone
           );
+
+          // Save credentials if remember me is checked (for Google OAuth new user)
+          if (_rememberMe) {
+            await _saveCredentials();
+          }
 
           await _navigateBasedOnRole(userName);
         } catch (createError) {
@@ -180,6 +245,13 @@ class _LoginPageState extends State<LoginPage> {
 
           // Check if role matches selected role
           if (userProfile['role'] == _selectedRole) {
+            // Save credentials if remember me is checked
+            if (_rememberMe) {
+              await _saveCredentials();
+            } else {
+              await _clearSavedCredentials();
+            }
+
             // Navigate based on role
             switch (_selectedRole) {
               case 'admin':
@@ -284,10 +356,6 @@ class _LoginPageState extends State<LoginPage> {
     // No welcome message after navigation to avoid persistent alerts
   }
 
-  Future<void> _loginWithFacebook() async {
-    _showErrorMessage('Social login not available. Please use email login.');
-  }
-
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -331,10 +399,13 @@ class _LoginPageState extends State<LoginPage> {
                           shape: BoxShape.circle,
                           color: Colors.green[50],
                         ),
-                        child: Icon(
-                          Icons.person,
-                          size: 60,
-                          color: Colors.green[700],
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/icons/venue.png',
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
 
@@ -358,87 +429,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
 
                       const SizedBox(height: 32),
-
-                      // Social Login Buttons
-                      Row(
-                        children: [
-                          // Google Login Button
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _isLoading ? null : _loginWithGoogle,
-                              icon: Icon(
-                                Icons.g_mobiledata,
-                                color: Colors.red,
-                                size: 20,
-                              ),
-                              label: const Text(
-                                'Google',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.grey[700],
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                side: BorderSide(color: Colors.grey[300]!),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(width: 16),
-
-                          // Facebook Login Button
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _isLoading ? null : _loginWithFacebook,
-                              icon: Icon(
-                                Icons.facebook,
-                                color: Colors.blue[700],
-                                size: 20,
-                              ),
-                              label: const Text(
-                                'Facebook',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.grey[700],
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                side: BorderSide(color: Colors.grey[300]!),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Divider with "OR"
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: Colors.grey[300])),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'OR',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Expanded(child: Divider(color: Colors.grey[300])),
-                        ],
-                      ),
-
-                      const SizedBox(height: 24),
 
                       // Login Form
                       Form(
@@ -545,30 +535,46 @@ class _LoginPageState extends State<LoginPage> {
                               validator: _validatePassword,
                             ),
 
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 16),
 
-                            // Forgot Password Link
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (context) =>
-                                              const ForgotPasswordPage(),
-                                    ),
-                                  );
-                                },
-                                child: Text(
-                                  'Forgot Password?',
-                                  style: TextStyle(color: Colors.green[700]),
+                            // Remember Me Checkbox
+                            Row(
+                              children: [
+                                Checkbox(
+                                  value: _rememberMe,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _rememberMe = value ?? false;
+                                    });
+                                  },
+                                  activeColor: Colors.green[700],
                                 ),
-                              ),
+                                const Text(
+                                  'Remember me',
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                                const Spacer(),
+                                // Forgot Password Link
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) =>
+                                                const ForgotPasswordPage(),
+                                      ),
+                                    );
+                                  },
+                                  child: Text(
+                                    'Forgot Password?',
+                                    style: TextStyle(color: Colors.green[700]),
+                                  ),
+                                ),
+                              ],
                             ),
 
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 8),
 
                             // Login Button
                             SizedBox(
@@ -603,6 +609,53 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Divider with "OR"
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.grey[300])),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'OR',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.grey[300])),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Google Login Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoading ? null : _loginWithGoogle,
+                          icon: Icon(
+                            Icons.g_mobiledata,
+                            color: Colors.red,
+                            size: 20,
+                          ),
+                          label: const Text(
+                            'Continue with Google',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.grey[700],
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            side: BorderSide(color: Colors.grey[300]!),
+                          ),
                         ),
                       ),
 

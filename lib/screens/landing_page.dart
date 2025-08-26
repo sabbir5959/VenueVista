@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
@@ -10,348 +11,202 @@ class LandingPage extends StatefulWidget {
 
 class _LandingPageState extends State<LandingPage>
     with TickerProviderStateMixin {
-  late AnimationController _mainController;
-  late AnimationController _backgroundController;
-  late AnimationController _progressController;
-
-  late Animation<double> _logoScaleAnimation;
-  late Animation<double> _logoOpacityAnimation;
-  late Animation<Offset> _logoSlideAnimation;
-  late Animation<double> _textFadeAnimation;
-  late Animation<Offset> _textSlideAnimation;
-  late Animation<double> _backgroundAnimation;
-  late Animation<double> _progressAnimation;
+  late AnimationController _loadingController;
+  late Animation<double> _loadingAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Main animation controller (2.5 seconds total)
-    _mainController = AnimationController(
-      duration: const Duration(milliseconds: 2500),
+    // Simple loading animation
+    _loadingController = AnimationController(
+      duration: const Duration(seconds: 2),
       vsync: this,
     );
 
-    // Background animation controller
-    _backgroundController = AnimationController(
-      duration: const Duration(seconds: 4),
-      vsync: this,
+    _loadingAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _loadingController, curve: Curves.easeInOut),
     );
 
-    // Progress animation controller
-    _progressController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    );
+    // Start loading animation
+    _loadingController.repeat();
 
-    // Logo animations (0ms - 1200ms)
-    _logoScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _mainController,
-        curve: const Interval(0.0, 0.48, curve: Curves.elasticOut),
-      ),
-    );
-
-    _logoOpacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _mainController,
-        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
-      ),
-    );
-
-    _logoSlideAnimation =
-        Tween<Offset>(begin: const Offset(0, -0.3), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _mainController,
-            curve: const Interval(0.0, 0.48, curve: Curves.elasticOut),
-          ),
-        );
-
-    // Text animations (600ms - 1800ms)
-    _textFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _mainController,
-        curve: const Interval(0.24, 0.72, curve: Curves.easeOut),
-      ),
-    );
-
-    _textSlideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _mainController,
-            curve: const Interval(0.24, 0.72, curve: Curves.easeOutCubic),
-          ),
-        );
-
-    // Background gradient animation
-    _backgroundAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _backgroundController, curve: Curves.easeInOut),
-    );
-
-    // Progress animation
-    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
-    );
-
-    // Start animations
-    _startAnimations();
+    // Check for auto-login
+    _checkAutoLogin();
   }
 
-  void _startAnimations() async {
-    // Start background animation
-    _backgroundController.repeat(reverse: true);
+  Future<void> _checkAutoLogin() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rememberMe = prefs.getBool('remember_me') ?? false;
+      final isLoggedOut = prefs.getBool('is_logged_out') ?? false;
 
-    // Start main animation
-    _mainController.forward();
+      print('🔍 Remember me: $rememberMe, Is logged out: $isLoggedOut');
+      print('🔍 Current user: ${AuthService.currentUser?.email}');
+      print('🔍 Is signed in: ${AuthService.isSignedIn}');
 
-    // Start progress after 500ms
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        _progressController.forward();
+      // If user has remember me enabled and hasn't explicitly logged out
+      if (rememberMe && !isLoggedOut && AuthService.isSignedIn) {
+        print('✅ Auto-login successful - navigating to dashboard');
+
+        // Wait for animation to complete
+        await Future.delayed(const Duration(seconds: 2));
+
+        if (mounted) {
+          // Get saved role from SharedPreferences (not from user metadata)
+          final savedRole = prefs.getString('saved_role') ?? 'user';
+          final savedEmail = prefs.getString('saved_email') ?? 'unknown';
+          print('👤 Saved role from login: $savedRole');
+          print('👤 Saved email from login: $savedEmail');
+          print('👤 Current user email: ${AuthService.currentUser?.email}');
+
+          switch (savedRole) {
+            case 'admin':
+              Navigator.pushReplacementNamed(context, '/admin');
+              break;
+            case 'owner':
+              Navigator.pushReplacementNamed(context, '/owner');
+              break;
+            default:
+              Navigator.pushReplacementNamed(context, '/');
+              break;
+          }
+        }
+      } else {
+        print('🏠 No auto-login - going to login page');
+        // Navigate to login page after animation
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
       }
-    });
-
-    // Navigate to login after all animations complete
-    Future.delayed(const Duration(milliseconds: 3500), () {
+    } catch (e) {
+      print('❌ Auto-login check failed: $e');
+      // Navigate to login on error
+      await Future.delayed(const Duration(seconds: 2));
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/login');
       }
-    });
+    }
   }
 
   @override
   void dispose() {
-    _mainController.dispose();
-    _backgroundController.dispose();
-    _progressController.dispose();
+    _loadingController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AnimatedBuilder(
-        animation: _backgroundAnimation,
-        builder: (context, child) {
-          return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color.lerp(
-                    AppColors.primary,
-                    AppColors.primaryLight,
-                    _backgroundAnimation.value * 0.3,
-                  )!,
-                  AppColors.primary,
-                  Color.lerp(
-                    AppColors.primary,
-                    AppColors.primaryDark,
-                    _backgroundAnimation.value * 0.4,
-                  )!,
-                ],
-                stops: const [0.0, 0.5, 1.0],
-              ),
-            ),
-            child: SafeArea(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Animated Logo Section
-                    AnimatedBuilder(
-                      animation: _mainController,
-                      builder: (context, child) {
-                        return SlideTransition(
-                          position: _logoSlideAnimation,
-                          child: FadeTransition(
-                            opacity: _logoOpacityAnimation,
-                            child: ScaleTransition(
-                              scale: _logoScaleAnimation,
-                              child: Container(
-                                width: 140,
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.white.withOpacity(0.15),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.black.withOpacity(0.2),
-                                      blurRadius: 30,
-                                      offset: const Offset(0, 15),
-                                      spreadRadius: 5,
-                                    ),
-                                  ],
-                                  border: Border.all(
-                                    color: AppColors.white.withOpacity(0.3),
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Icon(
-                                    Icons.location_city,
-                                    size: 70,
-                                    color: AppColors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 50),
-
-                    // Animated Text Section
-                    AnimatedBuilder(
-                      animation: _mainController,
-                      builder: (context, child) {
-                        return SlideTransition(
-                          position: _textSlideAnimation,
-                          child: FadeTransition(
-                            opacity: _textFadeAnimation,
-                            child: Column(
-                              children: [
-                                // App Name with subtle glow effect
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    color: AppColors.white.withOpacity(0.1),
-                                    border: Border.all(
-                                      color: AppColors.white.withOpacity(0.2),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'VenueVista',
-                                    style: TextStyle(
-                                      fontSize: 48,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.white,
-                                      letterSpacing: 1.5,
-                                      shadows: [
-                                        Shadow(
-                                          color: AppColors.black.withOpacity(
-                                            0.3,
-                                          ),
-                                          blurRadius: 20,
-                                          offset: const Offset(0, 5),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 20),
-
-                                // Tagline
-                                Text(
-                                  'Your Ultimate Venue Booking Experience',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: AppColors.white.withOpacity(0.9),
-                                    fontWeight: FontWeight.w400,
-                                    letterSpacing: 0.5,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-
-                                const SizedBox(height: 40),
-
-                                // Modern Progress Indicator
-                                AnimatedBuilder(
-                                  animation: _progressAnimation,
-                                  builder: (context, child) {
-                                    return Column(
-                                      children: [
-                                        Container(
-                                          width: 250,
-                                          height: 6,
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(
-                                              3,
-                                            ),
-                                            color: AppColors.white.withOpacity(
-                                              0.2,
-                                            ),
-                                          ),
-                                          child: Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: AnimatedContainer(
-                                              duration: const Duration(
-                                                milliseconds: 100,
-                                              ),
-                                              width:
-                                                  250 *
-                                                  _progressAnimation.value,
-                                              height: 6,
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(3),
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    AppColors.white,
-                                                    AppColors.white.withOpacity(
-                                                      0.8,
-                                                    ),
-                                                  ],
-                                                ),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: AppColors.white
-                                                        .withOpacity(0.4),
-                                                    blurRadius: 8,
-                                                    offset: const Offset(0, 2),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-
-                                        const SizedBox(height: 20),
-
-                                        // Loading Text with smooth opacity
-                                        AnimatedOpacity(
-                                          opacity:
-                                              0.6 +
-                                              (0.4 * _progressAnimation.value),
-                                          duration: const Duration(
-                                            milliseconds: 300,
-                                          ),
-                                          child: Text(
-                                            'Loading your experience...',
-                                            style: TextStyle(
-                                              color: AppColors.white
-                                                  .withOpacity(0.8),
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w300,
-                                              letterSpacing: 0.8,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.green[300]!, Colors.green[500]!],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // App Logo
+              Container(
+                width: 120,
+                height: 120,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/icons/venue.png',
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
-            ),
-          );
-        },
+
+              const SizedBox(height: 40),
+
+              // App Name
+              const Text(
+                'VenueVista',
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1.5,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Subtitle
+              const Text(
+                'Football Ground Booking',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w300,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 60),
+
+              // Loading Animation
+              AnimatedBuilder(
+                animation: _loadingAnimation,
+                builder: (context, child) {
+                  return Column(
+                    children: [
+                      // Loading Progress Bar
+                      Container(
+                        width: 200,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(2),
+                          color: Colors.white.withOpacity(0.3),
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            width: 200 * _loadingAnimation.value,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(2),
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Loading Text
+                      Text(
+                        'Loading...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.8),
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
