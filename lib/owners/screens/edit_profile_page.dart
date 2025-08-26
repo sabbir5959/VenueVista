@@ -20,6 +20,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
   
+  // Password controllers
+  final TextEditingController _oldPasswordController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  
   File? _profileImage;
   bool _isLoading = false;
   
@@ -53,6 +58,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _venueTypeController.dispose();
     _addressController.dispose();
     _bioController.dispose();
+    _oldPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -123,11 +131,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
       await Future.delayed(const Duration(seconds: 2));
       
       // Here you would normally save to your backend/database
-      // For now, we'll just show a success message
+      // If password fields are filled, you'd also update the password
+      bool isChangingPassword = _oldPasswordController.text.isNotEmpty || 
+                               _newPasswordController.text.isNotEmpty || 
+                               _confirmPasswordController.text.isNotEmpty;
+      
+      String successMessage = 'Profile updated successfully!';
+      if (isChangingPassword) {
+        successMessage = 'Profile and password updated successfully!';
+      }
       
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully!'),
+        SnackBar(
+          content: Text(successMessage),
           backgroundColor: Colors.green,
         ),
       );
@@ -370,6 +386,101 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         border: OutlineInputBorder(),
                         hintText: 'Tell us about yourself and your venue experience',
                       ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Password Section
+                    const Text(
+                      'Change Password (Optional)',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Leave blank if you don\'t want to change your password',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Old Password Field
+                    TextFormField(
+                      controller: _oldPasswordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Current Password',
+                        prefixIcon: Icon(Icons.lock_outline),
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter your current password',
+                      ),
+                      validator: (value) {
+                        // Only validate if user is trying to change password
+                        if (_newPasswordController.text.isNotEmpty || _confirmPasswordController.text.isNotEmpty) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter your current password';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // New Password Field
+                    TextFormField(
+                      controller: _newPasswordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'New Password',
+                        prefixIcon: Icon(Icons.lock_reset),
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter your new password',
+                      ),
+                      validator: (value) {
+                        // Only validate if user entered old password or confirm password
+                        if (_oldPasswordController.text.isNotEmpty || _confirmPasswordController.text.isNotEmpty) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter your new password';
+                          }
+                          if (value.length < 6) {
+                            return 'Password must be at least 6 characters long';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Confirm Password Field
+                    TextFormField(
+                      controller: _confirmPasswordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Confirm New Password',
+                        prefixIcon: Icon(Icons.lock_clock),
+                        border: OutlineInputBorder(),
+                        hintText: 'Re-enter your new password',
+                      ),
+                      validator: (value) {
+                        // Only validate if user entered old password or new password
+                        if (_oldPasswordController.text.isNotEmpty || _newPasswordController.text.isNotEmpty) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please confirm your new password';
+                          }
+                          if (value != _newPasswordController.text) {
+                            return 'Passwords do not match';
+                          }
+                        }
+                        return null;
+                      },
                     ),
 
                     const SizedBox(height: 32),

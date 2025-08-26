@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'edit_tournament.dart';
 
 class TournamentDetailsPage extends StatelessWidget {
   final Map<String, dynamic> tournament;
@@ -13,9 +14,45 @@ class TournamentDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DateTime tournamentDate = tournament['date'] as DateTime;
-    final String formattedDate = DateFormat('EEEE, MMMM dd, yyyy').format(tournamentDate);
-    final String formattedTime = DateFormat('hh:mm a').format(tournamentDate);
+    // Handle both old dummy data format and new database format
+    final String? tournamentDateStr = tournament['tournament_date'] ?? tournament['date']?.toString();
+    final String? startTimeStr = tournament['start_time'];
+    
+    String formattedDate = 'TBD';
+    String formattedTime = 'TBD';
+    DateTime? tournamentDate;
+    
+    if (tournamentDateStr != null) {
+      try {
+        if (tournament['date'] is DateTime) {
+          // Old dummy data format
+          tournamentDate = tournament['date'] as DateTime;
+        } else {
+          // New database format
+          tournamentDate = DateTime.parse(tournamentDateStr);
+        }
+        formattedDate = DateFormat('EEEE, MMMM dd, yyyy').format(tournamentDate);
+        
+        if (startTimeStr != null && tournament['date'] == null) {
+          // New database format - use start_time
+          try {
+            final timeParts = startTimeStr.split(':');
+            final hour = int.parse(timeParts[0]);
+            final minute = int.parse(timeParts[1]);
+            final timeDate = DateTime(tournamentDate.year, tournamentDate.month, tournamentDate.day, hour, minute);
+            formattedTime = DateFormat('hh:mm a').format(timeDate);
+          } catch (e) {
+            formattedTime = startTimeStr;
+          }
+        } else {
+          // Old dummy data format
+          formattedTime = DateFormat('hh:mm a').format(tournamentDate);
+        }
+      } catch (e) {
+        formattedDate = 'Invalid Date';
+        formattedTime = 'Invalid Time';
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -58,7 +95,7 @@ class TournamentDetailsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    tournament['sport'] as String,
+                    tournament['sport'] ?? 'Football',
                     style: const TextStyle(
                       fontSize: 16,
                       color: Colors.white70,
@@ -103,9 +140,9 @@ class TournamentDetailsPage extends StatelessWidget {
                           const SizedBox(height: 12),
                           _buildDetailRow(Icons.access_time, 'Time', formattedTime),
                           const SizedBox(height: 12),
-                          _buildDetailRow(Icons.group, 'Team Size', '${tournament['teamSize']} players per team'),
+                          _buildDetailRow(Icons.group, 'Team Size', '${tournament['player_format'] ?? tournament['teamSize'] ?? '11v11'}'),
                           const SizedBox(height: 12),
-                          _buildDetailRow(Icons.attach_money, 'Entry Fee', tournament['fee'] as String),
+                          _buildDetailRow(Icons.attach_money, 'Entry Fee', '৳${tournament['entry_fee'] ?? tournament['fee'] ?? '0'}'),
                           const SizedBox(height: 12),
                           _buildDetailRow(Icons.location_on, 'Venue', tournament['venue'] ?? 'Main Ground'),
                         ],
@@ -141,13 +178,17 @@ class TournamentDetailsPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 16),
                           _buildDetailRow(Icons.event_available, 'Registration Deadline', 
-                              DateFormat('MMM dd, yyyy').format(tournamentDate.subtract(const Duration(days: 3)))),
+                              tournamentDate != null 
+                                ? DateFormat('MMM dd, yyyy').format(tournamentDate.subtract(const Duration(days: 3)))
+                                : 'TBD'),
                           const SizedBox(height: 12),
-                          _buildDetailRow(Icons.groups, 'Max Teams', tournament['maxTeams'] ?? '16'),
+                          _buildDetailRow(Icons.groups, 'Max Teams', (tournament['max_teams'] ?? tournament['maxTeams'] ?? '16').toString()),
                           const SizedBox(height: 12),
-                          _buildDetailRow(Icons.people, 'Registered Teams', tournament['registeredTeams'] ?? '8'),
+                          _buildDetailRow(Icons.people, 'Registered Teams', (tournament['registered_teams'] ?? tournament['registeredTeams'] ?? '0').toString()),
                           const SizedBox(height: 12),
-                          _buildDetailRow(Icons.schedule, 'Tournament Duration', tournament['duration'] ?? '1 Day'),
+                          _buildDetailRow(Icons.schedule, 'Tournament Duration', (tournament['duration_hours'] != null 
+                              ? '${tournament['duration_hours']} hours' 
+                              : tournament['duration'] ?? '1 Day')),
                         ],
                       ),
                     ),
@@ -217,11 +258,11 @@ class TournamentDetailsPage extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          _buildPrizeRow('🥇 1st Place', tournament['firstPrize'] ?? '৳ 15,000'),
+                          _buildPrizeRow('🥇 1st Place', '৳${tournament['first_prize'] ?? tournament['firstPrize'] ?? '15,000'}'),
                           const SizedBox(height: 8),
-                          _buildPrizeRow('🥈 2nd Place', tournament['secondPrize'] ?? '৳ 10,000'),
+                          _buildPrizeRow('🥈 2nd Place', '৳${tournament['second_prize'] ?? tournament['secondPrize'] ?? '10,000'}'),
                           const SizedBox(height: 8),
-                          _buildPrizeRow('🥉 3rd Place', tournament['thirdPrize'] ?? '৳ 5,000'),
+                          _buildPrizeRow('🥉 3rd Place', '৳${tournament['third_prize'] ?? tournament['thirdPrize'] ?? '5,000'}'),
                         ],
                       ),
                     ),
@@ -272,9 +313,14 @@ class TournamentDetailsPage extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          // Handle edit tournament
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Edit tournament functionality')),
+                          //  to edit tournament page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditTournamentPage(
+                                tournament: tournament,
+                              ),
+                            ),
                           );
                         },
                         icon: const Icon(Icons.edit),

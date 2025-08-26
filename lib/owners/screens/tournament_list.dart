@@ -6,12 +6,14 @@ class TournamentListPage extends StatelessWidget {
   final String title;
   final String filter;
   final MaterialColor color;
+  final List<Map<String, dynamic>> tournaments;
 
   const TournamentListPage({
     Key? key,
     required this.title,
     required this.filter,
     required this.color,
+    required this.tournaments,
   }) : super(key: key);
 
   @override
@@ -21,218 +23,210 @@ class TournamentListPage extends StatelessWidget {
         title: Text(title),
         backgroundColor: color[700],
       ),
-      body: _buildEventList(filter, context),
+      body: tournaments.isEmpty
+          ? _buildEmptyState()
+          : _buildTournamentList(context),
     );
   }
 
-  Widget _buildEventList(String filter, BuildContext context) {
-    final DateTime now = DateTime.now();
-    final events = [
-      {
-        'name': 'Football Championship',
-        'sport': 'Football',
-        'date': DateTime(2025, 8, 15, 10, 0),
-        'teamSize': '11',
-        'fee': '\u09F3 5000',
-        'venue': 'Main Football Ground',
-        'maxTeams': '16',
-        'registeredTeams': '12',
-        'duration': '1 Day',
-        'firstPrize': '\u09F3 15,000',
-        'secondPrize': '\u09F3 10,000',
-        'thirdPrize': '\u09F3 5,000',
-        'organizer': 'VenueVista Sports',
-        'phone': '+880 1700-594133',
-        'email': 'football@venuevista.com',
-      },
-      {
-        'name': 'Premier League Tournament',
-        'sport': 'Football',
-        'date': DateTime(2025, 8, 20, 14, 0),
-        'teamSize': '11',
-        'fee': '\u09F3 7000',
-        'venue': 'Football Stadium',
-        'maxTeams': '12',
-        'registeredTeams': '8',
-        'duration': '2 Days',
-        'firstPrize': '\u09F3 20,000',
-        'secondPrize': '\u09F3 15,000',
-        'thirdPrize': '\u09F3 8,000',
-        'organizer': 'VenueVista Sports',
-        'phone': '+880 1700-594133',
-        'email': 'football@venuevista.com',
-      },
-      {
-        'name': 'Youth Football Cup',
-        'sport': 'Football',
-        'date': DateTime(2025, 7, 25, 16, 0),
-        'teamSize': '11',
-        'fee': '\u09F3 3000',
-        'venue': 'Youth Football Ground',
-        'maxTeams': '8',
-        'registeredTeams': '8',
-        'duration': '1 Day',
-        'firstPrize': '\u09F3 12,000',
-        'secondPrize': '\u09F3 8,000',
-        'thirdPrize': '\u09F3 4,000',
-        'organizer': 'VenueVista Sports',
-        'phone': '+880 1700-594133',
-        'email': 'football@venuevista.com',
-      },
-      {
-        'name': 'District Football League',
-        'sport': 'Football',
-        'date': DateTime(2025, 9, 5, 9, 0),
-        'teamSize': '11',
-        'fee': '\u09F3 4000',
-        'venue': 'District Football Ground',
-        'maxTeams': '20',
-        'registeredTeams': '16',
-        'duration': '3 Days',
-        'firstPrize': '\u09F3 25,000',
-        'secondPrize': '\u09F3 15,000',
-        'thirdPrize': '\u09F3 8,000',
-        'organizer': 'VenueVista Sports',
-        'phone': '+880 1700-594133',
-        'email': 'football@venuevista.com',
-      },
-    ];
-
-    final filteredEvents = events.where((event) {
-      final eventDate = event['date'] as DateTime;
-      if (filter == 'Ongoing') {
-        return eventDate.isBefore(now) && eventDate.add(const Duration(hours: 2)).isAfter(now);
-      } else if (filter == 'Upcoming') {
-        return eventDate.isAfter(now);
-      } else if (filter == 'Past') {
-        return eventDate.isBefore(now);
-      }
-      return false;
-    }).toList();
-
-    if (filteredEvents.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.sports_soccer,
-              size: 64,
-              color: Colors.grey[400],
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.event_busy,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No tournaments found',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'No tournaments found',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Check back later for new tournaments',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Check back later for new tournaments',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildTournamentList(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
-      itemCount: filteredEvents.length,
+      itemCount: tournaments.length,
       itemBuilder: (context, index) {
-        final event = filteredEvents[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 4,
-          child: ListTile(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TournamentDetailsPage(
-                    tournament: event,
-                    filter: filter,
+        final tournament = tournaments[index];
+        return _buildTournamentCard(tournament, context);
+      },
+    );
+  }
+
+  Widget _buildTournamentCard(Map<String, dynamic> tournament, BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TournamentDetailsPage(
+                tournament: tournament,
+                filter: filter,
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Tournament Header
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      tournament['name'] ?? 'Unnamed Tournament',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-              );
-            },
-            leading: CircleAvatar(
-              backgroundColor: color[100],
-              child: Icon(
-                Icons.sports_soccer,
-                color: color[700],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      tournament['player_format'] ?? '11v11',
+                      style: TextStyle(
+                        color: color[700],
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            title: Text(
-              event['name'] as String,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+              
+              const SizedBox(height: 12),
+              
+              // Tournament Details
+              Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatDate(tournament['tournament_date']),
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  const SizedBox(width: 16),
+                  Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatTime(tournament['start_time']),
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                ],
               ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
+              
+              const SizedBox(height: 8),
+              
+              Row(
+                children: [
+                  Icon(Icons.people, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${tournament['registered_teams'] ?? 0}/${tournament['max_teams'] ?? 0} teams',
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  const SizedBox(width: 16),
+                  Icon(Icons.monetization_on, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Text(
+                    '৳${tournament['entry_fee'] ?? 0}',
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 8),
+              
+              Row(
+                children: [
+                  Icon(Icons.emoji_events, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Prize: ৳${tournament['first_prize'] ?? 0}',
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              
+              if (tournament['description'] != null && tournament['description'].isNotEmpty) ...[
+                const SizedBox(height: 8),
                 Text(
-                  '${event['sport']} • ${_formatDate(event['date'] as DateTime)}',
+                  tournament['description'],
                   style: TextStyle(
                     color: Colors.grey[600],
                     fontSize: 14,
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Teams: ${event['teamSize']} players • Fee: ${event['fee']}',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 13,
-                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
-            ),
-            trailing: filter == 'Ongoing'
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () {
-                          // Navigate to edit page
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.lock, color: Colors.red),
-                        onPressed: () {
-                          // Close registration
-                        },
-                      ),
-                    ],
-                  )
-                : filter == 'Past'
-                    ? IconButton(
-                        icon: const Icon(Icons.people, color: Colors.green),
-                        onPressed: () {
-                          // View participants
-                        },
-                      )
-                    : const Icon(Icons.chevron_right, color: Colors.grey),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    return DateFormat('MMM dd, yyyy • hh:mm a').format(date);
+  String _formatDate(String? dateString) {
+    if (dateString == null) return 'TBD';
+    try {
+      final date = DateTime.parse(dateString);
+      return DateFormat('MMM dd, yyyy').format(date);
+    } catch (e) {
+      return 'TBD';
+    }
+  }
+
+  String _formatTime(String? timeString) {
+    if (timeString == null) return 'TBD';
+    try {
+      final timeParts = timeString.split(':');
+      if (timeParts.length >= 2) {
+        final hour = int.parse(timeParts[0]);
+        final minute = int.parse(timeParts[1]);
+        final period = hour >= 12 ? 'PM' : 'AM';
+        final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+        return '${displayHour.toString()}:${minute.toString().padLeft(2, '0')} $period';
+      }
+      return timeString;
+    } catch (e) {
+      return 'TBD';
+    }
   }
 }

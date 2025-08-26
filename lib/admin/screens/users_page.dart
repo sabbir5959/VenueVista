@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
+import '../../services/user_service.dart';
 
 class AdminUsersPage extends StatefulWidget {
   const AdminUsersPage({super.key});
@@ -10,89 +11,23 @@ class AdminUsersPage extends StatefulWidget {
 
 class _AdminUsersPageState extends State<AdminUsersPage> {
   int _currentPage = 1;
-  final int _itemsPerPage = 8; // Users এর জন্য একটু বেশি রাখলাম
+  final int _itemsPerPage = 8;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedFilter = 'All'; // All, Active, Inactive
 
-  // Demo users list (converted from static to instance variable)
-  List<Map<String, dynamic>> _demoUsers = [
-    {
-      'name': 'Ahmed Rahman',
-      'email': 'ahmed.rahman@email.com',
-      'phone': '+8801712345678',
-      'status': 'Active',
-      'joinDate': '2024-01-15',
-    },
-    {
-      'name': 'Fatima Khan',
-      'email': 'fatima.khan@email.com',
-      'phone': '+8801987654321',
-      'status': 'Active',
-      'joinDate': '2024-02-20',
-    },
-    {
-      'name': 'Mohammad Ali',
-      'email': 'mohammad.ali@email.com',
-      'phone': '+8801555666777',
-      'status': 'Inactive',
-      'joinDate': '2024-01-30',
-    },
-    {
-      'name': 'Nasreen Sultana',
-      'email': 'nasreen.sultana@email.com',
-      'phone': '+8801444555666',
-      'status': 'Active',
-      'joinDate': '2024-03-10',
-    },
-    {
-      'name': 'Rafiq Ahmed',
-      'email': 'rafiq.ahmed@email.com',
-      'phone': '+8801333444555',
-      'status': 'Active',
-      'joinDate': '2024-02-28',
-    },
-    {
-      'name': 'Shahida Begum',
-      'email': 'shahida.begum@email.com',
-      'phone': '+8801222333444',
-      'status': 'Inactive',
-      'joinDate': '2024-03-15',
-    },
-    {
-      'name': 'Abdul Karim',
-      'email': 'abdul.karim@email.com',
-      'phone': '+8801111222333',
-      'status': 'Active',
-      'joinDate': '2024-04-01',
-    },
-    {
-      'name': 'Rashida Begum',
-      'email': 'rashida.begum@email.com',
-      'phone': '+8801666789012',
-      'status': 'Active',
-      'joinDate': '2024-03-25',
-    },
-    {
-      'name': 'Karim Hassan',
-      'email': 'karim.hassan@email.com',
-      'phone': '+8801777890123',
-      'status': 'Active',
-      'joinDate': '2024-04-05',
-    },
-    {
-      'name': 'Salma Khatun',
-      'email': 'salma.khatun@email.com',
-      'phone': '+8801888901234',
-      'status': 'Inactive',
-      'joinDate': '2024-04-18',
-    },
-  ];
+  // Backend data
+  List<Map<String, dynamic>> _users = [];
+  bool _isLoading = false;
+  int _totalCount = 0;
+  int _totalPages = 0;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
+    _loadUsers(); // Load users on init
   }
 
   @override
@@ -103,50 +38,51 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
   }
 
   void _onSearchChanged() {
-    setState(() {
-      _searchQuery = _searchController.text.toLowerCase();
-      _currentPage = 1; // Reset to first page when searching
+    // Debounce search to avoid too many API calls
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (_searchController.text == _searchQuery) return;
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+        _currentPage = 1; // Reset to first page when searching
+      });
+      _loadUsers();
     });
   }
 
-  List<Map<String, dynamic>> get _filteredUsers {
-    List<Map<String, dynamic>> filtered = _demoUsers;
+  /// Load users from backend
+  Future<void> _loadUsers() async {
+    if (_isLoading) return;
 
-    // Apply search filter
-    if (_searchQuery.isNotEmpty) {
-      filtered =
-          filtered.where((user) {
-            final name = user['name'].toString().toLowerCase();
-            final email = user['email'].toString().toLowerCase();
-            final phone = user['phone'].toString().toLowerCase();
-            return name.contains(_searchQuery) ||
-                email.contains(_searchQuery) ||
-                phone.contains(_searchQuery);
-          }).toList();
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await UserService.getUsers(
+        page: _currentPage,
+        limit: _itemsPerPage,
+        searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+        statusFilter: _selectedFilter,
+      );
+
+      setState(() {
+        _users = result['users'];
+        _totalCount = result['totalCount'];
+        _totalPages = result['totalPages'];
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
     }
-
-    // Apply status filter
-    if (_selectedFilter != 'All') {
-      filtered =
-          filtered.where((user) {
-            return user['status'].toString() == _selectedFilter;
-          }).toList();
-    }
-
-    return filtered;
   }
 
-  List<Map<String, dynamic>> get _paginatedUsers {
-    final filtered = _filteredUsers;
-    final startIndex = (_currentPage - 1) * _itemsPerPage;
-    final endIndex = startIndex + _itemsPerPage;
-    return filtered.sublist(
-      startIndex,
-      endIndex > filtered.length ? filtered.length : endIndex,
-    );
-  }
+  List<Map<String, dynamic>> get _filteredUsers => _users;
 
-  int get _totalPages => (_filteredUsers.length / _itemsPerPage).ceil();
+  List<Map<String, dynamic>> get _paginatedUsers => _users;
 
   @override
   Widget build(BuildContext context) {
@@ -282,7 +218,65 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     ),
                   ),
                   // User List
-                  _filteredUsers.isEmpty
+                  _isLoading
+                      ? Container(
+                        padding: const EdgeInsets.all(40),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              CircularProgressIndicator(
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Loading users...',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      : _errorMessage != null
+                      ? Container(
+                        padding: const EdgeInsets.all(40),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: AppColors.error,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error loading users',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _errorMessage!,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadUsers,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                      : _filteredUsers.isEmpty
                       ? Container(
                         padding: const EdgeInsets.all(40),
                         child: Column(
@@ -401,7 +395,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               ),
               if (!isMobile) ...[
                 Text(
-                  ' (${_demoUsers.length} total)',
+                  ' (${_totalCount} total)',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -502,6 +496,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       setState(() {
         _currentPage--;
       });
+      _loadUsers();
     }
   }
 
@@ -510,6 +505,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       setState(() {
         _currentPage++;
       });
+      _loadUsers();
     }
   }
 
@@ -622,14 +618,15 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            onPressed: () => _editUser(user),
+                            onPressed: () => _viewUserDetails(user),
                             icon: Icon(
-                              Icons.edit_outlined,
+                              Icons.info_outline,
                               size: 16,
                               color: AppColors.primary,
                             ),
                             constraints: const BoxConstraints(),
                             padding: const EdgeInsets.all(4),
+                            tooltip: 'View Details',
                           ),
                           SizedBox(width: 4),
                           IconButton(
@@ -641,6 +638,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                             ),
                             constraints: const BoxConstraints(),
                             padding: const EdgeInsets.all(4),
+                            tooltip: 'Delete User',
                           ),
                         ],
                       ),
@@ -740,14 +738,15 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            onPressed: () => _editUser(user),
+                            onPressed: () => _viewUserDetails(user),
                             icon: Icon(
-                              Icons.edit_outlined,
+                              Icons.info_outline,
                               size: 20,
                               color: AppColors.primary,
                             ),
                             constraints: const BoxConstraints(),
                             padding: const EdgeInsets.all(4),
+                            tooltip: 'View Details',
                           ),
                           SizedBox(width: 8),
                           IconButton(
@@ -759,6 +758,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                             ),
                             constraints: const BoxConstraints(),
                             padding: const EdgeInsets.all(4),
+                            tooltip: 'Delete User',
                           ),
                         ],
                       ),
@@ -789,6 +789,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       _currentPage = 1;
                     });
                     Navigator.of(context).pop();
+                    _loadUsers(); // Reload with new filter
                   },
                 ),
               ),
@@ -803,6 +804,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       _currentPage = 1;
                     });
                     Navigator.of(context).pop();
+                    _loadUsers(); // Reload with new filter
                   },
                 ),
               ),
@@ -817,6 +819,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       _currentPage = 1;
                     });
                     Navigator.of(context).pop();
+                    _loadUsers(); // Reload with new filter
                   },
                 ),
               ),
@@ -835,111 +838,82 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     );
   }
 
-  void _editUser(Map<String, dynamic> user) {
-    final nameController = TextEditingController(text: user['name']);
-    final emailController = TextEditingController(text: user['email']);
-    final phoneController = TextEditingController(text: user['phone']);
-    String selectedStatus = user['status'];
-
+  void _viewUserDetails(Map<String, dynamic> user) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Edit User'),
-              content: SizedBox(
-                width: 400,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Name',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: selectedStatus,
-                      decoration: const InputDecoration(
-                        labelText: 'Status',
-                        border: OutlineInputBorder(),
-                      ),
-                      items:
-                          ['Active', 'Inactive'].map((status) {
-                            return DropdownMenuItem(
-                              value: status,
-                              child: Text(status),
-                            );
-                          }).toList(),
-                      onChanged: (String? newValue) {
-                        setDialogState(() {
-                          selectedStatus = newValue!;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    // Update user data
-                    setState(() {
-                      final userIndex = _demoUsers.indexOf(user);
-                      if (userIndex != -1) {
-                        _demoUsers[userIndex] = {
-                          ..._demoUsers[userIndex],
-                          'name': nameController.text,
-                          'email': emailController.text,
-                          'phone': phoneController.text,
-                          'status': selectedStatus,
-                        };
-                      }
-                    });
-                    Navigator.of(context).pop();
-
-                    // Show success message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'User ${nameController.text} updated successfully!',
-                        ),
-                        backgroundColor: AppColors.success,
-                      ),
-                    );
-                  },
-                  child: const Text('Save'),
-                ),
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.person, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Text('User Details'),
+            ],
+          ),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDetailRow('Full Name', user['name'] ?? 'N/A'),
+                const SizedBox(height: 12),
+                _buildDetailRow('Email', user['email'] ?? 'N/A'),
+                const SizedBox(height: 12),
+                _buildDetailRow('Phone', user['phone'] ?? 'N/A'),
+                const SizedBox(height: 12),
+                _buildDetailRow('Status', user['status'] ?? 'N/A'),
+                const SizedBox(height: 12),
+                _buildDetailRow('Join Date', user['joinDate'] ?? 'N/A'),
+                const SizedBox(height: 12),
+                _buildDetailRow('Role', 'Normal User'),
+                const SizedBox(height: 12),
+                _buildDetailRow('Account Type', 'Individual'),
               ],
-            );
-          },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -964,23 +938,42 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 backgroundColor: AppColors.error,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () {
-                setState(() {
-                  _demoUsers.remove(user);
-                  // Reset pagination if needed
-                  if (_paginatedUsers.isEmpty && _currentPage > 1) {
-                    _currentPage--;
-                  }
-                });
+              onPressed: () async {
                 Navigator.of(context).pop();
 
-                // Show success message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('User ${user['name']} deleted successfully!'),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
+                // Show loading
+                setState(() {
+                  _isLoading = true;
+                });
+
+                try {
+                  await UserService.deleteUser(user['id']);
+
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'User ${user['name']} deleted successfully!',
+                      ),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+
+                  // Reload users
+                  _loadUsers();
+                } catch (e) {
+                  // Show error message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete user: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+
+                  setState(() {
+                    _isLoading = false;
+                  });
+                }
               },
               child: const Text('Delete'),
             ),
