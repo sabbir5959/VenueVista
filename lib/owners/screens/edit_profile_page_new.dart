@@ -20,6 +20,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
   
+  // Venue details controllers
+  final TextEditingController _pricePerHourController = TextEditingController();
+  final TextEditingController _totalCourtsController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _turfSizeController = TextEditingController();
+  final TextEditingController _parkingSpotsController = TextEditingController();
+  
+  // Facility availability
+  bool _hasTrainingEquipment = true;
+  bool _hasCafe = true;
+  bool _hasChangingRooms = true;
+  bool _hasFloodlights = true;
+  bool _hasParking = true;
+  
   // Password controllers
   final TextEditingController _oldPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
@@ -36,6 +50,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     'venueType': 'Sports Complex',
     'address': 'Dhanmondi, Dhaka, Bangladesh',
     'bio': 'Experienced venue owner with 5+ years in sports facility management.',
+    'pricePerHour': '1500',
+    'totalCourts': '4',
+    'location': 'Dhanmondi, Dhaka',
+    'turfSize': '100m x 70m',
+    'parkingSpots': '50',
   };
 
   @override
@@ -48,6 +67,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _venueTypeController.text = _currentData['venueType']!;
     _addressController.text = _currentData['address']!;
     _bioController.text = _currentData['bio']!;
+    _pricePerHourController.text = _currentData['pricePerHour']!;
+    _totalCourtsController.text = _currentData['totalCourts']!;
+    _locationController.text = _currentData['location']!;
+    _turfSizeController.text = _currentData['turfSize']!;
+    _parkingSpotsController.text = _currentData['parkingSpots']!;
   }
 
   @override
@@ -58,6 +82,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _venueTypeController.dispose();
     _addressController.dispose();
     _bioController.dispose();
+    _pricePerHourController.dispose();
+    _totalCourtsController.dispose();
+    _locationController.dispose();
+    _turfSizeController.dispose();
+    _parkingSpotsController.dispose();
     _oldPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
@@ -131,14 +160,44 @@ class _EditProfilePageState extends State<EditProfilePage> {
       await Future.delayed(const Duration(seconds: 2));
       
       // Here you would normally save to your backend/database
+      // Personal Information
+      Map<String, dynamic> profileData = {
+        'name': _nameController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'email': _emailController.text.trim(),
+        'venueType': _venueTypeController.text.trim(),
+        'address': _addressController.text.trim(),
+        'bio': _bioController.text.trim(),
+        // Venue Details
+        'pricePerHour': _pricePerHourController.text.trim(),
+        'totalCourts': _totalCourtsController.text.trim(),
+        'location': _locationController.text.trim(),
+        'turfSize': _turfSizeController.text.trim(),
+        'parkingSpots': _parkingSpotsController.text.trim(),
+        // Facilities
+        'hasTrainingEquipment': _hasTrainingEquipment,
+        'hasCafe': _hasCafe,
+        'hasChangingRooms': _hasChangingRooms,
+        'hasFloodlights': _hasFloodlights,
+        'hasParking': _hasParking,
+      };
+      
       // If password fields are filled, you'd also update the password
       bool isChangingPassword = _oldPasswordController.text.isNotEmpty || 
                                _newPasswordController.text.isNotEmpty || 
                                _confirmPasswordController.text.isNotEmpty;
       
-      String successMessage = 'Profile updated successfully!';
       if (isChangingPassword) {
-        successMessage = 'Profile and password updated successfully!';
+        profileData['oldPassword'] = _oldPasswordController.text.trim();
+        profileData['newPassword'] = _newPasswordController.text.trim();
+      }
+      
+      // TODO: Replace with actual API call to save profileData
+      print('Saving profile data: $profileData');
+      
+      String successMessage = 'Profile and venue details updated successfully!';
+      if (isChangingPassword) {
+        successMessage = 'Profile, venue details, and password updated successfully!';
       }
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -386,6 +445,260 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         border: OutlineInputBorder(),
                         hintText: 'Tell us about yourself and your venue experience',
                       ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Venue Details Section
+                    const Text(
+                      'Venue Details',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Price per Hour Field
+                    TextFormField(
+                      controller: _pricePerHourController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Price per Hour (৳)',
+                        prefixIcon: Icon(Icons.attach_money),
+                        border: OutlineInputBorder(),
+                        hintText: 'e.g., 1500',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter price per hour';
+                        }
+                        if (int.tryParse(value) == null) {
+                          return 'Please enter a valid number';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Total Courts Field
+                    TextFormField(
+                      controller: _totalCourtsController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Total Courts',
+                        prefixIcon: Icon(Icons.sports_tennis),
+                        border: OutlineInputBorder(),
+                        hintText: 'e.g., 4',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter number of courts';
+                        }
+                        if (int.tryParse(value) == null) {
+                          return 'Please enter a valid number';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Location Field
+                    TextFormField(
+                      controller: _locationController,
+                      decoration: const InputDecoration(
+                        labelText: 'Location',
+                        prefixIcon: Icon(Icons.location_on),
+                        border: OutlineInputBorder(),
+                        hintText: 'e.g., Dhanmondi, Dhaka',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter location';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Turf Size Field
+                    TextFormField(
+                      controller: _turfSizeController,
+                      decoration: const InputDecoration(
+                        labelText: 'Size of Turf',
+                        prefixIcon: Icon(Icons.straighten),
+                        border: OutlineInputBorder(),
+                        hintText: 'e.g., 100m x 70m',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter turf size';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Parking Spots Field
+                    TextFormField(
+                      controller: _parkingSpotsController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Parking Spots',
+                        prefixIcon: Icon(Icons.local_parking),
+                        border: OutlineInputBorder(),
+                        hintText: 'e.g., 50',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter number of parking spots';
+                        }
+                        if (int.tryParse(value) == null) {
+                          return 'Please enter a valid number';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Facilities Section
+                    const Text(
+                      'Facilities',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Training Equipment Switch
+                    Row(
+                      children: [
+                        const Icon(Icons.fitness_center, color: Colors.grey),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Training Equipment',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+                        Switch(
+                          value: _hasTrainingEquipment,
+                          onChanged: (value) {
+                            setState(() {
+                              _hasTrainingEquipment = value;
+                            });
+                          },
+                          activeColor: Colors.green[700],
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Cafe Switch
+                    Row(
+                      children: [
+                        const Icon(Icons.local_cafe, color: Colors.grey),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Cafe',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+                        Switch(
+                          value: _hasCafe,
+                          onChanged: (value) {
+                            setState(() {
+                              _hasCafe = value;
+                            });
+                          },
+                          activeColor: Colors.green[700],
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Changing Rooms Switch
+                    Row(
+                      children: [
+                        const Icon(Icons.wc, color: Colors.grey),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Changing Rooms',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+                        Switch(
+                          value: _hasChangingRooms,
+                          onChanged: (value) {
+                            setState(() {
+                              _hasChangingRooms = value;
+                            });
+                          },
+                          activeColor: Colors.green[700],
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Floodlights Switch
+                    Row(
+                      children: [
+                        const Icon(Icons.lightbulb, color: Colors.grey),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Floodlights',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+                        Switch(
+                          value: _hasFloodlights,
+                          onChanged: (value) {
+                            setState(() {
+                              _hasFloodlights = value;
+                            });
+                          },
+                          activeColor: Colors.green[700],
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Parking Switch
+                    Row(
+                      children: [
+                        const Icon(Icons.local_parking, color: Colors.grey),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Parking Available',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+                        Switch(
+                          value: _hasParking,
+                          onChanged: (value) {
+                            setState(() {
+                              _hasParking = value;
+                            });
+                          },
+                          activeColor: Colors.green[700],
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 32),
