@@ -16,7 +16,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
   late TabController _tabController;
   final MaintenanceService _maintenanceService = MaintenanceService.instance;
   
-  // Form controllers
+  
   DateTime? _startDate;
   DateTime? _endDate;
   final TextEditingController _reasonController = TextEditingController();
@@ -26,7 +26,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
   DateTime? _repeatEndDate;
   bool _useOccurrences = true;
 
-  // Loading states
+  
   bool _isLoading = false;
   List<MaintenanceSchedule> _maintenanceSchedules = [];
 
@@ -74,7 +74,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Maintenance Schedule'),
+        title: const Text('VenueVista'),
         backgroundColor: Colors.green[700],
         actions: [
           OwnerProfileWidget(),
@@ -110,7 +110,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section Title
+          
           Card(
             elevation: 2,
             child: Padding(
@@ -133,7 +133,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
           
           const SizedBox(height: 20),
 
-          // Date & Time Picker Section
+          // Date Picker 
           Card(
             elevation: 2,
             child: Padding(
@@ -199,7 +199,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
 
           const SizedBox(height: 20),
 
-          // Reason Section
+          
           Card(
             elevation: 2,
             child: Padding(
@@ -234,7 +234,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
 
           const SizedBox(height: 20),
 
-          // Repeat Maintenance Section
+         /* // Repeat Maintenance Section
           Card(
             elevation: 2,
             child: Padding(
@@ -281,7 +281,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                           child: DropdownButton<String>(
                             value: _repeatFrequency,
                             isExpanded: true,
-                            items: ['Week', 'Biweekly', 'Monthly'].map((String value) {
+                            items: ['Week', 'Monthly'].map((String value) {
                               return DropdownMenuItem<String>(
                                 value: value,
                                 child: Text(value),
@@ -381,10 +381,10 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
               ),
             ),
           ),
-
+          */
           const SizedBox(height: 30),
 
-          // Schedule Button
+          
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -447,7 +447,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
       );
     }
 
-    // Sort maintenance schedules in descending order by start date (latest first)
+    // in descending order by start date 
     final sortedList = List<MaintenanceSchedule>.from(_maintenanceSchedules);
     sortedList.sort((a, b) => b.startTime.compareTo(a.startTime));
 
@@ -458,7 +458,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
         final maintenance = sortedList[index];
         final now = DateTime.now();
         
-        // Determine status dynamically (only Ongoing or Completed)
+        // Ongoing or Completed
         final bool isCompleted = maintenance.endTime.isBefore(now);
         
         String statusText;
@@ -466,12 +466,12 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
         IconData statusIcon;
         
         if (!isCompleted) {
-          // Current ongoing maintenance or future maintenance (treat as ongoing)
+          
           statusText = 'Ongoing';
           statusColor = Colors.red;
           statusIcon = Icons.build;
         } else {
-          // Completed maintenance
+          
           statusText = 'Completed';
           statusColor = Colors.green;
           statusIcon = Icons.check_circle;
@@ -509,7 +509,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                     ),
                   ],
                 ),
-                if (maintenance.isRepeating) const SizedBox(height: 4),
+               if (maintenance.isRepeating) const SizedBox(height: 4),
                 if (maintenance.isRepeating) Row(
                   children: [
                     const Icon(Icons.repeat, size: 16, color: Colors.grey),
@@ -528,7 +528,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Status indicator
+                
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -545,7 +545,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
                     ),
                   ),
                 ),
-                // Edit/Delete buttons only for non-completed maintenance
+                
                 if (!isCompleted) const SizedBox(width: 8),
                 if (!isCompleted) IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
@@ -629,7 +629,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
     });
 
     try {
-      // DateTime objects with full day coverage (00:00 to 23:59)
+      //full day coverage
       final startDateTime = DateTime(_startDate!.year, _startDate!.month, _startDate!.day, 0, 0);
       final endDateTime = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59);
       
@@ -646,7 +646,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
       );
 
       if (_isRepeating && _useOccurrences) {
-        // Generate recurring schedules
+        
         final recurringSchedules = _maintenanceService.generateRecurringSchedules(
           newMaintenance,
           _repeatOccurrences,
@@ -660,10 +660,10 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
         await _maintenanceService.addMaintenanceSchedule(newMaintenance);
       }
 
-      // Reload schedules
+      
       await _loadMaintenanceSchedules();
 
-      // Clear form
+      
       setState(() {
         _startDate = null;
         _endDate = null;
@@ -703,12 +703,12 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
   }
 
   void _editMaintenance(MaintenanceSchedule maintenance) {
-    // Implementation for editing maintenance
+  
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Edit Maintenance'),
-        content: const Text('Edit functionality would be implemented here'),
+        content: const Text('Edit functionality'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

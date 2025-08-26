@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import '../widgets/owner_profile_widget.dart';
+import '../services/tournament_service.dart';
+import '../../services/auth_service.dart';
 
 class CreateTournamentPage extends StatefulWidget {
   const CreateTournamentPage({super.key});
@@ -18,11 +22,39 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
   final _numTeamsController = TextEditingController();
   final _numPlayersController = TextEditingController();
   final _durationController = TextEditingController();
+  final _entryFeeController = TextEditingController();
+  final _prizeController = TextEditingController();
+  final _secondPrizeController = TextEditingController();
+  final _thirdPrizeController = TextEditingController();
+  final _descriptionController = TextEditingController();
 
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   File? _imageFile;
+  XFile? _selectedImageFile; // Store XFile for better cross-platform support
   bool _isLoading = false;
+
+  // Better image conversion method for Flutter Web/Windows
+  Future<String?> _convertImageToBase64(XFile imageFile) async {
+    try {
+      print('Converting image to base64...');
+      
+      // Use XFile.readAsBytes() instead of File for better cross-platform support
+      final bytes = await imageFile.readAsBytes();
+      
+      if (bytes.isEmpty) {
+        print('Image file is empty');
+        return null;
+      }
+      
+      final base64String = base64Encode(bytes);
+      print('Successfully converted image to base64, size: ${bytes.length} bytes');
+      return 'data:image/jpeg;base64,$base64String';
+    } catch (e) {
+      print('Error converting image to base64: $e');
+      return null;
+    }
+  }
 
   Future<void> _pickImage() async {
     try {
@@ -66,6 +98,7 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
         if (image != null) {
           setState(() {
             _imageFile = File(image.path);
+            _selectedImageFile = image; // Store XFile for conversion
           });
           
           ScaffoldMessenger.of(context).showSnackBar(
@@ -145,6 +178,11 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
     _numTeamsController.dispose();
     _numPlayersController.dispose();
     _durationController.dispose();
+    _entryFeeController.dispose();
+    _prizeController.dispose();
+    _secondPrizeController.dispose();
+    _thirdPrizeController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -309,6 +347,154 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
 
                 const SizedBox(height: 16),
 
+                // Tournament Description
+                TextFormField(
+                  controller: _descriptionController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Tournament Description',
+                    hintText: 'Enter tournament description',
+                    prefixIcon: const Icon(Icons.description),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.green[700]!),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter tournament description';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Prize and Entry Fee Row
+                Row(
+                  children: [
+                    // First Prize
+                    Expanded(
+                      child: TextFormField(
+                        controller: _prizeController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: InputDecoration(
+                          labelText: '🥇 First Prize (৳)',
+                          hintText: 'Enter first prize amount',
+                          prefixIcon: const Icon(Icons.emoji_events, color: Colors.amber),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.green[700]!),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Required';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    // Entry Fee
+                    Expanded(
+                      child: TextFormField(
+                        controller: _entryFeeController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: InputDecoration(
+                          labelText: 'Entry Fee (৳)',
+                          hintText: 'Enter entry fee',
+                          prefixIcon: const Icon(Icons.attach_money),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.green[700]!),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Required';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Second and Third Prize Row
+                Row(
+                  children: [
+                    // Second Prize
+                    Expanded(
+                      child: TextFormField(
+                        controller: _secondPrizeController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: InputDecoration(
+                          labelText: '🥈 Second Prize (৳)',
+                          hintText: 'Enter second prize (optional)',
+                          prefixIcon: const Icon(Icons.emoji_events, color: Colors.grey),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.green[700]!),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    // Third Prize
+                    Expanded(
+                      child: TextFormField(
+                        controller: _thirdPrizeController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: InputDecoration(
+                          labelText: '🥉 Third Prize (৳)',
+                          hintText: 'Enter third prize (optional)',
+                          prefixIcon: const Icon(Icons.emoji_events, color: Colors.brown),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.green[700]!),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
                 // Date and Time Row
                 Row(
                   children: [
@@ -427,23 +613,98 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
                                 _isLoading = true;
                               });
 
-                              // Simulate saving tournament
-                              await Future.delayed(const Duration(seconds: 2));
+                              try {
+                                // Get current user
+                                final user = AuthService.currentUser;
+                                if (user == null) {
+                                  throw Exception('User not authenticated');
+                                }
 
-                              setState(() {
-                                _isLoading = false;
-                              });
+                                print('Creating tournament with user: ${user.id}');
+                                print('Tournament name: ${_tournamentNameController.text.trim()}');
+                                print('Selected date: $_selectedDate');
+                                print('Selected time: $_selectedTime');
 
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Tournament created successfully!',
+                                // Get owner's venues first
+                                final ownerVenues = await OwnerTournamentService.getOwnerVenues(user.id);
+                                if (ownerVenues.isEmpty) {
+                                  throw Exception('No venues found for this owner');
+                                }
+
+                                // Use the first venue for now
+                                final selectedVenue = ownerVenues.first;
+
+                                // Generate image URL from picked image
+                                String? imageUrl;
+                                if (_selectedImageFile != null) {
+                                  // Convert image to base64 for storage
+                                  imageUrl = await _convertImageToBase64(_selectedImageFile!);
+                                  print('Converted image to base64, length: ${imageUrl?.length ?? 0}');
+                                } else {
+                                  // Use default tournament image
+                                  imageUrl = 'https://images.unsplash.com/photo-1543326727-cf6c39e8f84c?auto=format&fit=crop&w=800&q=80';
+                                  print('Using default image');
+                                }
+
+                                // Create tournament using OwnerTournamentService
+                                final result = await OwnerTournamentService.createTournament(
+                                  name: _tournamentNameController.text.trim(),
+                                  description: _descriptionController.text.trim(),
+                                  venueId: selectedVenue['id'],
+                                  organizerId: user.id,
+                                  tournamentDate: _selectedDate!,
+                                  startTime: '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}:00',
+                                  durationHours: int.tryParse(_durationController.text) ?? 2,
+                                  teamSize: int.tryParse(_numPlayersController.text) ?? 11,
+                                  maxTeams: int.tryParse(_numTeamsController.text) ?? 16,
+                                  entryFee: double.tryParse(_entryFeeController.text) ?? 0.0,
+                                  firstPrize: double.tryParse(_prizeController.text) ?? 0.0,
+                                  secondPrize: _secondPrizeController.text.isNotEmpty 
+                                      ? double.tryParse(_secondPrizeController.text) 
+                                      : null,
+                                  thirdPrize: _thirdPrizeController.text.isNotEmpty 
+                                      ? double.tryParse(_thirdPrizeController.text) 
+                                      : null,
+                                  playerFormat: '${_numPlayersController.text}v${_numPlayersController.text}',
+                                  imageUrl: imageUrl,
+                                );
+
+                                print('Tournament created successfully: $result');
+
+                                setState(() {
+                                  _isLoading = false;
+                                });
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Tournament created successfully!'),
+                                    backgroundColor: Colors.green,
                                   ),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
+                                );
 
-                              Navigator.pop(context);
+                                Navigator.pop(context, true);
+                              } catch (e) {
+                                print('Tournament creation error: $e');
+                                setState(() {
+                                  _isLoading = false;
+                                });
+
+                                String errorMessage = 'Failed to create tournament';
+                                if (e.toString().contains('venue_id')) {
+                                  errorMessage = 'Venue selection error';
+                                } else if (e.toString().contains('organizer_id')) {
+                                  errorMessage = 'User authentication error';
+                                } else if (e.toString().contains('constraint')) {
+                                  errorMessage = 'Invalid venue or organizer data';
+                                }
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(errorMessage),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
                             }
                           },
                   style: ElevatedButton.styleFrom(
