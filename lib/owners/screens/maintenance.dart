@@ -74,7 +74,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Maintenance Schedule'),
+        title: const Text('VenueVista'),
         backgroundColor: Colors.green[700],
         actions: [
           OwnerProfileWidget(),

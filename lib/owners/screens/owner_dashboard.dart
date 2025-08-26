@@ -174,7 +174,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Venue Owner Dashboard'),
+        title: const Text('VenueVista'),
         backgroundColor: Colors.green,
         actions: [
           OwnerProfileWidget(),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/venue_owner_sidebar.dart';
 import '../widgets/owner_profile_widget.dart';
 import '../models/discount_schedule.dart';
 import '../services/dynamic_pricing_service.dart';
+import 'edit_schedule_page.dart';
 
 class DynamicPricingPage extends StatefulWidget {
   const DynamicPricingPage({Key? key}) : super(key: key);
@@ -15,6 +17,10 @@ class DynamicPricingPage extends StatefulWidget {
 class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final DynamicPricingService _pricingService = DynamicPricingService.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
+  
+  // Owner venue information
+  Map<String, dynamic>? _ownerVenue;
   
   // Base price
   double _basePrice = 500.0;
@@ -27,19 +33,18 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
   final TextEditingController _labelController = TextEditingController();
   String _discountType = 'percentage'; // 'percentage' or 'flat'
   
-  // Settings
-
-  
   // Data
-  List<DiscountSchedule> _discountSchedules = [];
   bool _isLoading = false;
+  
+  // Applied discounts storage (in-memory for now)
+  List<Map<String, dynamic>> _appliedDiscounts = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _basePriceController.text = _basePrice.toString();
-    _loadDiscountSchedules();
+    _loadOwnerVenue();
   }
 
   @override
@@ -51,33 +56,134 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
     super.dispose();
   }
 
-  Future<void> _loadDiscountSchedules() async {
-    setState(() {
-      _isLoading = true;
-    });
-    
+  Future<void> _loadOwnerVenue() async {
     try {
-      final schedules = await _pricingService.getAllDiscountSchedules();
-      final basePrice = await _pricingService.getBasePrice();
-      setState(() {
-        _discountSchedules = schedules;
-        _basePrice = basePrice;
-        _basePriceController.text = _basePrice.toString();
-        _isLoading = false;
-      });
+      final user = _supabase.auth.currentUser;
+      if (user != null) {
+        final response = await _supabase
+            .from('venues')
+            .select('id, name, address, city, price_per_hour')
+            .eq('owner_id', user.id)
+            .single();
+        
+        setState(() {
+          _ownerVenue = response;
+          _basePrice = (response['price_per_hour'] as num?)?.toDouble() ?? 500.0;
+          _basePriceController.text = _basePrice.toString();
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      print('Error loading owner venue: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading discount schedules: $e'),
-            backgroundColor: Colors.red,
+            content: Text('Error loading venue information: $e'),
+            backgroundColor: Colors.orange,
           ),
         );
       }
     }
+  }
+
+  Future<void> _applyDynamicDiscount() async {
+    if (_ownerVenue == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Venue information not loaded'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_startDate == null || _endDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select start and end dates'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_discountValueController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter discount value'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final discountValue = double.parse(_discountValueController.text);
+      final originalPrice = _basePrice;
+      double discountedPrice;
+
+      if (_discountType == 'percentage') {
+        discountedPrice = originalPrice - (originalPrice * discountValue / 100);
+      } else {
+        discountedPrice = originalPrice - discountValue;
+      }
+
+      // Ensure price doesn't go below 0
+      discountedPrice = discountedPrice < 0 ? 0 : discountedPrice;
+
+      // Store discount information (don't update venue price in database)
+      final discountInfo = {
+        'venue_id': _ownerVenue!['id'],
+        'venue_name': _ownerVenue!['name'],
+        'original_price': originalPrice,
+        'discounted_price': discountedPrice,
+        'discount_value': discountValue,
+        'discount_type': _discountType,
+        'start_date': _startDate!.toIso8601String(),
+        'end_date': _endDate!.toIso8601String(),
+        'label': _labelController.text.isNotEmpty ? _labelController.text : 'Discount Applied',
+        'created_at': DateTime.now().toIso8601String(),
+      };
+
+      // Add to applied discounts list
+      setState(() {
+        _appliedDiscounts.add(discountInfo);
+        _isLoading = false;
+        
+        // Clear form
+        _startDate = null;
+        _endDate = null;
+        _discountValueController.clear();
+        _labelController.clear();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Discount scheduled successfully! ৳${discountedPrice.toStringAsFixed(2)} (${discountValue}${_discountType == 'percentage' ? '%' : ' Tk'} off)',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error applying discount: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Simple wrapper method for button calls
+  Future<void> _applyDiscount() async {
+    await _applyDynamicDiscount();
   }
 
   @override
@@ -120,6 +226,11 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Venue Information Display
+          _buildVenueInfoCard(),
+          
+          const SizedBox(height: 20),
+          
           // Current Base Price Display
           _buildBasePriceCard(),
           
@@ -152,6 +263,78 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildVenueInfoCard() {
+    if (_ownerVenue == null) {
+      return Card(
+        elevation: 4,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Icon(Icons.info_outline, size: 48, color: Colors.grey[400]),
+              const SizedBox(height: 8),
+              Text(
+                'Loading venue information...',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.business, color: Colors.green[700], size: 30),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Venue Information',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow(Icons.place, 'Venue Name', _ownerVenue!['name'] ?? 'N/A'),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.location_city, 'City', _ownerVenue!['city'] ?? 'N/A'),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.home, 'Address', _ownerVenue!['address'] ?? 'N/A'),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.monetization_on, 'Current Price', '৳${_basePrice.toStringAsFixed(2)}/hour'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: Colors.grey[600]),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(color: Colors.grey[700]),
+          ),
+        ),
+      ],
     );
   }
 
@@ -344,6 +527,30 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
                 hintText: 'e.g., "Independence Day Special", "Kickoff Deals"',
               ),
             ),
+            
+            const SizedBox(height: 20),
+            
+            // Apply Discount Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isLoading ? null : _applyDynamicDiscount,
+                icon: _isLoading 
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.discount),
+                label: Text(_isLoading ? 'Applying...' : 'Apply Discount'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -354,209 +561,273 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    // show future discounts only
-    final futureDiscounts = _discountSchedules.where((discount) {
-      return discount.startDate.isAfter(DateTime.now());
-    }).toList();
-
-    if (futureDiscounts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.discount,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No scheduled discounts',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Create your first discount to get started',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Current Venue Pricing Status
+          _buildCurrentPricingCard(),
+          
+          const SizedBox(height: 20),
+          
+          // Applied Discounts Section
           Text(
-            'Scheduled Discounts (${futureDiscounts.length})',
+            'Applied Discounts',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           
-          ...futureDiscounts.map((discount) => _buildDiscountCard(discount)).toList(),
+          // If no venue loaded yet
+          if (_ownerVenue == null)
+            _buildNoVenueCard()
+          else
+            _buildAppliedDiscountCard(),
         ],
       ),
     );
   }
 
-  Widget _buildDiscountCard(DiscountSchedule discount) {
-    final isPercentage = discount.discountType == DiscountType.percentage;
-    final discountText = isPercentage 
-        ? '${discount.discountValue.toStringAsFixed(0)}% Off'
-        : '৳${discount.discountValue.toStringAsFixed(0)} Off';
-    
-    final dateText = discount.endDate != null
-        ? '${DateFormat('MMM dd').format(discount.startDate)} - ${DateFormat('MMM dd, yyyy').format(discount.endDate!)}'
-        : DateFormat('MMM dd, yyyy').format(discount.startDate);
-    
-    final timeText = '${discount.startTime.format(context)} - ${discount.endTime.format(context)}';
-
+  Widget _buildCurrentPricingCard() {
     return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 4,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isPercentage ? Colors.orange[100] : Colors.blue[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      discountText,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isPercentage ? Colors.orange[700] : Colors.blue[700],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                ),
+                Icon(Icons.info_outline, color: Colors.blue[700], size: 24),
                 const SizedBox(width: 8),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      _editDiscount(discount);
-                    } else if (value == 'delete') {
-                      _deleteDiscount(discount.id);
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit, color: Colors.blue),
-                          SizedBox(width: 8),
-                          Text('Edit'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text('Delete'),
-                        ],
-                      ),
-                    ),
-                  ],
+                const Text(
+                  'Current Pricing Status',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            if (discount.label.isNotEmpty) ...[
-              Text(
-                discount.label,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+            const SizedBox(height: 12),
+            if (_ownerVenue != null) ...[
+              Text('Venue: ${_ownerVenue!['name']}'),
               const SizedBox(height: 4),
-            ],
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    dateText,
-                    style: const TextStyle(color: Colors.grey),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.access_time, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    timeText,
-                    style: const TextStyle(color: Colors.grey),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            if (discount.applyToIndividual || discount.applyToTeams) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  if (discount.applyToIndividual)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.green[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Individual',
-                        style: TextStyle(fontSize: 12, color: Colors.green[700]),
-                      ),
-                    ),
-                  if (discount.applyToTeams)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Teams',
-                        style: TextStyle(fontSize: 12, color: Colors.blue[700]),
-                      ),
-                    ),
-                ],
+              Text('Location: ${_ownerVenue!['address']}, ${_ownerVenue!['city']}'),
+              const SizedBox(height: 4),
+              Text(
+                'Current Price: ৳${_basePrice.toStringAsFixed(2)}/hour',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
+            ] else ...[
+              const Text('Loading venue information...'),
             ],
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildNoVenueCard() {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Icon(Icons.info_outline, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 8),
+            Text(
+              'No venue information available',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppliedDiscountCard() {
+    if (_appliedDiscounts.isEmpty) {
+      return Card(
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Icon(Icons.discount_outlined, size: 48, color: Colors.grey[400]),
+              const SizedBox(height: 8),
+              Text(
+                'No discounts applied yet',
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Use the Dynamic Pricing tab to create discounts',
+                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: _appliedDiscounts.map((discount) => _buildDiscountDisplayCard(discount)).toList(),
+    );
+  }
+
+  Widget _buildDiscountDisplayCard(Map<String, dynamic> discount) {
+    final originalPrice = discount['original_price'] as double;
+    final discountedPrice = discount['discounted_price'] as double;
+    final discountValue = discount['discount_value'] as double;
+    final discountType = discount['discount_type'] as String;
+    final startDate = DateTime.parse(discount['start_date']);
+    final endDate = DateTime.parse(discount['end_date']);
+    final label = discount['label'] as String;
+
+    final dateRange = '${DateFormat('MMM dd').format(startDate)} - ${DateFormat('MMM dd, yyyy').format(endDate)}';
+    final discountText = discountType == 'percentage' ? '${discountValue.toInt()}% off' : '৳${discountValue.toInt()} off';
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with edit button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _editDiscount(discount),
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('Edit'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            // Price display with strikethrough
+            Row(
+              children: [
+                Icon(Icons.monetization_on, color: Colors.green[700], size: 20),
+                const SizedBox(width: 8),
+                // Discounted price (bold)
+                Text(
+                  '৳${discountedPrice.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Original price with strikethrough
+                Text(
+                  '৳${originalPrice.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    decoration: TextDecoration.lineThrough,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Discount badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    discountText,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange[700],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            
+            // Date range
+            Row(
+              children: [
+                Icon(Icons.calendar_today, color: Colors.blue[700], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Valid: $dateRange',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            
+            // Venue info
+            Row(
+              children: [
+                Icon(Icons.location_on, color: Colors.red[700], size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Venue: ${discount['venue_name']}',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editDiscount(Map<String, dynamic> discount) {
+    // Create a discount schedule object for editing
+    final startDate = DateTime.parse(discount['start_date']);
+    final endDate = DateTime.parse(discount['end_date']);
+    
+    final scheduleForEdit = DiscountSchedule(
+      id: 0,
+      startDate: startDate,
+      endDate: endDate,
+      startTime: const TimeOfDay(hour: 0, minute: 0),
+      endTime: const TimeOfDay(hour: 23, minute: 59),
+      discountType: discount['discount_type'] == 'percentage' ? DiscountType.percentage : DiscountType.flat,
+      discountValue: discount['discount_value'] as double,
+      label: discount['label'] as String,
+      applyToIndividual: true,
+      applyToTeams: true,
+      allowOverlapping: false,
+    );
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditSchedulePage(
+          schedule: scheduleForEdit,
+        ),
+      ),
+    ).then((result) {
+      if (result == true) {
+        // Refresh data after editing
+        setState(() {});
+      }
+    });
   }
 
   Future<void> _selectDate(bool isStartDate) async {
@@ -692,7 +963,7 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
       );
       //save using service
       await _pricingService.addDiscountSchedule(newDiscount);
-      await _loadDiscountSchedules();
+      await _loadOwnerVenue();
 
       // Clear form
       setState(() {
@@ -714,61 +985,6 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
     } catch (e) {
       _showError('Error scheduling discount: $e');
     }
-  }
-
-  void _editDiscount(DiscountSchedule discount) {
-    // Implementation for editing discount
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Discount'),
-        content: const Text('Edit functionality would be implemented here'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _deleteDiscount(int id) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Discount'),
-        content: const Text('Are you sure you want to delete this discount schedule?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await _pricingService.deleteDiscountSchedule(id);
-                await _loadDiscountSchedules();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Discount deleted successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } catch (e) {
-                _showError('Error deleting discount: $e');
-              }
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showError(String message) {

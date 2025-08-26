@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/venue_owner_sidebar.dart';
 import '../widgets/owner_profile_widget.dart';
+import '../services/tournament_service.dart';
 import 'tournament_list.dart';
 
 class TournamentsAndEventsPage extends StatefulWidget {
@@ -12,19 +14,141 @@ class TournamentsAndEventsPage extends StatefulWidget {
 
 class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
   final DateTime now = DateTime.now();
+  final SupabaseClient _supabase = Supabase.instance.client;
+  
+  List<Map<String, dynamic>> _upcomingTournaments = [];
+  List<Map<String, dynamic>> _ongoingTournaments = [];
+  List<Map<String, dynamic>> _pastTournaments = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTournaments();
+  }
+
+  Future<void> _loadTournaments() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final user = _supabase.auth.currentUser;
+      if (user != null) {
+        // Fetch tournaments for current owner
+        final tournaments = await OwnerTournamentService.getOwnerTournaments(user.id);
+        
+        // Categorize tournaments based on date and time
+        _categorizeTournaments(tournaments);
+      }
+    } catch (e) {
+      print('Error loading tournaments: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _categorizeTournaments(List<Map<String, dynamic>> tournaments) {
+    final today = DateTime.now();
+    final currentDate = DateTime(today.year, today.month, today.day);
+    
+    List<Map<String, dynamic>> upcoming = [];
+    List<Map<String, dynamic>> ongoing = [];
+    List<Map<String, dynamic>> past = [];
+
+    for (var tournament in tournaments) {
+      final tournamentDate = DateTime.parse(tournament['tournament_date']);
+      final tournamentDay = DateTime(tournamentDate.year, tournamentDate.month, tournamentDate.day);
+      
+      if (tournamentDay.isAfter(currentDate)) {
+        // Future tournament
+        upcoming.add(tournament);
+      } else if (tournamentDay.isAtSameMomentAs(currentDate)) {
+        // Today's tournament - check if ongoing
+        if (_isTournamentOngoing(tournament)) {
+          ongoing.add(tournament);
+        } else if (_isTournamentFinished(tournament)) {
+          past.add(tournament);
+        } else {
+          upcoming.add(tournament); // Not started yet today
+        }
+      } else {
+        // Past tournament
+        past.add(tournament);
+      }
+    }
+
+    setState(() {
+      _upcomingTournaments = upcoming;
+      _ongoingTournaments = ongoing;
+      _pastTournaments = past;
+    });
+  }
+
+  bool _isTournamentOngoing(Map<String, dynamic> tournament) {
+    final now = DateTime.now();
+    final tournamentDate = DateTime.parse(tournament['tournament_date']);
+    final startTime = tournament['start_time'] as String;
+    final durationHours = tournament['duration_hours'] as int;
+
+    // Parse start time (format: "HH:mm:ss")
+    final timeParts = startTime.split(':');
+    final startHour = int.parse(timeParts[0]);
+    final startMinute = int.parse(timeParts[1]);
+
+    final tournamentStart = DateTime(
+      tournamentDate.year,
+      tournamentDate.month,
+      tournamentDate.day,
+      startHour,
+      startMinute,
+    );
+    
+    final tournamentEnd = tournamentStart.add(Duration(hours: durationHours));
+
+    return now.isAfter(tournamentStart) && now.isBefore(tournamentEnd);
+  }
+
+  bool _isTournamentFinished(Map<String, dynamic> tournament) {
+    final now = DateTime.now();
+    final tournamentDate = DateTime.parse(tournament['tournament_date']);
+    final startTime = tournament['start_time'] as String;
+    final durationHours = tournament['duration_hours'] as int;
+
+    // Parse start time
+    final timeParts = startTime.split(':');
+    final startHour = int.parse(timeParts[0]);
+    final startMinute = int.parse(timeParts[1]);
+
+    final tournamentStart = DateTime(
+      tournamentDate.year,
+      tournamentDate.month,
+      tournamentDate.day,
+      startHour,
+      startMinute,
+    );
+    
+    final tournamentEnd = tournamentStart.add(Duration(hours: durationHours));
+
+    return now.isAfter(tournamentEnd);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tournaments & Events'),
+        title: const Text('VenueVista'),
         backgroundColor: Colors.green[700],
         actions: [
           OwnerProfileWidget(),
         ],
       ),
       drawer: const VenueOwnerSidebar(currentPage: 'tournaments'),
-      body: SingleChildScrollView(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,6 +170,7 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
               Colors.green,
               Icons.play_circle_filled,
               'Ongoing',
+              _ongoingTournaments,
             ),
             
             const SizedBox(height: 16),
@@ -57,6 +182,7 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
               Colors.blue,
               Icons.schedule,
               'Upcoming',
+              _upcomingTournaments,
             ),
             
             const SizedBox(height: 16),
@@ -68,6 +194,7 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
               Colors.red,
               Icons.history,
               'Past',
+              _pastTournaments,
             ),
           ],
         ),
@@ -81,8 +208,9 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
     MaterialColor color,
     IconData icon,
     String filter,
+    List<Map<String, dynamic>> tournaments,
   ) {
-    final events = _getFilteredEvents(filter);
+    final count = tournaments.length;
     
     return Card(
       elevation: 6,
@@ -113,6 +241,7 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
                     title: title,
                     filter: filter,
                     color: color,
+                    tournaments: tournaments,
                   ),
                 ),
               );
@@ -156,7 +285,7 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '${events.length} tournament${events.length != 1 ? 's' : ''}',
+                          '${count} tournament${count != 1 ? 's' : ''}',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -187,88 +316,4 @@ class _TournamentsAndEventsPageState extends State<TournamentsAndEventsPage> {
     );
   }
 
-  List<Map<String, dynamic>> _getFilteredEvents(String filter) {
-    final events = [
-      {
-        'name': 'Football Championship',
-        'sport': 'Football',
-        'date': DateTime(2025, 8, 15, 10, 0),
-        'teamSize': '11',
-        'fee': '\u09F3 5000',
-        'venue': 'Main Football Ground',
-        'maxTeams': '16',
-        'registeredTeams': '12',
-        'duration': '1 Day',
-        'firstPrize': '\u09F3 15,000',
-        'secondPrize': '\u09F3 10,000',
-        'thirdPrize': '\u09F3 5,000',
-        'organizer': 'VenueVista Sports',
-        'phone': '+880 1700-594133',
-        'email': 'football@venuevista.com',
-      },
-      {
-        'name': 'Premier League Tournament',
-        'sport': 'Football',
-        'date': DateTime(2025, 8, 20, 14, 0),
-        'teamSize': '11',
-        'fee': '\u09F3 7000',
-        'venue': 'Football Stadium',
-        'maxTeams': '12',
-        'registeredTeams': '8',
-        'duration': '2 Days',
-        'firstPrize': '\u09F3 20,000',
-        'secondPrize': '\u09F3 15,000',
-        'thirdPrize': '\u09F3 8,000',
-        'organizer': 'VenueVista Sports',
-        'phone': '+880 1700-594133',
-        'email': 'football@venuevista.com',
-      },
-      {
-        'name': 'Youth Football Cup',
-        'sport': 'Football',
-        'date': DateTime(2025, 7, 25, 16, 0),
-        'teamSize': '11',
-        'fee': '\u09F3 3000',
-        'venue': 'Youth Football Ground',
-        'maxTeams': '8',
-        'registeredTeams': '8',
-        'duration': '1 Day',
-        'firstPrize': '\u09F3 12,000',
-        'secondPrize': '\u09F3 8,000',
-        'thirdPrize': '\u09F3 4,000',
-        'organizer': 'VenueVista Sports',
-        'phone': '+880 1700-594133',
-        'email': 'football@venuevista.com',
-      },
-      {
-        'name': 'District Football League',
-        'sport': 'Football',
-        'date': DateTime(2025, 9, 5, 9, 0),
-        'teamSize': '11',
-        'fee': '\u09F3 4000',
-        'venue': 'District Football Ground',
-        'maxTeams': '20',
-        'registeredTeams': '16',
-        'duration': '3 Days',
-        'firstPrize': '\u09F3 25,000',
-        'secondPrize': '\u09F3 15,000',
-        'thirdPrize': '\u09F3 8,000',
-        'organizer': 'VenueVista Sports',
-        'phone': '+880 1700-594133',
-        'email': 'football@venuevista.com',
-      },
-    ];
-
-    return events.where((event) {
-      final eventDate = event['date'] as DateTime;
-      if (filter == 'Ongoing') {
-        return eventDate.isBefore(now) && eventDate.add(const Duration(hours: 2)).isAfter(now);
-      } else if (filter == 'Upcoming') {
-        return eventDate.isAfter(now);
-      } else if (filter == 'Past') {
-        return eventDate.isBefore(now);
-      }
-      return false;
-    }).toList();
-  }
 }
