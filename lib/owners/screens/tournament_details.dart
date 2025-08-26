@@ -262,7 +262,7 @@ class TournamentDetailsPage extends StatelessWidget {
                           const SizedBox(height: 8),
                           _buildPrizeRow('🥈 2nd Place', '৳${tournament['second_prize'] ?? tournament['secondPrize'] ?? '10,000'}'),
                           const SizedBox(height: 8),
-                          _buildPrizeRow('🥉 3rd Place', tournament['thirdPrize'] ?? '৳ 5,000'),
+                          _buildPrizeRow('🥉 3rd Place', '৳${tournament['third_prize'] ?? tournament['thirdPrize'] ?? '5,000'}'),
                         ],
                       ),
                     ),
