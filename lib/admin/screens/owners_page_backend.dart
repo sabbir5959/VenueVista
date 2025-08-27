@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/app_colors.dart';
 
 class AdminOwnersPage extends StatefulWidget {
@@ -9,53 +10,138 @@ class AdminOwnersPage extends StatefulWidget {
 }
 
 class _AdminOwnersPageState extends State<AdminOwnersPage> {
+  final SupabaseClient _supabase = Supabase.instance.client;
+
   int _currentPage = 1;
   final int _itemsPerPage = 6; // Mobile এর জন্য optimal
+
+  List<Map<String, dynamic>> _owners = [];
+  bool _isLoading = true;
+  String _errorMessage = '';
+  int _totalOwners = 0;
+  int _totalVenues = 0;
+  double _totalRevenue = 0;
 
   List<Map<String, dynamic>> get _paginatedOwners {
     final startIndex = (_currentPage - 1) * _itemsPerPage;
     final endIndex = startIndex + _itemsPerPage;
-    return _demoOwners.sublist(
+    return _owners.sublist(
       startIndex,
-      endIndex > _demoOwners.length ? _demoOwners.length : endIndex,
+      endIndex > _owners.length ? _owners.length : endIndex,
     );
   }
 
-  int get _totalPages => (_demoOwners.length / _itemsPerPage).ceil();
+  int get _totalPages => (_owners.length / _itemsPerPage).ceil();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOwnersData();
+  }
+
+  Future<void> _loadOwnersData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      print('🔄 Loading owners data from Supabase...');
+
+      // Load owners from auth.users where role = 'owner'
+      final ownersResponse = await _supabase
+          .from('auth_users')
+          .select('*')
+          .eq('role', 'owner')
+          .order('created_at', ascending: false);
+
+      print('✅ Owners loaded: ${ownersResponse.length}');
+
+      // Load venues count and revenue for each owner
+      List<Map<String, dynamic>> ownersWithStats = [];
+
+      for (var owner in ownersResponse) {
+        // Get venues count for this owner
+        final venuesResponse = await _supabase
+            .from('venues')
+            .select('id, price_per_hour')
+            .eq('owner_id', owner['id']);
+
+        // Calculate total revenue from bookings
+        double totalRevenue = 0;
+        if (venuesResponse.isNotEmpty) {
+          final venueIds = venuesResponse.map((v) => v['id']).toList();
+          final bookingsResponse = await _supabase
+              .from('bookings')
+              .select('total_amount')
+              .inFilter('venue_id', venueIds)
+              .eq('status', 'confirmed');
+
+          for (var booking in bookingsResponse) {
+            totalRevenue += (booking['total_amount'] ?? 0).toDouble();
+          }
+        }
+
+        ownersWithStats.add({
+          'id': owner['id'],
+          'name': owner['full_name'] ?? 'N/A',
+          'email': owner['email'] ?? 'N/A',
+          'phone': owner['phone'] ?? 'N/A',
+          'venues': venuesResponse.length,
+          'revenue': '৳${totalRevenue.toStringAsFixed(0)}',
+          'status': owner['email_confirmed_at'] != null ? 'Active' : 'Pending',
+          'joinDate': owner['created_at'] ?? '',
+        });
+      }
+
+      // Calculate total stats
+      _totalOwners = ownersWithStats.length;
+      _totalVenues = ownersWithStats.fold(
+        0,
+        (sum, owner) => sum + (owner['venues'] as int),
+      );
+      _totalRevenue = ownersWithStats.fold(0.0, (sum, owner) {
+        String revenueStr = owner['revenue']
+            .toString()
+            .replaceAll('৳', '')
+            .replaceAll(',', '');
+        return sum + double.tryParse(revenueStr)!;
+      });
+
+      setState(() {
+        _owners = ownersWithStats;
+        _isLoading = false;
+      });
+
+      print('✅ Owners data loaded successfully: ${_owners.length} owners');
+    } catch (e) {
+      print('❌ Error loading owners data: $e');
+      setState(() {
+        _errorMessage = 'Failed to load owners data. Please try again.';
+        _isLoading = false;
+      });
+    }
+  }
 
   // Delete owner function
-  void _deleteOwner(int index) {
-    final owner = _demoOwners[index];
-    showDialog(
+  Future<void> _deleteOwner(int index) async {
+    final owner = _owners[index];
+
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Owner'),
-          content: Text('Are you sure you want to delete "${owner['name']}"?'),
+          content: Text(
+            'Are you sure you want to delete "${owner['name']}"?\n\nThis will also delete all their venues and bookings.',
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context, false),
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                setState(() {
-                  _demoOwners.removeAt(index);
-                  // Adjust current page if needed
-                  if (_paginatedOwners.isEmpty && _currentPage > 1) {
-                    _currentPage--;
-                  }
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Owner "${owner['name']}" deleted successfully',
-                    ),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              },
+              onPressed: () => Navigator.pop(context, true),
               style: TextButton.styleFrom(foregroundColor: AppColors.error),
               child: const Text('Delete'),
             ),
@@ -63,6 +149,39 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
         );
       },
     );
+
+    if (confirmed == true) {
+      try {
+        print('🗑️ Deleting owner: ${owner['id']}');
+
+        // Delete from auth_users table
+        await _supabase.from('auth_users').delete().eq('id', owner['id']);
+
+        // Reload data
+        await _loadOwnersData();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Owner "${owner['name']}" deleted successfully'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+
+        print('✅ Owner deleted successfully');
+      } catch (e) {
+        print('❌ Error deleting owner: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete owner: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -102,108 +221,157 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
             ),
             SizedBox(height: isMobile ? 16 : 32),
 
-            // Quick Stats
-            Row(
-              children: [
-                Expanded(
-                  child: _buildOwnerStatCard(
-                    'Total Owners',
-                    '127',
-                    Icons.person_outline,
-                    AppColors.primary,
-                    isMobile,
-                  ),
+            // Quick Stats or Loading/Error
+            if (_isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildOwnerStatCard(
-                    'Football Venues',
-                    '145',
-                    Icons.sports_soccer,
-                    AppColors.success,
-                    isMobile,
-                  ),
+              )
+            else if (_errorMessage.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildOwnerStatCard(
-                    'Total Income',
-                    '৳2.5L',
-                    Icons.monetization_on_outlined,
-                    AppColors.secondary,
-                    isMobile,
-                  ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: AppColors.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage,
+                        style: TextStyle(color: AppColors.error),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _loadOwnersData,
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildOwnerStatCard(
+                      'Total Owners',
+                      '$_totalOwners',
+                      Icons.person_outline,
+                      AppColors.primary,
+                      isMobile,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: _buildOwnerStatCard(
+                      'Football Venues',
+                      '$_totalVenues',
+                      Icons.sports_soccer,
+                      AppColors.success,
+                      isMobile,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: _buildOwnerStatCard(
+                      'Total Income',
+                      '৳${(_totalRevenue / 1000).toStringAsFixed(1)}K',
+                      Icons.monetization_on_outlined,
+                      AppColors.secondary,
+                      isMobile,
+                    ),
+                  ),
+                ],
+              ),
 
             SizedBox(height: 24),
 
             // Owners List Header
-            Container(
-              padding: EdgeInsets.all(isMobile ? 16 : 20),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.05),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.shadowLight,
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+            if (!_isLoading && _errorMessage.isEmpty)
+              Container(
+                padding: EdgeInsets.all(isMobile ? 16 : 20),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.05),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    'Venue Owners',
-                    style: TextStyle(
-                      fontSize: isMobile ? 16 : 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const Spacer(),
-                ],
-              ),
-            ),
-
-            // Owners List Items
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.shadowLight,
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  if (isMobile)
-                    ..._buildMobileOwnersList()
-                  else
-                    ..._buildDesktopOwnersList(),
-
-                  // Pagination
-                  if (_totalPages > 1) ...[
-                    Padding(
-                      padding: EdgeInsets.all(isMobile ? 16 : 20),
-                      child: _buildPaginationControls(isMobile),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.shadowLight,
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
-                ],
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Venue Owners',
+                      style: TextStyle(
+                        fontSize: isMobile ? 16 : 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const Spacer(),
+                  ],
+                ),
               ),
-            ),
+
+            // Owners List Items
+            if (!_isLoading && _errorMessage.isEmpty)
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.shadowLight,
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    if (_owners.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Text(
+                          'No owners found',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      )
+                    else ...[
+                      if (isMobile)
+                        ..._buildMobileOwnersList()
+                      else
+                        ..._buildDesktopOwnersList(),
+
+                      // Pagination
+                      if (_totalPages > 1) ...[
+                        Padding(
+                          padding: EdgeInsets.all(isMobile ? 16 : 20),
+                          child: _buildPaginationControls(isMobile),
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -353,7 +521,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  onPressed: () => _deleteOwner(_demoOwners.indexOf(owner)),
+                  onPressed: () => _deleteOwner(_owners.indexOf(owner)),
                   icon: Icon(
                     Icons.delete_outline,
                     size: 16,
@@ -535,7 +703,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    onPressed: () => _deleteOwner(_demoOwners.indexOf(owner)),
+                    onPressed: () => _deleteOwner(_owners.indexOf(owner)),
                     icon: Icon(
                       Icons.delete_outline,
                       size: 20,
@@ -599,88 +767,4 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
       ],
     );
   }
-
-  static final List<Map<String, dynamic>> _demoOwners = [
-    {
-      'id': 'GV001',
-      'name': 'Green Valley Football Club',
-      'phone': '+880-1234-567890',
-      'email': 'info@greenvalley.com',
-      'groundSize': '100x70 meters',
-      'capacity': 22,
-      'pricePerHour': 1500,
-      'venues': 3,
-      'revenue': '৳45,000',
-      'status': 'Active',
-      'joinDate': '2024-01-10',
-    },
-    {
-      'id': 'DFC001',
-      'name': 'Dhanmondi Football Complex',
-      'phone': '+880-1987-654321',
-      'email': 'admin@dhanmondifootball.com',
-      'groundSize': '110x70 meters',
-      'capacity': 24,
-      'pricePerHour': 2000,
-      'venues': 5,
-      'revenue': '৳78,500',
-      'status': 'Active',
-      'joinDate': '2024-01-25',
-    },
-    {
-      'id': 'EFA001',
-      'name': 'Elite Football Arena',
-      'phone': '+880-1555-123456',
-      'email': 'info@elitefootball.com',
-      'groundSize': '105x68 meters',
-      'capacity': 20,
-      'pricePerHour': 1800,
-      'venues': 4,
-      'revenue': '৳67,200',
-      'status': 'Active',
-      'joinDate': '2024-02-12',
-    },
-    {
-      'id': 'MFG001',
-      'name': 'Metro Football Ground',
-      'phone': '+880-1333-789012',
-      'email': 'admin@metrofootball.com',
-      'groundSize': '95x65 meters',
-      'capacity': 18,
-      'pricePerHour': 1200,
-      'venues': 1,
-      'revenue': '৳15,800',
-      'status': 'Suspended',
-      'joinDate': '2024-03-20',
-    },
-    {
-      'id': 'GFC001',
-      'name': 'Gulshan Football Center',
-      'phone': '+880-1444-567890',
-      'email': 'contact@gulshanfootball.com',
-      'groundSize': '100x68 meters',
-      'capacity': 22,
-      'pricePerHour': 1600,
-      'venues': 2,
-      'revenue': '৳38,400',
-      'status': 'Active',
-      'joinDate': '2024-04-05',
-    },
-    {
-      'name': 'Premier Football Complex',
-      'email': 'info@premierfootball.com',
-      'venues': 6,
-      'revenue': '৳95,600',
-      'status': 'Active',
-      'joinDate': '2024-01-30',
-    },
-    {
-      'name': 'Uttara Football Academy',
-      'email': 'admin@uttarafootball.com',
-      'venues': 3,
-      'revenue': '৳52,300',
-      'status': 'Active',
-      'joinDate': '2024-03-18',
-    },
-  ];
 }
