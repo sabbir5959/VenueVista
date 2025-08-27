@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:async';
 import '../../constants/app_colors.dart';
 
 class AdminOwnersPage extends StatefulWidget {
@@ -13,59 +10,403 @@ class AdminOwnersPage extends StatefulWidget {
 }
 
 class _AdminOwnersPageState extends State<AdminOwnersPage> {
+  final SupabaseClient _supabase = Supabase.instance.client;
+
   int _currentPage = 1;
   final int _itemsPerPage = 6; // Mobile এর জন্য optimal
+
+  List<Map<String, dynamic>> _owners = [];
+  bool _isLoading = true;
+  String _errorMessage = '';
+  int _totalOwners = 0;
 
   List<Map<String, dynamic>> get _paginatedOwners {
     final startIndex = (_currentPage - 1) * _itemsPerPage;
     final endIndex = startIndex + _itemsPerPage;
-    return _demoOwners.sublist(
+    return _owners.sublist(
       startIndex,
-      endIndex > _demoOwners.length ? _demoOwners.length : endIndex,
+      endIndex > _owners.length ? _owners.length : endIndex,
     );
   }
 
-  int get _totalPages => (_demoOwners.length / _itemsPerPage).ceil();
+  int get _totalPages => (_owners.length / _itemsPerPage).ceil();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOwnersData();
+  }
+
+  Future<void> _loadOwnersData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      print('🔄 Loading REAL owners from user_profiles table...');
+
+      // Load ONLY owners from user_profiles where role = 'owner'
+      final ownersResponse = await _supabase
+          .from('user_profiles')
+          .select('id, full_name, email, phone, status, created_at')
+          .eq('role', 'owner')
+          .order('created_at', ascending: false);
+
+      print('✅ Real owners from database: ${ownersResponse.length}');
+      print('📋 Raw data: $ownersResponse');
+
+      // Direct mapping from database
+      List<Map<String, dynamic>> ownersList = [];
+
+      for (var owner in ownersResponse) {
+        ownersList.add({
+          'id': owner['id'],
+          'name': owner['full_name'] ?? 'Unknown',
+          'email': owner['email'] ?? 'No email',
+          'phone': owner['phone'] ?? 'No phone',
+          'status': owner['status'] ?? 'active',
+          'joinDate': owner['created_at'] ?? '',
+        });
+      }
+
+      _totalOwners = ownersList.length;
+
+      setState(() {
+        _owners = ownersList;
+        _isLoading = false;
+      });
+
+      print('✅ Final owners list: ${_owners.length}');
+      print('📋 Names: ${_owners.map((o) => o['name']).join(', ')}');
+    } catch (e) {
+      print('❌ Database error: $e');
+      setState(() {
+        _errorMessage = 'Database connection failed: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   // Delete owner function
-  void _deleteOwner(int index) {
-    final owner = _demoOwners[index];
-    showDialog(
+  Future<void> _deleteOwner(int index) async {
+    final owner = _owners[index];
+
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Owner'),
-          content: Text('Are you sure you want to delete "${owner['name']}"?'),
+          content: Text(
+            'Are you sure you want to delete "${owner['name']}"?\n\nThis will also delete all their venues and bookings.',
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context, false),
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                setState(() {
-                  _demoOwners.removeAt(index);
-                  // Adjust current page if needed
-                  if (_paginatedOwners.isEmpty && _currentPage > 1) {
-                    _currentPage--;
-                  }
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Owner "${owner['name']}" deleted successfully',
-                    ),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              },
+              onPressed: () => Navigator.pop(context, true),
               style: TextButton.styleFrom(foregroundColor: AppColors.error),
               child: const Text('Delete'),
             ),
           ],
         );
       },
+    );
+
+    if (confirmed == true) {
+      try {
+        print('🗑️ Deleting owner: ${owner['id']}');
+
+        // Delete from user_profiles table
+        await _supabase.from('user_profiles').delete().eq('id', owner['id']);
+
+        // Reload data
+        await _loadOwnersData();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Owner "${owner['name']}" deleted successfully'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+
+        print('✅ Owner deleted successfully');
+      } catch (e) {
+        print('❌ Error deleting owner: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete owner: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // Show owner details function
+  Future<void> _showOwnerDetails(Map<String, dynamic> owner) async {
+    // Load owner's venues
+    try {
+      final venuesResponse = await _supabase
+          .from('venues')
+          .select(
+            'id, name, description, address, city, price_per_hour, status, rating, capacity',
+          )
+          .eq('owner_id', owner['id']);
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.8,
+                constraints: const BoxConstraints(maxWidth: 600),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Text(
+                          'Owner Details',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Owner Info
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Personal Information',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildDetailRow('Name', owner['name'] ?? 'N/A'),
+                          _buildDetailRow('Email', owner['email'] ?? 'N/A'),
+                          _buildDetailRow('Phone', owner['phone'] ?? 'N/A'),
+                          _buildDetailRow(
+                            'Status',
+                            owner['status'] ?? 'active',
+                          ),
+                          _buildDetailRow(
+                            'Join Date',
+                            owner['joinDate'] != null &&
+                                    owner['joinDate'].toString().isNotEmpty
+                                ? owner['joinDate'].toString().split('T')[0]
+                                : 'N/A',
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Venues Info
+                    Text(
+                      'Owned Venues (${venuesResponse.length})',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (venuesResponse.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.textSecondary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'No venues found',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      )
+                    else
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 300),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: venuesResponse.length,
+                          itemBuilder: (context, index) {
+                            final venue = venuesResponse[index];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.textSecondary.withOpacity(
+                                    0.2,
+                                  ),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    venue['name'] ?? 'Unknown Venue',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    venue['address'] ?? 'No address',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      _buildVenueTag(
+                                        '${venue['city'] ?? 'Unknown'}',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _buildVenueTag(
+                                        '৳${venue['price_per_hour'] ?? 0}/hr',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _buildVenueTag(
+                                        venue['status'] ?? 'active',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                    const SizedBox(height: 16),
+
+                    // Close Button
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Close'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      }
+    } catch (e) {
+      print('❌ Error loading owner details: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load owner details: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVenueTag(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          color: AppColors.primary,
+        ),
+      ),
     );
   }
 
@@ -106,108 +447,145 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
             ),
             SizedBox(height: isMobile ? 16 : 32),
 
-            // Quick Stats
-            Row(
-              children: [
-                Expanded(
-                  child: _buildOwnerStatCard(
-                    'Total Owners',
-                    '127',
-                    Icons.person_outline,
-                    AppColors.primary,
-                    isMobile,
-                  ),
+            // Quick Stats or Loading/Error
+            if (_isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildOwnerStatCard(
-                    'Football Venues',
-                    '145',
-                    Icons.sports_soccer,
-                    AppColors.success,
-                    isMobile,
-                  ),
+              )
+            else if (_errorMessage.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildOwnerStatCard(
-                    'Total Income',
-                    '৳2.5L',
-                    Icons.monetization_on_outlined,
-                    AppColors.secondary,
-                    isMobile,
-                  ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: AppColors.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage,
+                        style: TextStyle(color: AppColors.error),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _loadOwnersData,
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildOwnerStatCard(
+                      'Total Owners',
+                      '$_totalOwners',
+                      AppColors.primary,
+                      isMobile,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: _buildOwnerStatCard(
+                      'Active Status',
+                      '${_owners.where((o) => o['status'] == 'active').length}',
+                      AppColors.success,
+                      isMobile,
+                    ),
+                  ),
+                ],
+              ),
 
             SizedBox(height: 24),
 
             // Owners List Header
-            Container(
-              padding: EdgeInsets.all(isMobile ? 16 : 20),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.05),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.shadowLight,
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+            if (!_isLoading && _errorMessage.isEmpty)
+              Container(
+                padding: EdgeInsets.all(isMobile ? 16 : 20),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.05),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    'Venue Owners',
-                    style: TextStyle(
-                      fontSize: isMobile ? 16 : 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const Spacer(),
-                ],
-              ),
-            ),
-
-            // Owners List Items
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.shadowLight,
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  if (isMobile)
-                    ..._buildMobileOwnersList()
-                  else
-                    ..._buildDesktopOwnersList(),
-
-                  // Pagination
-                  if (_totalPages > 1) ...[
-                    Padding(
-                      padding: EdgeInsets.all(isMobile ? 16 : 20),
-                      child: _buildPaginationControls(isMobile),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.shadowLight,
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
-                ],
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Venue Owners',
+                      style: TextStyle(
+                        fontSize: isMobile ? 16 : 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const Spacer(),
+                  ],
+                ),
               ),
-            ),
+
+            // Owners List Items
+            if (!_isLoading && _errorMessage.isEmpty)
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.shadowLight,
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    if (_owners.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Text(
+                          'No owners found',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      )
+                    else ...[
+                      if (isMobile)
+                        ..._buildMobileOwnersList()
+                      else
+                        ..._buildDesktopOwnersList(),
+
+                      // Pagination
+                      if (_totalPages > 1) ...[
+                        Padding(
+                          padding: EdgeInsets.all(isMobile ? 16 : 20),
+                          child: _buildPaginationControls(isMobile),
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -217,7 +595,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
   Widget _buildOwnerStatCard(
     String title,
     String value,
-    IconData icon,
     Color color,
     bool isMobile,
   ) {
@@ -237,18 +614,20 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: isMobile ? 16 : 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: isMobile ? 10 : 12,
+                color: color,
+                fontWeight: FontWeight.w600,
               ),
-              const Spacer(),
-            ],
+            ),
           ),
           SizedBox(height: isMobile ? 8 : 12),
           Text(
@@ -258,17 +637,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: isMobile ? 10 : 12,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -316,38 +684,36 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    owner['phone'] ?? 'N/A',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(
-                            owner['status'] ?? 'Active',
-                          ).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          owner['status'] ?? 'Active',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: _getStatusColor(owner['status'] ?? 'Active'),
-                          ),
-                        ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(
+                        owner['status'] ?? 'active',
+                      ).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      owner['status'] ?? 'active',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: _getStatusColor(owner['status'] ?? 'active'),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${owner['venues'] ?? 0} venues',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -357,7 +723,17 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  onPressed: () => _deleteOwner(_demoOwners.indexOf(owner)),
+                  onPressed: () => _showOwnerDetails(owner),
+                  icon: Icon(
+                    Icons.visibility_outlined,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.all(4),
+                ),
+                IconButton(
+                  onPressed: () => _deleteOwner(_owners.indexOf(owner)),
                   icon: Icon(
                     Icons.delete_outline,
                     size: 16,
@@ -390,7 +766,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
         child: Row(
           children: [
             Expanded(
-              flex: 3,
+              flex: 4,
               child: Text(
                 'Owner Details',
                 style: TextStyle(
@@ -403,18 +779,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
             Expanded(
               flex: 2,
               child: Text(
-                'Venues',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                'Revenue',
+                'Phone',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -454,7 +819,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
             children: [
               // Owner Details
               Expanded(
-                flex: 3,
+                flex: 4,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -482,24 +847,11 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 ),
               ),
 
-              // Venues
+              // Phone
               Expanded(
                 flex: 2,
                 child: Text(
-                  '${owner['venues'] ?? 0}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-
-              // Revenue
-              Expanded(
-                flex: 2,
-                child: Text(
-                  owner['revenue'] ?? '৳0',
+                  owner['phone'] ?? 'N/A',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -518,16 +870,16 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                   ),
                   decoration: BoxDecoration(
                     color: _getStatusColor(
-                      owner['status'] ?? 'Active',
+                      owner['status'] ?? 'active',
                     ).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    owner['status'] ?? 'Active',
+                    owner['status'] ?? 'active',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: _getStatusColor(owner['status'] ?? 'Active'),
+                      color: _getStatusColor(owner['status'] ?? 'active'),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -539,7 +891,17 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    onPressed: () => _deleteOwner(_demoOwners.indexOf(owner)),
+                    onPressed: () => _showOwnerDetails(owner),
+                    icon: Icon(
+                      Icons.visibility_outlined,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(4),
+                  ),
+                  IconButton(
+                    onPressed: () => _deleteOwner(_owners.indexOf(owner)),
                     icon: Icon(
                       Icons.delete_outline,
                       size: 20,
@@ -603,88 +965,4 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
       ],
     );
   }
-
-  static final List<Map<String, dynamic>> _demoOwners = [
-    {
-      'id': 'GV001',
-      'name': 'Green Valley Football Club',
-      'phone': '+880-1234-567890',
-      'email': 'info@greenvalley.com',
-      'groundSize': '100x70 meters',
-      'capacity': 22,
-      'pricePerHour': 1500,
-      'venues': 3,
-      'revenue': '৳45,000',
-      'status': 'Active',
-      'joinDate': '2024-01-10',
-    },
-    {
-      'id': 'DFC001',
-      'name': 'Dhanmondi Football Complex',
-      'phone': '+880-1987-654321',
-      'email': 'admin@dhanmondifootball.com',
-      'groundSize': '110x70 meters',
-      'capacity': 24,
-      'pricePerHour': 2000,
-      'venues': 5,
-      'revenue': '৳78,500',
-      'status': 'Active',
-      'joinDate': '2024-01-25',
-    },
-    {
-      'id': 'EFA001',
-      'name': 'Elite Football Arena',
-      'phone': '+880-1555-123456',
-      'email': 'info@elitefootball.com',
-      'groundSize': '105x68 meters',
-      'capacity': 20,
-      'pricePerHour': 1800,
-      'venues': 4,
-      'revenue': '৳67,200',
-      'status': 'Active',
-      'joinDate': '2024-02-12',
-    },
-    {
-      'id': 'MFG001',
-      'name': 'Metro Football Ground',
-      'phone': '+880-1333-789012',
-      'email': 'admin@metrofootball.com',
-      'groundSize': '95x65 meters',
-      'capacity': 18,
-      'pricePerHour': 1200,
-      'venues': 1,
-      'revenue': '৳15,800',
-      'status': 'Suspended',
-      'joinDate': '2024-03-20',
-    },
-    {
-      'id': 'GFC001',
-      'name': 'Gulshan Football Center',
-      'phone': '+880-1444-567890',
-      'email': 'contact@gulshanfootball.com',
-      'groundSize': '100x68 meters',
-      'capacity': 22,
-      'pricePerHour': 1600,
-      'venues': 2,
-      'revenue': '৳38,400',
-      'status': 'Active',
-      'joinDate': '2024-04-05',
-    },
-    {
-      'name': 'Premier Football Complex',
-      'email': 'info@premierfootball.com',
-      'venues': 6,
-      'revenue': '৳95,600',
-      'status': 'Active',
-      'joinDate': '2024-01-30',
-    },
-    {
-      'name': 'Uttara Football Academy',
-      'email': 'admin@uttarafootball.com',
-      'venues': 3,
-      'revenue': '৳52,300',
-      'status': 'Active',
-      'joinDate': '2024-03-18',
-    },
-  ];
 }
