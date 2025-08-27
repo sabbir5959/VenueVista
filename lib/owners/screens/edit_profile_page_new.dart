@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 
 class EditProfilePage extends StatefulWidget {
-  const EditProfilePage({Key? key}) : super(key: key);
+  final Map<String, dynamic>? ownerData;
+  final Map<String, dynamic>? venueData;
+  
+  const EditProfilePage({
+    Key? key,
+    this.ownerData,
+    this.venueData,
+  }) : super(key: key);
 
   @override
   State<EditProfilePage> createState() => _EditProfilePageState();
@@ -41,37 +49,38 @@ class _EditProfilePageState extends State<EditProfilePage> {
   
   File? _profileImage;
   bool _isLoading = false;
-  
-  // Current profile data (normally this would come from a service/database)
-  final Map<String, String> _currentData = {
-    'name': 'Md. Rahman Khan',
-    'phone': '+880 1700-594133',
-    'email': 'rahman.khan@venuevista.com',
-    'venueType': 'Sports Complex',
-    'address': 'Dhanmondi, Dhaka, Bangladesh',
-    'bio': 'Experienced venue owner with 5+ years in sports facility management.',
-    'pricePerHour': '1500',
-    'totalCourts': '4',
-    'location': 'Dhanmondi, Dhaka',
-    'turfSize': '100m x 70m',
-    'parkingSpots': '50',
-  };
 
   @override
   void initState() {
     super.initState();
-    // Pre-populate fields with current data
-    _nameController.text = _currentData['name']!;
-    _phoneController.text = _currentData['phone']!;
-    _emailController.text = _currentData['email']!;
-    _venueTypeController.text = _currentData['venueType']!;
-    _addressController.text = _currentData['address']!;
-    _bioController.text = _currentData['bio']!;
-    _pricePerHourController.text = _currentData['pricePerHour']!;
-    _totalCourtsController.text = _currentData['totalCourts']!;
-    _locationController.text = _currentData['location']!;
-    _turfSizeController.text = _currentData['turfSize']!;
-    _parkingSpotsController.text = _currentData['parkingSpots']!;
+    _populateFieldsWithData();
+  }
+
+  void _populateFieldsWithData() {
+    // Populate with real data passed from owner profile
+    if (widget.ownerData != null) {
+      _nameController.text = widget.ownerData!['full_name'] ?? '';
+      _phoneController.text = widget.ownerData!['phone'] ?? '';
+      _emailController.text = widget.ownerData!['email'] ?? '';
+      _bioController.text = widget.ownerData!['bio'] ?? '';
+      _addressController.text = widget.ownerData!['address'] ?? '';
+    }
+    
+    if (widget.venueData != null) {
+      _venueTypeController.text = widget.venueData!['venue_type'] ?? '';
+      _pricePerHourController.text = widget.venueData!['price_per_hour']?.toString() ?? '';
+      _totalCourtsController.text = widget.venueData!['total_courts']?.toString() ?? '';
+      _locationController.text = widget.venueData!['location'] ?? '';
+      _turfSizeController.text = widget.venueData!['turf_size'] ?? '';
+      _parkingSpotsController.text = widget.venueData!['parking_spots']?.toString() ?? '';
+      
+      // Set facility booleans
+      _hasTrainingEquipment = widget.venueData!['has_training_equipment'] ?? false;
+      _hasCafe = widget.venueData!['has_cafe'] ?? false;
+      _hasChangingRooms = widget.venueData!['has_changing_rooms'] ?? false;
+      _hasFloodlights = widget.venueData!['has_floodlights'] ?? false;
+      _hasParking = widget.venueData!['has_parking'] ?? false;
+    }
   }
 
   @override
@@ -156,62 +165,84 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
 
     try {
-      // Simulate API call delay
-      await Future.delayed(const Duration(seconds: 2));
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
       
-      // Here you would normally save to your backend/database
-      // Personal Information
-      Map<String, dynamic> profileData = {
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Prepare user profile data
+      Map<String, dynamic> userProfileData = {
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
         'email': _emailController.text.trim(),
-        'venueType': _venueTypeController.text.trim(),
-        'address': _addressController.text.trim(),
         'bio': _bioController.text.trim(),
-        // Venue Details
-        'pricePerHour': _pricePerHourController.text.trim(),
-        'totalCourts': _totalCourtsController.text.trim(),
-        'location': _locationController.text.trim(),
-        'turfSize': _turfSizeController.text.trim(),
-        'parkingSpots': _parkingSpotsController.text.trim(),
-        // Facilities
-        'hasTrainingEquipment': _hasTrainingEquipment,
-        'hasCafe': _hasCafe,
-        'hasChangingRooms': _hasChangingRooms,
-        'hasFloodlights': _hasFloodlights,
-        'hasParking': _hasParking,
+        'updated_at': DateTime.now().toIso8601String(),
       };
-      
-      // If password fields are filled, you'd also update the password
+
+      // Update user profile
+      await client
+          .from('user_profiles')
+          .update(userProfileData)
+          .eq('user_id', user.id);
+
+      // Prepare venue data if venue exists
+      if (widget.venueData != null) {
+        Map<String, dynamic> venueUpdateData = {
+          'name': _venueTypeController.text.trim(),
+          'address': _addressController.text.trim(),
+          'price_per_hour': double.tryParse(_pricePerHourController.text.trim()) ?? 0.0,
+          'total_courts': int.tryParse(_totalCourtsController.text.trim()) ?? 1,
+          'location': _locationController.text.trim(),
+          'turf_size': _turfSizeController.text.trim(),
+          'parking_spots': int.tryParse(_parkingSpotsController.text.trim()) ?? 0,
+          'has_training_equipment': _hasTrainingEquipment,
+          'has_cafe': _hasCafe,
+          'has_changing_rooms': _hasChangingRooms,
+          'has_floodlights': _hasFloodlights,
+          'has_parking': _hasParking,
+          'updated_at': DateTime.now().toIso8601String(),
+        };
+
+        // Update venue data
+        await client
+            .from('venues')
+            .update(venueUpdateData)
+            .eq('owner_id', user.id);
+      }
+
+      // Handle password change if requested
       bool isChangingPassword = _oldPasswordController.text.isNotEmpty || 
                                _newPasswordController.text.isNotEmpty || 
                                _confirmPasswordController.text.isNotEmpty;
       
       if (isChangingPassword) {
-        profileData['oldPassword'] = _oldPasswordController.text.trim();
-        profileData['newPassword'] = _newPasswordController.text.trim();
-      }
-      
-      // TODO: Replace with actual API call to save profileData
-      print('Saving profile data: $profileData');
-      
-      String successMessage = 'Profile and venue details updated successfully!';
-      if (isChangingPassword) {
-        successMessage = 'Profile, venue details, and password updated successfully!';
+        if (_oldPasswordController.text.isEmpty || 
+            _newPasswordController.text.isEmpty || 
+            _confirmPasswordController.text.isEmpty) {
+          throw Exception('All password fields are required for password change');
+        }
+        
+        // Update password
+        await client.auth.updateUser(
+          UserAttributes(password: _newPasswordController.text.trim())
+        );
       }
       
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(successMessage),
+        const SnackBar(
+          content: Text('Profile updated successfully!'),
           backgroundColor: Colors.green,
         ),
       );
       
-      Navigator.pop(context);
+      // Return to previous screen and refresh data
+      Navigator.pop(context, true); // Return true to indicate successful update
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to update profile: $e'),
+          content: Text('Failed to update profile: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );

@@ -34,7 +34,7 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
   XFile? _selectedImageFile; // Store XFile for better cross-platform support
   bool _isLoading = false;
 
-  // Better image conversion method for Flutter Web/Windows
+  // Better image conversion method
   Future<String?> _convertImageToBase64(XFile imageFile) async {
     try {
       print('Converting image to base64...');
