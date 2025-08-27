@@ -2,6 +2,26 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_config.dart';
 
 class BookingService {
+  /// Get bookings for a specific venue and date (for slot marking)
+  static Future<List<Map<String, dynamic>>> getBookingsForVenueAndDate(
+    String venueId,
+    DateTime date,
+  ) async {
+    try {
+      final bookingDate =
+          '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final response = await _client
+          .from('bookings')
+          .select('start_time, end_time')
+          .eq('venue_id', venueId)
+          .eq('booking_date', bookingDate);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('❌ Error fetching bookings for venue and date: $e');
+      return [];
+    }
+  }
+
   static final _client = SupabaseConfig.client;
 
   /// Create a new booking
