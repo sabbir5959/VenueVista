@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'widgets/common_drawer.dart';
 import 'screens/ground_booking_payment_page.dart';
+import '../../services/booking_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GroundDetails extends StatefulWidget {
+  final String area;
   final String? venueId; // Add venue ID
   final String name;
   final String imageUrl;
@@ -27,6 +30,7 @@ class GroundDetails extends StatefulWidget {
     required this.rating,
     required this.facilities,
     required this.size,
+    required this.area,
   });
 
   @override
@@ -34,32 +38,113 @@ class GroundDetails extends StatefulWidget {
 }
 
 class _GroundDetailsState extends State<GroundDetails> {
-  String? selectedTimeSlot;
+  final supabase = Supabase.instance.client;
+  // Helper to extract area from location string (e.g., 'Uptown, Dhaka' -> 'Uptown')
+  String extractArea(String location) {
+    if (location.contains(',')) {
+      return location.split(',')[0].trim();
+    }
+    return location.trim();
+  }
+
+  List<String> selectedTimeSlots = [];
   final List<String> timeSlots = List.generate(13, (index) {
     final startHour = index + 9;
     return '${startHour.toString().padLeft(2, '0')}:00 to ${(startHour + 1).toString().padLeft(2, '0')}:00';
   });
 
-  final List<Map<String, String>> suggestions = [
-    {
-      'name': 'Greenfield Ground',
-      'imageUrl':
-          'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
-      'location': 'Downtown',
-    },
-    {
-      'name': 'Sunrise Arena',
-      'imageUrl':
-          'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
-      'location': 'Uptown',
-    },
-    {
-      'name': 'City Sports Hub',
-      'imageUrl':
-          'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=800&q=80',
-      'location': 'Midtown',
-    },
-  ];
+  void onSlotTapped(String slot) {
+    setState(() {
+      if (selectedTimeSlots.contains(slot)) {
+        selectedTimeSlots.remove(slot);
+      } else {
+        selectedTimeSlots.add(slot);
+      }
+    });
+  }
+
+  List<Map<String, dynamic>> recommendedVenues = [];
+  bool isLoadingRecommended = false;
+
+  Future<void> fetchRecommendedVenues() async {
+    setState(() {
+      isLoadingRecommended = true;
+    });
+    try {
+      // Use the area from the widget (from DB), not from location string
+      final area = widget.area;
+      // Query venues with the same area, excluding the current venue
+      final data = await supabase
+          .from('venues')
+          .select()
+          .eq('area', area)
+          .neq('id', widget.venueId ?? '')
+          .limit(10);
+      setState(() {
+        recommendedVenues = List<Map<String, dynamic>>.from(data);
+      });
+    } catch (e) {
+      setState(() {
+        recommendedVenues = [];
+      });
+    } finally {
+      setState(() {
+        isLoadingRecommended = false;
+      });
+    }
+  }
+
+  Set<String> bookedSlots = {};
+  bool isLoadingSlots = false;
+  DateTime selectedDate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    fetchBookedSlots();
+    fetchRecommendedVenues();
+  }
+
+  Future<void> fetchBookedSlots() async {
+    setState(() {
+      isLoadingSlots = true;
+    });
+    try {
+      final bookings = await BookingService.getBookingsForVenueAndDate(
+        widget.venueId ?? '',
+        selectedDate,
+      );
+      print('DEBUG bookings fetched:');
+      print(bookings);
+      Set<String> booked = {};
+      for (var booking in bookings) {
+        final start = booking['start_time'];
+        final end = booking['end_time'];
+        if (start != null && end != null) {
+          print('BOOKED SLOT START TIME (separate):');
+          print(start);
+          int startHour = int.parse(start.split(':')[0]);
+          int endHour = int.parse(end.split(':')[0]);
+          for (int h = startHour; h < endHour; h++) {
+            final slotString =
+                '${h.toString().padLeft(2, '0')}:00 to ${(h + 1).toString().padLeft(2, '0')}:00';
+            booked.add(slotString);
+          }
+        }
+      }
+      print('DEBUG bookedSlots:');
+      print(booked);
+      setState(() {
+        bookedSlots = booked;
+        isLoadingSlots = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingSlots = false;
+      });
+      print('Error fetching booked slots: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,206 +195,182 @@ class _GroundDetailsState extends State<GroundDetails> {
         ],
       ),
       body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 250,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: NetworkImage(widget.imageUrl),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  widget.imageUrl,
+                  height: 220,
+                  width: double.infinity,
                   fit: BoxFit.cover,
                 ),
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 20),
+              Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          widget.name,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade900,
-                          ),
-                        ),
+                  Expanded(
+                    child: Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade100,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            Row(
-                              children: List.generate(5, (index) {
-                                return Icon(
-                                  index < 4 ? Icons.star : Icons.star_border,
-                                  color: const Color.fromARGB(255, 252, 198, 1),
-                                  size: 16,
-                                );
-                              }),
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              '4.0',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade900,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        color: Colors.green.shade700,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        widget.location,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.green.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.description,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.black87,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
                         child: _InfoCard(
                           icon: Icons.straighten,
                           title: 'Size',
                           value: widget.size,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
                         child: _InfoCard(
                           icon: Icons.attach_money,
                           title: 'Price',
                           value: 'Tk ${widget.price}',
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Facilities',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green.shade900,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Wrap(
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Description Section
+              Text(
+                'Description',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.description,
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
+              ),
+              const SizedBox(height: 24),
+
+              Text(
+                'Facilities',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade900,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children:
                         widget.facilities.split(', ').map((facility) {
-                          return Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              border: Border.all(color: Colors.green.shade200),
+                          return Chip(
+                            label: Text(facility),
+                            backgroundColor: Colors.green.shade50,
+                            labelStyle: TextStyle(color: Colors.green.shade900),
+                            shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              facility,
-                              style: TextStyle(color: Colors.green.shade900),
+                              side: BorderSide(color: Colors.green.shade200),
                             ),
                           );
                         }).toList(),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Available Time Slots',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green.shade900,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  GridView.builder(
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Available Time Slots',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade900,
+                ),
+              ),
+              const SizedBox(height: 16),
+              isLoadingSlots
+                  ? Center(child: CircularProgressIndicator())
+                  : GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          childAspectRatio: 3,
+                          childAspectRatio: 3.2,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                         ),
                     itemCount: timeSlots.length,
                     itemBuilder: (context, index) {
                       final timeSlot = timeSlots[index];
-                      final isSelected = selectedTimeSlot == timeSlot;
-
+                      final isBooked = bookedSlots.contains(timeSlot);
+                      final isSelected = selectedTimeSlots.contains(timeSlot);
                       return InkWell(
-                        onTap: () {
-                          setState(() {
-                            selectedTimeSlot = timeSlot;
-                          });
-                        },
-                        child: Container(
+                        onTap: isBooked ? null : () => onSlotTapped(timeSlot),
+                        borderRadius: BorderRadius.circular(8),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
                             color:
-                                isSelected
+                                isBooked
+                                    ? Colors.red.shade200
+                                    : isSelected
                                     ? Colors.green.shade100
                                     : Colors.white,
                             border: Border.all(
                               color:
-                                  isSelected
+                                  isBooked
+                                      ? Colors.red.shade700
+                                      : isSelected
                                       ? Colors.green.shade700
                                       : Colors.green.shade200,
-                              width: isSelected ? 2 : 1,
+                              width: isBooked || isSelected ? 2 : 1,
                             ),
                             borderRadius: BorderRadius.circular(8),
+                            boxShadow:
+                                isSelected
+                                    ? [
+                                      BoxShadow(
+                                        color: Colors.green.shade100,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ]
+                                    : [],
                           ),
                           alignment: Alignment.center,
                           child: Text(
                             timeSlot,
                             style: TextStyle(
                               color:
-                                  isSelected
+                                  isBooked
+                                      ? Colors.red.shade900
+                                      : isSelected
                                       ? Colors.green.shade900
                                       : Colors.black87,
                               fontWeight:
-                                  isSelected
+                                  isBooked || isSelected
                                       ? FontWeight.bold
                                       : FontWeight.normal,
                             ),
@@ -318,66 +379,74 @@ class _GroundDetailsState extends State<GroundDetails> {
                       );
                     },
                   ),
-                  const SizedBox(height: 32),
-                  const SizedBox(height: 32),
-                  Text(
-                    'You might also like',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green.shade900,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 160,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: suggestions.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 16),
-                      itemBuilder: (context, index) {
-                        final suggestion = suggestions[index];
-                        return GestureDetector(
-                          onTap: () {},
-                          child: Container(
-                            width: 140,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
+              // Recommended Grounds Section (from Supabase by area)
+              Text(
+                'Recommended Grounds',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade900,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (isLoadingRecommended)
+                const Center(child: CircularProgressIndicator())
+              else if (recommendedVenues.isEmpty)
+                const Text(
+                  'No other venues found in this area.',
+                  style: TextStyle(color: Colors.grey, fontSize: 15),
+                )
+              else
+                SizedBox(
+                  height: 170,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: recommendedVenues.length,
+                    separatorBuilder: (context, i) => const SizedBox(width: 16),
+                    itemBuilder: (context, i) {
+                      final venue = recommendedVenues[i];
+                      final imageUrl =
+                          (venue['image_urls'] is List &&
+                                  venue['image_urls'].isNotEmpty)
+                              ? venue['image_urls'][0]
+                              : 'https://via.placeholder.com/140x90.png?text=No+Image';
+                      return SizedBox(
+                        width: 140,
+                        child: Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () {
+                              // Optionally, navigate to details of the suggested ground
+                            },
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 ClipRRect(
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(16),
-                                    topRight: Radius.circular(16),
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(14),
                                   ),
                                   child: Image.network(
-                                    suggestion['imageUrl']!,
+                                    imageUrl,
                                     height: 90,
                                     width: double.infinity,
                                     fit: BoxFit.cover,
                                   ),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: const EdgeInsets.all(8.0),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        suggestion['name']!,
-                                        style: TextStyle(
+                                        venue['name'] ?? '',
+                                        style: const TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.green.shade900,
+                                          fontSize: 15,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -387,16 +456,16 @@ class _GroundDetailsState extends State<GroundDetails> {
                                         children: [
                                           Icon(
                                             Icons.location_on,
-                                            size: 16,
-                                            color: Colors.green.shade700,
+                                            size: 14,
+                                            color: Colors.green,
                                           ),
-                                          const SizedBox(width: 4),
-                                          Flexible(
+                                          const SizedBox(width: 3),
+                                          Expanded(
                                             child: Text(
-                                              suggestion['location']!,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.green.shade700,
+                                              venue['area'] ?? '',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey,
                                               ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -410,80 +479,71 @@ class _GroundDetailsState extends State<GroundDetails> {
                               ],
                             ),
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(height: 32),
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Rate This Ground',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade900,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Share your experience with other players',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.green.shade700,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              for (int i = 1; i <= 5; i++)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                  ),
-                                  child: InkWell(
-                                    onTap: () {
-                                      showDialog(
-                                        context: context,
-                                        builder:
-                                            (context) => _RatingDialog(
-                                              groundName: widget.name,
-                                            ),
-                                      );
-                                    },
-                                    child: Icon(
-                                      Icons.star,
-                                      size: 40,
-                                      color: const Color.fromARGB(
-                                        255,
-                                        187,
-                                        233,
-                                        186,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                ),
+              const SizedBox(height: 24),
+
+              // Average Rating and Rate Button (moved to last)
+              Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.only(bottom: 24),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 18,
                   ),
-                  const SizedBox(height: 24),
-                ],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.star, color: Colors.amber, size: 28),
+                          const SizedBox(width: 6),
+                          Text(
+                            widget.rating,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            '/ 5',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder:
+                                (context) =>
+                                    _RatingDialog(groundName: widget.name),
+                          );
+                        },
+                        icon: const Icon(Icons.star_border),
+                        label: const Text('Rate'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade900,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: Container(
@@ -500,27 +560,32 @@ class _GroundDetailsState extends State<GroundDetails> {
         ),
         child: ElevatedButton(
           onPressed:
-              selectedTimeSlot == null
+              selectedTimeSlots.isEmpty
                   ? null
                   : () {
-                    final bookingData = {
-                      'venueId': widget.venueId, // Include venue ID
+                    final bookingData = <String, dynamic>{
+                      'venueId': widget.venueId ?? '',
                       'name': widget.name,
                       'location': widget.location,
                       'price': widget.price,
                       'groundPayment': widget.groundPayment,
-                      'timeSlot': selectedTimeSlot!,
+                      'selectedSlots':
+                          selectedTimeSlots.whereType<String>().toList(),
+                      'timeSlot':
+                          selectedTimeSlots.isNotEmpty
+                              ? selectedTimeSlots.first
+                              : '',
                       'date':
-                          DateTime.now().day.toString() +
-                          '/' +
-                          DateTime.now().month.toString() +
-                          '/' +
-                          DateTime.now().year.toString(),
+                          '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
                       'size': widget.size,
                       'facilities': widget.facilities,
                       'rating': widget.rating,
                       'description': widget.description,
                     };
+                    print('DEBUG bookingData:');
+                    bookingData.forEach((key, value) {
+                      print('$key: $value ([33m${value.runtimeType}[0m)');
+                    });
                     Navigator.push(
                       context,
                       MaterialPageRoute(
