@@ -722,38 +722,41 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
 
       // Create booking in database
       print('🔄 Creating booking...');
-      print(
-        '📋 Booking data: venueId=${widget.booking['venueId']}, date=${widget.booking['date']}, timeSlot=${widget.booking['timeSlot']}',
-      );
-      final bookingId = await BookingService.createBooking(
-        userId: currentUser.id,
-        venueId: widget.booking['venueId'] ?? widget.booking['id'] ?? '',
-        bookingDate: _formatDateForDatabase(widget.booking['date'] ?? ''),
-        startTime: _extractStartTime(widget.booking['timeSlot'] ?? ''),
-        endTime: _extractEndTime(widget.booking['timeSlot'] ?? ''),
-        totalAmount: totalAmount,
-      );
-
-      if (bookingId == null) {
-        throw Exception('Failed to create booking');
+      final selectedSlots =
+          widget.booking['selectedSlots'] as List<String>? ?? [];
+      List<String> bookingIds = [];
+      for (final slot in selectedSlots) {
+        print(
+          '📋 Booking data: venueId=${widget.booking['venueId']}, date=${widget.booking['date']}, timeSlot=$slot',
+        );
+        final bookingId = await BookingService.createBooking(
+          userId: currentUser.id,
+          venueId: widget.booking['venueId'] ?? widget.booking['id'] ?? '',
+          bookingDate: _formatDateForDatabase(widget.booking['date'] ?? ''),
+          startTime: _extractStartTime(slot),
+          endTime: _extractEndTime(slot),
+          totalAmount: totalAmount,
+        );
+        if (bookingId == null) {
+          throw Exception('Failed to create booking for slot $slot');
+        }
+        bookingIds.add(bookingId);
+        print('✅ Booking created with ID: $bookingId');
+        // Create payment record for each booking
+        print('🔄 Recording payment...');
+        final paymentId = await PaymentService.createBookingPayment(
+          userId: currentUser.id,
+          bookingId: bookingId,
+          amount: totalAmount,
+          paymentMethod: selectedPaymentMethod,
+          mobileNumber: mobileController.text,
+          pin: pinController.text,
+        );
+        if (paymentId == null) {
+          throw Exception('Failed to record payment for booking $bookingId');
+        }
+        print('✅ Payment recorded with ID: $paymentId');
       }
-      print('✅ Booking created with ID: $bookingId');
-
-      // Create payment record
-      print('🔄 Recording payment...');
-      final paymentId = await PaymentService.createBookingPayment(
-        userId: currentUser.id,
-        bookingId: bookingId,
-        amount: totalAmount,
-        paymentMethod: selectedPaymentMethod,
-        mobileNumber: mobileController.text,
-        pin: pinController.text,
-      );
-
-      if (paymentId == null) {
-        throw Exception('Failed to record payment');
-      }
-      print('✅ Payment recorded with ID: $paymentId');
 
       // Success - navigate to success page
       if (mounted) {
@@ -767,11 +770,7 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
           MaterialPageRoute(
             builder:
                 (context) => GroundBookingSuccessPage(
-                  booking: {
-                    ...widget.booking,
-                    'bookingId': bookingId,
-                    'paymentId': paymentId,
-                  },
+                  booking: {...widget.booking},
                   paymentMethod: selectedPaymentMethod,
                   mobileNumber: mobileController.text,
                   totalAmount: _calculateTotal(),
