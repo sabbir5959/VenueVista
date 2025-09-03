@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/app_colors.dart';
 import 'overview_page.dart';
 import 'users_page.dart';
-import 'owners_page_clean.dart';
+import 'owners_page.dart';
 import 'venues_page.dart';
 import 'bookings_page.dart';
 import 'events_page.dart';
