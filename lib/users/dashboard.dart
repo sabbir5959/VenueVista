@@ -15,6 +15,8 @@ class HomeActivity extends StatefulWidget {
 }
 
 class _HomeActivityState extends State<HomeActivity> {
+  String? _selectedArea;
+  List<String> _areas = [];
   int index = 0;
 
   // Services
@@ -49,6 +51,21 @@ class _HomeActivityState extends State<HomeActivity> {
         _featuredGrounds = allVenues.take(10).toList();
       } else {
         _featuredGrounds = venues;
+      }
+
+      // Extract unique areas from locations
+      final areaSet = <String>{};
+      for (var v in _featuredGrounds) {
+        final loc = v['location']?.toString() ?? '';
+        if (loc.contains(',')) {
+          areaSet.add(loc.split(',')[0].trim());
+        } else {
+          areaSet.add(loc.trim());
+        }
+      }
+      _areas = areaSet.toList()..sort();
+      if (_areas.isNotEmpty && _selectedArea == null) {
+        _selectedArea = _areas[0];
       }
 
       // Load tournaments
@@ -148,6 +165,7 @@ class _HomeActivityState extends State<HomeActivity> {
       'rating': data['rating']?.toString() ?? '0.0',
       'facilities': data['facilities']?.toString() ?? '',
       'size': data['ground_size']?.toString() ?? '',
+      'area': data['area']?.toString() ?? '',
     };
   }
 
@@ -268,7 +286,7 @@ class _HomeActivityState extends State<HomeActivity> {
 
             SizedBox(height: 28),
 
-            // Grounds Section
+            // Grounds Section with SEE ALL button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Row(
@@ -305,9 +323,28 @@ class _HomeActivityState extends State<HomeActivity> {
                       )
                       : ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount: _featuredGrounds.length,
+                        itemCount:
+                            _featuredGrounds.where((g) {
+                              final loc = g['location']?.toString() ?? '';
+                              String area =
+                                  loc.contains(',')
+                                      ? loc.split(',')[0].trim()
+                                      : loc.trim();
+                              return _selectedArea == null ||
+                                  area == _selectedArea;
+                            }).length,
                         itemBuilder: (context, index) {
-                          final ground = _featuredGrounds[index];
+                          final filteredGrounds =
+                              _featuredGrounds.where((g) {
+                                final loc = g['location']?.toString() ?? '';
+                                String area =
+                                    loc.contains(',')
+                                        ? loc.split(',')[0].trim()
+                                        : loc.trim();
+                                return _selectedArea == null ||
+                                    area == _selectedArea;
+                              }).toList();
+                          final ground = filteredGrounds[index];
                           final convertedGround = _convertToStringMap(ground);
                           return groundCard(
                             convertedGround['name']!,
@@ -398,6 +435,7 @@ class _HomeActivityState extends State<HomeActivity> {
                   rating: groundData['rating']!,
                   facilities: groundData['facilities']!,
                   size: groundData['size']!,
+                  area: groundData['area']!,
                 ),
           ),
         );

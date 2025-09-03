@@ -140,13 +140,16 @@ class TournamentService {
   static Future<bool> registerForTournament(
     String tournamentId,
     String userId,
+    String registrationFee,
+    String paymentMethod,
   ) async {
     try {
       await _supabase.from('tournament_registrations').insert({
         'tournament_id': tournamentId,
         'user_id': userId,
-        'registration_date': DateTime.now().toIso8601String(),
-        'status': 'registered',
+        'registration_fee': registrationFee,
+        'payment_method': paymentMethod,
+        'created_at': DateTime.now().toIso8601String(),
       });
 
       print('✅ User registered for tournament: $tournamentId');
@@ -157,7 +160,6 @@ class TournamentService {
     }
   }
 
-  // Get user's registered tournaments
   static Future<List<Map<String, dynamic>>> getUserTournaments(
     String userId,
   ) async {
