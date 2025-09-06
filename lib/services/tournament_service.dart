@@ -30,7 +30,13 @@ class TournamentService {
     try {
       final response = await _supabase
           .from('tournaments')
-          .select('*')
+          .select('''
+            *,
+            venues (
+              name,
+              address
+            )
+          ''')
           .gte(
             'tournament_date',
             DateTime.now().toIso8601String().split('T')[0],
@@ -41,7 +47,9 @@ class TournamentService {
       print('✅ Featured tournaments fetched: ${response.length}');
       // Debug: Print tournament data
       for (var tournament in response) {
-        print('🏆 ${tournament['name']}: ${tournament['tournament_date']}');
+        print(
+          '🏆 ${tournament['name']}: ${tournament['tournament_date']} at ${tournament['venues']?['name'] ?? 'Unknown Venue'}',
+        );
       }
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -57,7 +65,13 @@ class TournamentService {
     try {
       final response = await _supabase
           .from('tournaments')
-          .select('*')
+          .select('''
+            *,
+            venues (
+              name,
+              address
+            )
+          ''')
           .gte(
             'tournament_date',
             DateTime.now().toIso8601String().split('T')[0],

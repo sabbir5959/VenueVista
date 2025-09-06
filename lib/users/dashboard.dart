@@ -19,10 +19,6 @@ class _HomeActivityState extends State<HomeActivity> {
   List<String> _areas = [];
   int index = 0;
 
-  // Services
-  final VenueService _venueService = VenueService();
-  final TournamentService _tournamentService = TournamentService();
-
   // Dynamic data from backend
   List<Map<String, dynamic>> _featuredGrounds = [];
   List<Map<String, dynamic>> _featuredTournaments = [];
@@ -113,6 +109,7 @@ class _HomeActivityState extends State<HomeActivity> {
         'tournament_date': '2025-09-15',
         'start_time': '16:00:00',
         'venue_id': 'fallback_venue',
+        'venues': {'name': 'Club Volta Arena', 'address': 'Uttara, Dhaka'},
         'first_prize': 50000,
         'max_teams': 32,
         'entry_fee': 5000,
@@ -181,12 +178,19 @@ class _HomeActivityState extends State<HomeActivity> {
       formattedTime = data['start_time'].toString();
     }
 
+    // Get venue name from the joined venue data
+    String venueName = 'Tournament Venue'; // Default fallback
+    if (data['venues'] != null && data['venues'] is Map) {
+      final venueData = data['venues'] as Map<String, dynamic>;
+      venueName = venueData['name']?.toString() ?? 'Tournament Venue';
+    }
+
     return {
       'name': data['name']?.toString() ?? '',
       'image': imageUrl,
       'date': data['tournament_date']?.toString() ?? '',
       'time': formattedTime,
-      'location': 'Tournament Venue',
+      'location': venueName,
       'prize': '৳${data['first_prize']?.toString() ?? '0'}',
       'participants': '${data['max_teams']?.toString() ?? '0'} teams',
       'playerFormat': data['player_format']?.toString() ?? '',
@@ -364,7 +368,7 @@ class _HomeActivityState extends State<HomeActivity> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Tournaments",
+                    "TOURNAMENTS",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -385,26 +389,21 @@ class _HomeActivityState extends State<HomeActivity> {
                 ],
               ),
             ),
-            SizedBox(
-              height: 170,
-              child:
-                  _isLoadingTournaments
-                      ? const Center(child: CircularProgressIndicator())
-                      : ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _featuredTournaments.length,
-                        itemBuilder: (context, index) {
-                          final tournament = _featuredTournaments[index];
-                          final tournamentStringMap =
-                              _convertTournamentToStringMap(tournament);
-                          return newsCard(
-                            tournamentStringMap['name']!,
-                            tournamentStringMap['image']!,
-                            tournamentStringMap,
-                          );
-                        },
-                      ),
-            ),
+            // Tournaments Section - now vertical scrollable
+            _isLoadingTournaments
+                ? const Center(child: CircularProgressIndicator())
+                : Column(
+                  children:
+                      _featuredTournaments.map((tournament) {
+                        final tournamentStringMap =
+                            _convertTournamentToStringMap(tournament);
+                        return newsCardFullWidth(
+                          tournamentStringMap['name']!,
+                          tournamentStringMap['image']!,
+                          tournamentStringMap,
+                        );
+                      }).toList(),
+                ),
 
             SizedBox(height: 20),
           ],
@@ -562,6 +561,187 @@ class _HomeActivityState extends State<HomeActivity> {
               ),
             ),
             SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // New full-width tournament card for vertical scrolling
+  Widget newsCardFullWidth(
+    String title,
+    String imageUrl,
+    Map<String, String> tournamentData,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) => TournamentDetails(
+                  name: tournamentData['name']!,
+                  imageUrl: tournamentData['image']!,
+                  date: tournamentData['date']!,
+                  time: tournamentData['time']!,
+                  location: tournamentData['location']!,
+                  prize: tournamentData['prize']!,
+                  participants: tournamentData['participants']!,
+                  playerFormat: tournamentData['playerFormat']!,
+                  status: tournamentData['status']!,
+                  description: tournamentData['description']!,
+                  entryFee: tournamentData['entryFee']!,
+                  organizer: tournamentData['organizer']!,
+                ),
+          ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        height: 160, // Increased height to prevent overflow
+        margin: EdgeInsets.only(left: 20, right: 20, bottom: 16, top: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [Colors.red.shade100, Colors.red.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.shade200.withOpacity(0.4),
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Tournament image
+            ClipRRect(
+              borderRadius: BorderRadius.horizontal(left: Radius.circular(16)),
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                width: 120,
+                height: double.infinity,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 120,
+                    height: double.infinity,
+                    color: Colors.grey.shade300,
+                    child: Icon(
+                      Icons.sports_soccer,
+                      color: Colors.grey.shade600,
+                      size: 45,
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Tournament details - now takes full remaining width
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0), // Reduced padding slightly
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment:
+                      MainAxisAlignment
+                          .spaceEvenly, // Changed to spaceEvenly for better distribution
+                  children: [
+                    // Title section
+                    Text(
+                      title.toUpperCase(),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16, // Reduced font size slightly
+                        color: Colors.green.shade900,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    // Details section
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Date row
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 14, // Reduced icon size
+                              color: Colors.grey.shade600,
+                            ),
+                            SizedBox(width: 6), // Reduced spacing
+                            Expanded(
+                              child: Text(
+                                tournamentData['date'] ?? 'TBA',
+                                style: TextStyle(
+                                  fontSize: 13, // Reduced font size
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 4), // Reduced spacing
+                        // Location row
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              size: 14, // Reduced icon size
+                              color: Colors.grey.shade600,
+                            ),
+                            SizedBox(width: 6), // Reduced spacing
+                            Expanded(
+                              child: Text(
+                                tournamentData['location'] ?? 'TBA',
+                                style: TextStyle(
+                                  fontSize: 13, // Reduced font size
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 4), // Reduced spacing
+                        // Participants/Format row
+                        if (tournamentData['playerFormat'] != null &&
+                            tournamentData['playerFormat']!.isNotEmpty)
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.group,
+                                size: 14, // Reduced icon size
+                                color: Colors.grey.shade600,
+                              ),
+                              SizedBox(width: 6), // Reduced spacing
+                              Flexible(
+                                // Changed to Flexible to prevent overflow
+                                child: Text(
+                                  tournamentData['playerFormat']!,
+                                  style: TextStyle(
+                                    fontSize: 13, // Reduced font size
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
