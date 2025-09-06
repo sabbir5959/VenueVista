@@ -63,11 +63,6 @@ class _SearchGroundsState extends State<SearchGrounds> {
     }
   }
 
-  // Update locations list with real venue locations
-  void _updateLocationsList(List<String> venueLocations) {
-    // No longer needed, handled by areas
-  }
-
   // Fallback static venues data
   void _loadFallbackVenues() {
     allVenues = [
@@ -250,7 +245,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       context: context,
       initialDate: selectedDate,
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(Duration(days: 30)),
+      lastDate: DateTime.now().add(Duration(days: 7)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -472,6 +467,9 @@ class _SearchGroundsState extends State<SearchGrounds> {
                   title: groundData['name']!,
                   imageUrl: groundData['image']!,
                   onTap: () {
+                    print(
+                      '🚀 Navigating to GroundDetails with date: $selectedDate',
+                    );
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -488,6 +486,8 @@ class _SearchGroundsState extends State<SearchGrounds> {
                               facilities: groundData['facilities']!,
                               size: groundData['size']!,
                               area: groundData['area']!,
+                              initialSelectedDate:
+                                  selectedDate, // Pass the selected date
                             ),
                       ),
                     );
