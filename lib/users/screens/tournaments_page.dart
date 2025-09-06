@@ -18,25 +18,30 @@ class _TournamentsPageState extends State<TournamentsPage> {
   @override
   void initState() {
     super.initState();
-    _loadAllTournaments();
+    _loadUpcomingTournaments();
   }
 
-  Future<void> _loadAllTournaments() async {
+  Future<void> _loadUpcomingTournaments() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
     try {
-      print('🏆 TournamentsPage: Loading all tournaments...');
-      final allTournaments = await TournamentService.getAllTournaments();
+      print('🏆 TournamentsPage: Loading upcoming tournaments...');
+      final upcomingTournaments =
+          await TournamentService.getUpcomingTournaments(
+            limit: 50, // Get up to 50 upcoming tournaments
+          );
 
       setState(() {
-        tournaments = allTournaments;
+        tournaments = upcomingTournaments;
         _isLoading = false;
       });
 
-      print('✅ TournamentsPage: Loaded ${tournaments.length} tournaments');
+      print(
+        '✅ TournamentsPage: Loaded ${tournaments.length} upcoming tournaments',
+      );
     } catch (e) {
       print('❌ TournamentsPage: Error loading tournaments: $e');
       setState(() {
@@ -72,6 +77,7 @@ class _TournamentsPageState extends State<TournamentsPage> {
     }
 
     return {
+      'id': data['id']?.toString() ?? '', // Preserve the tournament ID
       'name': data['name']?.toString() ?? 'Tournament',
       'image': imageUrl,
       'date': data['tournament_date']?.toString() ?? '',
@@ -102,19 +108,6 @@ class _TournamentsPageState extends State<TournamentsPage> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {
-              // Add search functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Search functionality coming soon!'),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       drawer: const CommonDrawer(),
       body: SingleChildScrollView(
@@ -188,7 +181,7 @@ class _TournamentsPageState extends State<TournamentsPage> {
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
-                        onPressed: _loadAllTournaments,
+                        onPressed: _loadUpcomingTournaments,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                         ),

@@ -191,4 +191,38 @@ class TournamentService {
       return [];
     }
   }
+
+  // Get user tournament registrations with full tournament details
+  static Future<List<Map<String, dynamic>>> getUserTournamentRegistrations(
+    String userId,
+  ) async {
+    try {
+      final response = await _supabase
+          .from('tournament_registrations')
+          .select('''
+            *,
+            tournaments (
+              *,
+              venues (
+                name,
+                address
+              )
+            )
+          ''')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+
+      print('✅ User tournament registrations fetched: ${response.length}');
+
+      // Debug: Print the structure of returned data
+      if (response.isNotEmpty) {
+        print('📋 First registration structure: ${response.first}');
+      }
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('❌ Error fetching user tournament registrations: $e');
+      return [];
+    }
+  }
 }
