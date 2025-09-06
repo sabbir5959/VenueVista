@@ -4,6 +4,7 @@ import '../widgets/common_drawer.dart';
 import '../../services/tournament_service.dart';
 import '../../services/payment_service.dart';
 import 'payment_success_page.dart' as success;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PaymentPage extends StatefulWidget {
   final Map<String, dynamic> tournament;
@@ -15,10 +16,13 @@ class PaymentPage extends StatefulWidget {
 }
 
 class _PaymentPageState extends State<PaymentPage> {
-  // TODO: Replace with actual user ID from your authentication/session provider
+  // Get actual current user ID from Supabase authentication
   String getCurrentUserId() {
-    // Example: return a hardcoded user ID for testing
-    return 'test-user-id';
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      return user.id;
+    }
+    throw Exception('User not authenticated');
   }
 
   String selectedPaymentMethod = '';

@@ -30,7 +30,13 @@ class TournamentService {
     try {
       final response = await _supabase
           .from('tournaments')
-          .select('*')
+          .select('''
+            *,
+            venues (
+              name,
+              address
+            )
+          ''')
           .gte(
             'tournament_date',
             DateTime.now().toIso8601String().split('T')[0],
@@ -41,7 +47,9 @@ class TournamentService {
       print('✅ Featured tournaments fetched: ${response.length}');
       // Debug: Print tournament data
       for (var tournament in response) {
-        print('🏆 ${tournament['name']}: ${tournament['tournament_date']}');
+        print(
+          '🏆 ${tournament['name']}: ${tournament['tournament_date']} at ${tournament['venues']?['name'] ?? 'Unknown Venue'}',
+        );
       }
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -57,7 +65,13 @@ class TournamentService {
     try {
       final response = await _supabase
           .from('tournaments')
-          .select('*')
+          .select('''
+            *,
+            venues (
+              name,
+              address
+            )
+          ''')
           .gte(
             'tournament_date',
             DateTime.now().toIso8601String().split('T')[0],
@@ -174,6 +188,40 @@ class TournamentService {
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('❌ Error fetching user tournaments: $e');
+      return [];
+    }
+  }
+
+  // Get user tournament registrations with full tournament details
+  static Future<List<Map<String, dynamic>>> getUserTournamentRegistrations(
+    String userId,
+  ) async {
+    try {
+      final response = await _supabase
+          .from('tournament_registrations')
+          .select('''
+            *,
+            tournaments (
+              *,
+              venues (
+                name,
+                address
+              )
+            )
+          ''')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+
+      print('✅ User tournament registrations fetched: ${response.length}');
+
+      // Debug: Print the structure of returned data
+      if (response.isNotEmpty) {
+        print('📋 First registration structure: ${response.first}');
+      }
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('❌ Error fetching user tournament registrations: $e');
       return [];
     }
   }

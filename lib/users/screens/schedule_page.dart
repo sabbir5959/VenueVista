@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/common_drawer.dart';
 import '../../services/booking_service.dart';
+import '../../services/tournament_service.dart';
 import '../../widgets/weather_popup.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -12,15 +13,63 @@ class SchedulePage extends StatefulWidget {
   State<SchedulePage> createState() => _SchedulePageState();
 }
 
-class _SchedulePageState extends State<SchedulePage> {
+class _SchedulePageState extends State<SchedulePage>
+    with TickerProviderStateMixin {
   List<Map<String, dynamic>> futureBookings = [];
+  List<Map<String, dynamic>> tournamentRegistrations = [];
   bool isLoading = true;
   String? error;
+
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _loadFutureBookings();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadAllData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadAllData() async {
+    await Future.wait([_loadFutureBookings(), _loadTournamentRegistrations()]);
+  }
+
+  Future<void> _loadTournamentRegistrations() async {
+    try {
+      setState(() {
+        isLoading = true;
+        error = null;
+      });
+
+      // Get current user
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      print('🏆 Loading tournament registrations for user: ${user.id}');
+
+      // Get user tournament registrations
+      final registrations =
+          await TournamentService.getUserTournamentRegistrations(user.id);
+      print('🎮 Tournament registrations found: ${registrations.length}');
+
+      setState(() {
+        tournamentRegistrations = registrations;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('❌ Error loading tournament registrations: $e');
+      setState(() {
+        error = e.toString();
+        isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadFutureBookings() async {
@@ -240,19 +289,25 @@ class _SchedulePageState extends State<SchedulePage> {
         title: Text('My Schedules', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.green.shade700,
         iconTheme: IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            onPressed: _loadFutureBookings,
-            icon: Icon(Icons.refresh, color: Colors.white),
-            tooltip: 'Refresh',
-          ),
-        ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: [
+            Tab(icon: Icon(Icons.sports_soccer), text: 'Venue Bookings'),
+            Tab(icon: Icon(Icons.emoji_events), text: 'Tournament Bookings'),
+          ],
+        ),
       ),
-      body: _buildBody(),
+      body: TabBarView(
+        controller: _tabController,
+        children: [_buildVenueBookingsTab(), _buildTournamentBookingsTab()],
+      ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildVenueBookingsTab() {
     if (isLoading) {
       return Center(
         child: Column(
@@ -260,7 +315,7 @@ class _SchedulePageState extends State<SchedulePage> {
           children: [
             CircularProgressIndicator(color: Colors.green.shade700),
             SizedBox(height: 16),
-            Text('Loading your schedules...'),
+            Text('Loading your venue bookings...'),
           ],
         ),
       );
@@ -298,29 +353,17 @@ class _SchedulePageState extends State<SchedulePage> {
             Icon(Icons.event_note, size: 64, color: Colors.grey.shade400),
             SizedBox(height: 16),
             Text(
-              'No upcoming bookings',
+              'No upcoming venue bookings',
               style: TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
               ),
             ),
             SizedBox(height: 8),
             Text(
-              'Your future venue bookings will appear here',
-              style: TextStyle(color: Colors.grey.shade500),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context); // Go back to find venues to book
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade700,
-                foregroundColor: Colors.white,
-              ),
-              child: Text('Find Venues'),
+              'Book a venue to see your schedules here',
+              style: TextStyle(color: Colors.grey.shade600),
             ),
           ],
         ),
@@ -351,6 +394,180 @@ class _SchedulePageState extends State<SchedulePage> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildTournamentBookingsTab() {
+    if (isLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: Colors.green.shade700),
+            SizedBox(height: 16),
+            Text('Loading your tournament registrations...'),
+          ],
+        ),
+      );
+    }
+
+    if (error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+            SizedBox(height: 16),
+            Text('Error loading tournament registrations'),
+            SizedBox(height: 8),
+            Text(
+              error!,
+              style: TextStyle(color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadTournamentRegistrations,
+              child: Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (tournamentRegistrations.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.emoji_events, size: 64, color: Colors.grey.shade400),
+            SizedBox(height: 16),
+            Text(
+              'No tournament registrations',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Register for tournaments to see them here',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadTournamentRegistrations,
+      color: Colors.green.shade700,
+      child: ListView.builder(
+        padding: EdgeInsets.all(16),
+        itemCount: tournamentRegistrations.length,
+        itemBuilder: (context, index) {
+          final registration = tournamentRegistrations[index];
+          final tournament = registration['tournaments'];
+
+          return Card(
+            elevation: 4,
+            margin: EdgeInsets.only(bottom: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ListTile(
+              contentPadding: EdgeInsets.all(16),
+              title: _buildTournamentTitle(registration, tournament),
+              onTap:
+                  () =>
+                      _showTournamentDetails(context, registration, tournament),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTournamentTitle(
+    Map<String, dynamic> registration,
+    Map<String, dynamic>? tournament,
+  ) {
+    final tournamentName = tournament?['name'] ?? 'Unknown Tournament';
+    final tournamentDate = tournament?['tournament_date'] ?? '';
+    final entryFee = '৳${tournament?['entry_fee']?.toString() ?? '0'}';
+    final venue = tournament?['venues'];
+    final location = venue?['name'] ?? 'Tournament Venue';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                tournamentName,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade700,
+                ),
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Registered',
+                style: TextStyle(
+                  color: Colors.orange.shade700,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+            SizedBox(width: 8),
+            Text(
+              _formatDate(tournamentDate),
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+            SizedBox(width: 16),
+            Icon(Icons.attach_money, size: 16, color: Colors.grey.shade600),
+            SizedBox(width: 8),
+            Text(
+              entryFee,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(Icons.location_on, size: 16, color: Colors.grey.shade600),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                location,
+                style: TextStyle(color: Colors.grey.shade600),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -721,6 +938,157 @@ class _SchedulePageState extends State<SchedulePage> {
           ],
         );
       },
+    );
+  }
+
+  void _showTournamentDetails(
+    BuildContext context,
+    Map<String, dynamic> registration,
+    Map<String, dynamic>? tournament,
+  ) {
+    final tournamentName = tournament?['name'] ?? 'Unknown Tournament';
+    final tournamentDate = tournament?['tournament_date'] ?? '';
+    final entryFee = tournament?['entry_fee']?.toString() ?? '0';
+    final firstPrize = tournament?['first_prize']?.toString() ?? '0';
+    final maxTeams = tournament?['max_teams']?.toString() ?? '0';
+    final playerFormat = tournament?['player_format'] ?? '';
+    final venue = tournament?['venues'];
+    final location = venue?['name'] ?? 'Tournament Venue';
+    final registrationDate = registration['created_at'] ?? '';
+    final paymentMethod = registration['payment_method'] ?? '';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            tournamentName,
+            style: TextStyle(
+              color: Colors.green.shade700,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tournament Details',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                SizedBox(height: 12),
+                _buildDetailRow(
+                  Icons.calendar_today,
+                  'Date',
+                  _formatDate(tournamentDate),
+                ),
+                _buildDetailRow(Icons.location_on, 'Venue', location),
+                _buildDetailRow(Icons.sports_soccer, 'Format', playerFormat),
+                _buildDetailRow(Icons.groups, 'Max Teams', maxTeams),
+                _buildDetailRow(
+                  Icons.emoji_events,
+                  'First Prize',
+                  '৳$firstPrize',
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Registration Details',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                SizedBox(height: 12),
+                _buildDetailRow(Icons.attach_money, 'Entry Fee', '৳$entryFee'),
+                _buildDetailRow(
+                  Icons.payment,
+                  'Payment Method',
+                  paymentMethod.toUpperCase(),
+                ),
+                _buildDetailRow(
+                  Icons.schedule,
+                  'Registered On',
+                  _formatDate(registrationDate),
+                ),
+                SizedBox(height: 20),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green.shade600),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'You are successfully registered for this tournament!',
+                          style: TextStyle(
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: Text('Close'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            if (tournament != null && venue != null)
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade700,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text('Get Directions'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _openDirections(
+                    context,
+                    '${venue['name']}, ${venue['address'] ?? ''}',
+                  );
+                },
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey.shade600),
+          SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: TextStyle(color: Colors.grey.shade700)),
+          ),
+        ],
+      ),
     );
   }
 }
