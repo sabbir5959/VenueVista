@@ -144,7 +144,7 @@ class _AdminOverviewPageState extends State<AdminOverviewPage> {
                       mainAxisSpacing: 16,
                       children: [
                         _buildStatCard(
-                          'Normal Users',
+                          'Users',
                           '${_stats!['totalUsers']}',
                           Icons.people_outline,
                           AppColors.primary,
