@@ -54,9 +54,16 @@ class _TournamentsPageState extends State<TournamentsPage> {
     if (data['image_url'] != null && data['image_url'].toString().isNotEmpty) {
       imageUrl = data['image_url'].toString();
     } else {
-      // Fallback image if no image in database
-      imageUrl =
-          'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80';
+      // Multiple fallback images for variety
+      final fallbackImages = [
+        'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1459865264687-595d652de67e?auto=format&fit=crop&w=800&q=80',
+      ];
+      // Use hash of tournament name to consistently pick same image
+      final hash = data['name']?.toString().hashCode ?? 0;
+      imageUrl = fallbackImages[hash.abs() % fallbackImages.length];
     }
 
     String formattedTime = '';
@@ -244,15 +251,64 @@ class _TournamentsPageState extends State<TournamentsPage> {
                               height: 200,
                               width: double.infinity,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
+                              loadingBuilder: (
+                                context,
+                                child,
+                                loadingProgress,
+                              ) {
+                                if (loadingProgress == null) return child;
                                 return Container(
                                   height: 200,
                                   width: double.infinity,
-                                  color: Colors.grey.shade300,
-                                  child: Icon(
-                                    Icons.sports_soccer,
-                                    size: 80,
-                                    color: Colors.grey.shade600,
+                                  color: Colors.grey.shade200,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.green,
+                                      value:
+                                          loadingProgress.expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                print('❌ Image load error: $error');
+                                return Container(
+                                  height: 200,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Colors.green.shade300,
+                                        Colors.green.shade600,
+                                      ],
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.emoji_events,
+                                        size: 60,
+                                        color: Colors.white,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Tournament',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 );
                               },

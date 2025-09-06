@@ -17,6 +17,7 @@ class GroundDetails extends StatefulWidget {
   final String rating;
   final String facilities;
   final String size;
+  final DateTime? initialSelectedDate; // Add selected date parameter
 
   const GroundDetails({
     super.key,
@@ -31,6 +32,7 @@ class GroundDetails extends StatefulWidget {
     required this.facilities,
     required this.size,
     required this.area,
+    this.initialSelectedDate, // Optional, defaults to DateTime.now() if not provided
   });
 
   @override
@@ -61,6 +63,83 @@ class _GroundDetailsState extends State<GroundDetails> {
         selectedTimeSlots.add(slot);
       }
     });
+  }
+
+  // Helper function to check if a time slot has already passed for today's date
+  bool isSlotInPast(String timeSlot) {
+    // Only apply this logic if the selected date is today
+    final now = DateTime.now();
+    final isToday =
+        selectedDate.year == now.year &&
+        selectedDate.month == now.month &&
+        selectedDate.day == now.day;
+
+    if (!isToday) {
+      return false; // Not today, so no slots are in the past
+    }
+
+    // Extract the start hour from the time slot (e.g., "17:00 to 18:00" -> 17)
+    final startTimeStr = timeSlot.split(' to ')[0]; // "17:00"
+    final startHour = int.parse(startTimeStr.split(':')[0]); // 17
+
+    // Check if the slot start time has already passed
+    final currentHour = now.hour;
+    final currentMinute = now.minute;
+
+    print(
+      '🕒 Checking slot $timeSlot: startHour=$startHour, currentTime=${currentHour}:${currentMinute}',
+    );
+
+    // If the slot hour has completely passed, it's in the past
+    if (startHour < currentHour) {
+      print('   ⏰ Slot $timeSlot is in past (hour passed)');
+      return true;
+    }
+
+    // If we're currently in the slot hour but past a reasonable booking threshold (e.g., 30 minutes into the hour)
+    if (startHour == currentHour && currentMinute > 30) {
+      print(
+        '   ⏰ Slot $timeSlot is in past (current hour, past 30 min threshold)',
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  Widget _buildLegendItem(
+    String label,
+    Color backgroundColor,
+    Color textColor,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color:
+                  backgroundColor == Colors.white
+                      ? Colors.grey.shade300
+                      : backgroundColor,
+            ),
+          ),
+        ),
+        SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey.shade700,
+          ),
+        ),
+      ],
+    );
   }
 
   List<Map<String, dynamic>> recommendedVenues = [];
@@ -96,11 +175,23 @@ class _GroundDetailsState extends State<GroundDetails> {
 
   Set<String> bookedSlots = {};
   bool isLoadingSlots = false;
-  DateTime selectedDate = DateTime.now();
+  late DateTime selectedDate;
 
   @override
   void initState() {
     super.initState();
+    // Use the passed selected date or default to current date
+    selectedDate = widget.initialSelectedDate ?? DateTime.now();
+    final dateSource =
+        widget.initialSelectedDate != null
+            ? 'passed from search'
+            : 'defaulted to now';
+    print(
+      '🎯 GroundDetails initialized with date: $selectedDate ($dateSource)',
+    );
+    print(
+      '   - Formatted date: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+    );
     fetchBookedSlots();
     fetchRecommendedVenues();
   }
@@ -108,32 +199,68 @@ class _GroundDetailsState extends State<GroundDetails> {
   Future<void> fetchBookedSlots() async {
     setState(() {
       isLoadingSlots = true;
+      bookedSlots.clear(); // Clear previous bookings first
     });
     try {
+      // Format selected date for comparison
+      final selectedDateFormatted =
+          '${selectedDate.year.toString().padLeft(4, '0')}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+
+      print('🔍 Fetching bookings for:');
+      print('   Venue ID: "${widget.venueId ?? ''}"');
+      print('   Venue Name: "${widget.name}"');
+      print('   Selected Date: "$selectedDateFormatted"');
+      print('   Selected DateTime: ${selectedDate.toString()}');
+
       final bookings = await BookingService.getBookingsForVenueAndDate(
         widget.venueId ?? '',
         selectedDate,
       );
-      print('DEBUG bookings fetched:');
-      print(bookings);
+
+      print('📅 Processing bookings for $selectedDateFormatted:');
+      print('   Total bookings found: ${bookings.length}');
+
       Set<String> booked = {};
       for (var booking in bookings) {
+        print('   📋 Processing booking:');
+        print('      - Booking Date: "${booking['booking_date']}"');
+        print('      - Start Time: "${booking['start_time']}"');
+        print('      - End Time: "${booking['end_time']}"');
+        print('      - Venue ID: "${booking['venue_id']}"');
+
         final start = booking['start_time'];
         final end = booking['end_time'];
-        if (start != null && end != null) {
-          print('BOOKED SLOT START TIME (separate):');
-          print(start);
+        final bookingDateFromDB = booking['booking_date'];
+
+        // Double check the date matches (should already be filtered by service)
+        if (bookingDateFromDB == selectedDateFormatted &&
+            start != null &&
+            end != null) {
           int startHour = int.parse(start.split(':')[0]);
           int endHour = int.parse(end.split(':')[0]);
           for (int h = startHour; h < endHour; h++) {
             final slotString =
                 '${h.toString().padLeft(2, '0')}:00 to ${(h + 1).toString().padLeft(2, '0')}:00';
             booked.add(slotString);
+            print(
+              '   ⛔ Marking slot as booked for $selectedDateFormatted: $slotString',
+            );
           }
+        } else {
+          print(
+            '   ⚠️ Booking date mismatch or invalid time: DB="$bookingDateFromDB", Expected="$selectedDateFormatted"',
+          );
         }
       }
-      print('DEBUG bookedSlots:');
-      print(booked);
+
+      print(
+        '🎯 Final booked slots for $selectedDateFormatted (${widget.name}):',
+      );
+      print('   Booked slots: ${booked.toList()}');
+      print(
+        '   Available slots: ${timeSlots.where((slot) => !booked.contains(slot)).toList()}',
+      );
+
       setState(() {
         bookedSlots = booked;
         isLoadingSlots = false;
@@ -141,8 +268,9 @@ class _GroundDetailsState extends State<GroundDetails> {
     } catch (e) {
       setState(() {
         isLoadingSlots = false;
+        bookedSlots.clear(); // Clear bookings on error
       });
-      print('Error fetching booked slots: $e');
+      print('❌ Error fetching booked slots: $e');
     }
   }
 
@@ -300,12 +428,138 @@ class _GroundDetailsState extends State<GroundDetails> {
                 ),
               ),
               const SizedBox(height: 24),
+              // Color Legend
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildLegendItem(
+                          'Available',
+                          Colors.white,
+                          Colors.grey.shade700,
+                        ),
+                        _buildLegendItem(
+                          'Selected',
+                          Colors.green.shade400,
+                          Colors.white,
+                        ),
+                        _buildLegendItem(
+                          'Unavailable',
+                          Colors.red.shade400,
+                          Colors.white,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Unavailable slots include booked slots and past time slots (for today)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
-                'Available Time Slots',
+                'Available Time Slots for ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.green.shade900,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Booking Status Summary
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Column(
+                      children: [
+                        Text(
+                          '${timeSlots.where((slot) => !bookedSlots.contains(slot) && !isSlotInPast(slot)).length}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                        Text(
+                          'Available',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: Colors.grey.shade300,
+                    ),
+                    Column(
+                      children: [
+                        Text(
+                          '${timeSlots.where((slot) => bookedSlots.contains(slot) || isSlotInPast(slot)).length}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                        Text(
+                          'Unavailable',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: Colors.grey.shade300,
+                    ),
+                    Column(
+                      children: [
+                        Text(
+                          '${selectedTimeSlots.length}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                        Text(
+                          'Selected',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -326,33 +580,45 @@ class _GroundDetailsState extends State<GroundDetails> {
                       final timeSlot = timeSlots[index];
                       final isBooked = bookedSlots.contains(timeSlot);
                       final isSelected = selectedTimeSlots.contains(timeSlot);
+                      final isPastSlot = isSlotInPast(timeSlot);
+                      final isUnavailable = isBooked || isPastSlot;
+
                       return InkWell(
-                        onTap: isBooked ? null : () => onSlotTapped(timeSlot),
+                        onTap:
+                            isUnavailable ? null : () => onSlotTapped(timeSlot),
                         borderRadius: BorderRadius.circular(8),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
                             color:
-                                isBooked
-                                    ? Colors.red.shade200
+                                isUnavailable
+                                    ? Colors.red.shade400
                                     : isSelected
-                                    ? Colors.green.shade100
+                                    ? Colors.green.shade400
                                     : Colors.white,
                             border: Border.all(
                               color:
-                                  isBooked
+                                  isUnavailable
                                       ? Colors.red.shade700
                                       : isSelected
                                       ? Colors.green.shade700
                                       : Colors.green.shade200,
-                              width: isBooked || isSelected ? 2 : 1,
+                              width: isUnavailable || isSelected ? 2 : 1,
                             ),
                             borderRadius: BorderRadius.circular(8),
                             boxShadow:
                                 isSelected
                                     ? [
                                       BoxShadow(
-                                        color: Colors.green.shade100,
+                                        color: Colors.green.shade200,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ]
+                                    : isUnavailable
+                                    ? [
+                                      BoxShadow(
+                                        color: Colors.red.shade200,
                                         blurRadius: 8,
                                         offset: Offset(0, 2),
                                       ),
@@ -360,20 +626,35 @@ class _GroundDetailsState extends State<GroundDetails> {
                                     : [],
                           ),
                           alignment: Alignment.center,
-                          child: Text(
-                            timeSlot,
-                            style: TextStyle(
-                              color:
-                                  isBooked
-                                      ? Colors.red.shade900
-                                      : isSelected
-                                      ? Colors.green.shade900
-                                      : Colors.black87,
-                              fontWeight:
-                                  isBooked || isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                            ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                timeSlot,
+                                style: TextStyle(
+                                  color:
+                                      isUnavailable
+                                          ? Colors.white
+                                          : isSelected
+                                          ? Colors.white
+                                          : Colors.grey.shade700,
+                                  fontWeight:
+                                      isUnavailable || isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.w500,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              if (isPastSlot && !isBooked)
+                                Text(
+                                  'Past Time',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       );
@@ -420,7 +701,109 @@ class _GroundDetailsState extends State<GroundDetails> {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(14),
                             onTap: () {
-                              // Optionally, navigate to details of the suggested ground
+                              // Navigate to the recommended ground details with current selected date
+                              print(
+                                '🚀 Navigating to recommended ground: ${venue['name']} with date: $selectedDate',
+                              );
+                              print('🔍 Venue data: $venue');
+
+                              // Safely extract image URL
+                              String extractImageUrl(dynamic imageUrls) {
+                                print(
+                                  '📸 Processing image_urls: $imageUrls (type: ${imageUrls.runtimeType})',
+                                );
+                                if (imageUrls is List && imageUrls.isNotEmpty) {
+                                  final firstImage = imageUrls[0].toString();
+                                  print(
+                                    '📸 Using first image from list: $firstImage',
+                                  );
+                                  return firstImage;
+                                } else if (imageUrls is String &&
+                                    imageUrls.isNotEmpty) {
+                                  print('📸 Using string image: $imageUrls');
+                                  return imageUrls;
+                                }
+                                print('📸 Using placeholder image');
+                                return 'https://via.placeholder.com/400x200.png?text=No+Image';
+                              }
+
+                              // Safely extract string values
+                              String safeString(
+                                dynamic value,
+                                String defaultValue,
+                              ) {
+                                final result =
+                                    value?.toString() ?? defaultValue;
+                                return result;
+                              }
+
+                              try {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => GroundDetails(
+                                          venueId: safeString(venue['id'], ''),
+                                          name: safeString(
+                                            venue['name'],
+                                            'Unknown Ground',
+                                          ),
+                                          imageUrl: extractImageUrl(
+                                            venue['image_urls'],
+                                          ),
+                                          location: safeString(
+                                            venue['address'],
+                                            venue['area']?.toString() ??
+                                                'Unknown Location',
+                                          ),
+                                          description: safeString(
+                                            venue['description'],
+                                            'No description available.',
+                                          ),
+                                          price: safeString(
+                                            venue['price_per_hour'],
+                                            '0',
+                                          ),
+                                          groundPayment: safeString(
+                                            venue['price_per_hour'],
+                                            '0',
+                                          ),
+                                          rating: safeString(
+                                            venue['rating'],
+                                            '4.0',
+                                          ),
+                                          facilities: safeString(
+                                            venue['facilities'],
+                                            'Basic facilities',
+                                          ),
+                                          size: safeString(
+                                            venue['ground_size'],
+                                            'Standard size',
+                                          ),
+                                          area: safeString(
+                                            venue['area'],
+                                            'Unknown Area',
+                                          ),
+                                          initialSelectedDate:
+                                              selectedDate, // Pass current selected date
+                                        ),
+                                  ),
+                                );
+                                print(
+                                  '✅ Navigation to recommended ground successful',
+                                );
+                              } catch (e) {
+                                print(
+                                  '❌ Error navigating to recommended ground: $e',
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Error loading ground details: $e',
+                                    ),
+                                  ),
+                                );
+                              }
                             },
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -576,7 +959,7 @@ class _GroundDetailsState extends State<GroundDetails> {
                               ? selectedTimeSlots.first
                               : '',
                       'date':
-                          '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+                          '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
                       'size': widget.size,
                       'facilities': widget.facilities,
                       'rating': widget.rating,
