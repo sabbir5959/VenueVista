@@ -1,7 +1,59 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_config.dart';
 
 class BookingService {
+  /// Get bookings for a specific venue and date (for slot marking)
+  static Future<List<Map<String, dynamic>>> getBookingsForVenueAndDate(
+    String venueId,
+    DateTime date,
+  ) async {
+    try {
+      // Format date to match database format (YYYY-MM-DD)
+      final bookingDate =
+          '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+      print('🔍 BookingService: Querying bookings for:');
+      print('   Venue ID: "$venueId"');
+      print('   Target Date: "$bookingDate"');
+      print('   Input Date: ${date.toString()}');
+      print('   Formatted for DB: $bookingDate');
+
+      // First, let's see ALL bookings for this venue to debug
+      final allVenueBookings = await _client
+          .from('bookings')
+          .select('start_time, end_time, booking_date, venue_id')
+          .eq('venue_id', venueId);
+
+      print('📋 ALL bookings for venue "$venueId":');
+      for (var booking in allVenueBookings) {
+        print(
+          '   - Venue: "${booking['venue_id']}", Date: "${booking['booking_date']}", Time: ${booking['start_time']}-${booking['end_time']}',
+        );
+      }
+
+      // Now get bookings for specific date
+      final response = await _client
+          .from('bookings')
+          .select('start_time, end_time, booking_date, venue_id')
+          .eq('venue_id', venueId)
+          .eq('booking_date', bookingDate);
+
+      print('📊 BookingService: Filtered result for "$bookingDate":');
+      print(
+        '   Found ${response.length} bookings matching venue "$venueId" and date "$bookingDate"',
+      );
+      for (var booking in response) {
+        print(
+          '   ✅ MATCH - Venue: "${booking['venue_id']}", Date: "${booking['booking_date']}", Time: ${booking['start_time']}-${booking['end_time']}',
+        );
+      }
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('❌ Error fetching bookings for venue and date: $e');
+      return [];
+    }
+  }
+
   static final _client = SupabaseConfig.client;
 
   /// Create a new booking
@@ -57,19 +109,21 @@ class BookingService {
     }
   }
 
-  /// Get user's bookings
+  /// Get user's bookings - FORCE RELOAD
   static Future<List<Map<String, dynamic>>> getUserBookings(
     String userId,
   ) async {
     try {
+      print('🔍 TESTING - Fetching bookings for user: $userId');
+
       final response = await _client
           .from('bookings')
           .select('''
             *,
-            venues:venue_id (
+            venues!inner(
               id,
               name,
-              location,
+              address,
               price_per_hour,
               image_urls
             )
@@ -78,9 +132,16 @@ class BookingService {
           .order('created_at', ascending: false);
 
       print('✅ User bookings fetched: ${response.length}');
+
+      // Debug: Print each booking
+      for (int i = 0; i < response.length; i++) {
+        print('📋 Booking $i: ${response[i]}');
+      }
+
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('❌ Error fetching user bookings: $e');
+      print('❌ Error details: ${e.toString()}');
       return [];
     }
   }
@@ -96,7 +157,7 @@ class BookingService {
             venues:venue_id (
               id,
               name,
-              location,
+              address,
               price_per_hour,
               image_urls,
               owner_id

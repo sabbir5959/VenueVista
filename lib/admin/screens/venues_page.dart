@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
+import '../../services/admin_venue_service.dart';
 
 class AdminVenuesPage extends StatefulWidget {
   const AdminVenuesPage({super.key});
@@ -10,20 +11,92 @@ class AdminVenuesPage extends StatefulWidget {
 
 class _AdminVenuesPageState extends State<AdminVenuesPage> {
   int _currentPage = 1;
-  final int _itemsPerPage = 8;
-  String _selectedStatus = 'Active';
+  final int _itemsPerPage = 4;
+  String _selectedStatus = 'All';
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  // Backend data
+  List<Map<String, dynamic>> _venues = [];
+  Map<String, int> _stats = {};
+  bool _isLoading = false;
+  int _totalCount = 0;
+  int _totalPages = 0;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+    _loadVenues();
+    _loadStats();
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    // Debounce search to avoid too many API calls
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (_searchController.text == _searchQuery) return;
+      setState(() {
+        _searchQuery = _searchController.text;
+        _currentPage = 1; // Reset to first page when searching
+      });
+      _loadVenues();
+    });
+  }
+
+  /// Load venues from backend
+  Future<void> _loadVenues() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await AdminVenueService.getVenues(
+        page: _currentPage,
+        limit: _itemsPerPage,
+        searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+        statusFilter: _selectedStatus,
+      );
+
+      setState(() {
+        _venues = result['venues'];
+        _totalCount = result['totalCount'];
+        _totalPages = result['totalPages'];
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// Load venue statistics
+  Future<void> _loadStats() async {
+    try {
+      final stats = await AdminVenueService.getVenueStats();
+      setState(() {
+        _stats = stats;
+      });
+    } catch (e) {
+      print('Error loading stats: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
-    final filteredVenues = _getFilteredVenues();
-    final totalPages = (filteredVenues.length / _itemsPerPage).ceil();
-    final startIndex = (_currentPage - 1) * _itemsPerPage;
-    final endIndex = (startIndex + _itemsPerPage).clamp(
-      0,
-      filteredVenues.length,
-    );
-    final currentPageVenues = filteredVenues.sublist(startIndex, endIndex);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -62,10 +135,42 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                     ],
                   ),
                 ),
+                IconButton(
+                  onPressed: () {
+                    _loadVenues();
+                    _loadStats();
+                  },
+                  icon: Icon(Icons.refresh, color: AppColors.primary),
+                  tooltip: 'Refresh',
+                ),
               ],
             ),
 
             SizedBox(height: isMobile ? 16 : 24),
+
+            // Error Message
+            if (_errorMessage != null)
+              Container(
+                padding: EdgeInsets.all(16),
+                margin: EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // Venue Summary Cards
             Row(
@@ -73,7 +178,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                 Expanded(
                   child: _buildSummaryCard(
                     'Total Venues',
-                    '${_demoVenues.length}',
+                    '${_stats['totalVenues'] ?? 0}',
                     Icons.location_city,
                     Colors.blue[600]!,
                     'All registered',
@@ -84,7 +189,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                 Expanded(
                   child: _buildSummaryCard(
                     'Active Venues',
-                    '${_demoVenues.where((v) => v['status'] == 'Active').length}',
+                    '${_stats['activeVenues'] ?? 0}',
                     Icons.check_circle,
                     Colors.green[600]!,
                     'Currently open',
@@ -95,7 +200,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                 Expanded(
                   child: _buildSummaryCard(
                     'Under Maintenance',
-                    '${_demoVenues.where((v) => v['status'] == 'Maintenance').length}',
+                    '${_stats['maintenanceVenues'] ?? 0}',
                     Icons.build,
                     Colors.orange[600]!,
                     'Temporarily closed',
@@ -107,7 +212,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
 
             SizedBox(height: isMobile ? 16 : 20),
 
-            // Filter Section
+            // Search and Filter Section
             Container(
               padding: EdgeInsets.all(isMobile ? 12 : 16),
               decoration: BoxDecoration(
@@ -125,6 +230,35 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Search Bar
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Search venues by name, location, or description...',
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: AppColors.textSecondary,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.borderLight),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.borderLight),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.background,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+
+                  // Status Filter
                   Text(
                     'Filter by Status',
                     style: TextStyle(
@@ -136,6 +270,14 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                   SizedBox(height: 12),
                   Row(
                     children: [
+                      _buildFilterChip('All', 'All', _selectedStatus, (value) {
+                        setState(() {
+                          _selectedStatus = value;
+                          _currentPage = 1;
+                        });
+                        _loadVenues();
+                      }),
+                      SizedBox(width: 8),
                       _buildFilterChip('Active', 'Active', _selectedStatus, (
                         value,
                       ) {
@@ -143,6 +285,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                           _selectedStatus = value;
                           _currentPage = 1;
                         });
+                        _loadVenues();
                       }),
                       SizedBox(width: 8),
                       _buildFilterChip(
@@ -154,6 +297,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                             _selectedStatus = value;
                             _currentPage = 1;
                           });
+                          _loadVenues();
                         },
                       ),
                       SizedBox(width: 8),
@@ -166,6 +310,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                             _selectedStatus = value;
                             _currentPage = 1;
                           });
+                          _loadVenues();
                         },
                       ),
                     ],
@@ -204,19 +349,11 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                     child: Row(
                       children: [
                         Text(
-                          isMobile ? 'Venue List' : 'All Registered Venues',
+                          'Venues (${_totalCount} total)',
                           style: TextStyle(
                             fontSize: isMobile ? 16 : 18,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Spacer(),
-                        Text(
-                          'Showing ${startIndex + 1}-${endIndex} of ${filteredVenues.length}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -224,23 +361,62 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                   ),
 
                   // Venues List
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: currentPageVenues.length,
-                    separatorBuilder:
-                        (context, index) =>
-                            Divider(color: AppColors.borderLight, height: 1),
-                    itemBuilder: (context, index) {
-                      return _buildVenueListItem(
-                        currentPageVenues[index],
-                        isMobile,
-                      );
-                    },
-                  ),
+                  if (_isLoading)
+                    Container(
+                      padding: EdgeInsets.all(32),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (_venues.isEmpty)
+                    Container(
+                      padding: EdgeInsets.all(32),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.location_off,
+                            size: 64,
+                            color: AppColors.textSecondary,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'No venues found',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Try adjusting your filters or search terms',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: _venues.length,
+                      separatorBuilder:
+                          (context, index) =>
+                              Divider(color: AppColors.borderLight, height: 1),
+                      itemBuilder: (context, index) {
+                        return _buildVenueListItem(_venues[index], isMobile);
+                      },
+                    ),
 
                   // Pagination
-                  if (totalPages > 1)
+                  if (_totalPages > 1)
                     Container(
                       padding: EdgeInsets.all(isMobile ? 16 : 20),
                       decoration: BoxDecoration(
@@ -257,7 +433,10 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                           IconButton(
                             onPressed:
                                 _currentPage > 1
-                                    ? () => setState(() => _currentPage--)
+                                    ? () {
+                                      setState(() => _currentPage--);
+                                      _loadVenues();
+                                    }
                                     : null,
                             icon: Icon(Icons.chevron_left),
                             color:
@@ -267,11 +446,14 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                           ),
 
                           // Page Numbers
-                          ...List.generate(totalPages, (index) {
+                          ...List.generate(_totalPages, (index) {
                             final page = index + 1;
                             final isCurrentPage = page == _currentPage;
                             return InkWell(
-                              onTap: () => setState(() => _currentPage = page),
+                              onTap: () {
+                                setState(() => _currentPage = page);
+                                _loadVenues();
+                              },
                               child: Container(
                                 margin: EdgeInsets.symmetric(horizontal: 4),
                                 padding: EdgeInsets.symmetric(
@@ -311,12 +493,15 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                           // Next Button
                           IconButton(
                             onPressed:
-                                _currentPage < totalPages
-                                    ? () => setState(() => _currentPage++)
+                                _currentPage < _totalPages
+                                    ? () {
+                                      setState(() => _currentPage++);
+                                      _loadVenues();
+                                    }
                                     : null,
                             icon: Icon(Icons.chevron_right),
                             color:
-                                _currentPage < totalPages
+                                _currentPage < _totalPages
                                     ? AppColors.primary
                                     : AppColors.textSecondary,
                           ),
@@ -515,7 +700,9 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                     Expanded(
                       flex: 2,
                       child: Text(
-                        venue['owner'],
+                        venue['owner'] is Map
+                            ? (venue['owner']['full_name'] ?? 'Unknown Owner')
+                            : (venue['owner']?.toString() ?? 'Unknown Owner'),
                         style: TextStyle(
                           fontSize: isMobile ? 12 : 14,
                           color: AppColors.textSecondary,
@@ -534,7 +721,9 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                     Expanded(
                       flex: 1,
                       child: Text(
-                        venue['contact'],
+                        venue['owner'] is Map && venue['owner']['phone'] != null
+                            ? venue['owner']['phone']
+                            : 'No contact',
                         style: TextStyle(
                           fontSize: isMobile ? 10 : 14,
                           color: AppColors.textSecondary,
@@ -555,7 +744,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                     SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        venue['location'],
+                        venue['address'] ?? venue['city'] ?? 'Unknown location',
                         style: TextStyle(
                           fontSize: isMobile ? 12 : 14,
                           color: AppColors.textSecondary,
@@ -565,7 +754,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                     ),
                     SizedBox(width: 8),
                     Text(
-                      '৳${venue['pricePerHour']}/hr',
+                      '৳${venue['price_per_hour'] ?? 0}/hr',
                       style: TextStyle(
                         fontSize: isMobile ? 14 : 16,
                         fontWeight: FontWeight.w700,
@@ -579,15 +768,18 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                   children: [
                     _buildVenueFeature(
                       Icons.sports_soccer,
-                      '${venue['courts']} Courts',
+                      '${venue['capacity'] ?? 0} Capacity',
                     ),
                     if (!isMobile) ...[
                       SizedBox(width: 12),
-                      _buildVenueFeature(Icons.star, '${venue['rating']}'),
+                      _buildVenueFeature(
+                        Icons.star,
+                        '${venue['rating'] ?? 0.0}',
+                      ),
                       SizedBox(width: 12),
                       _buildVenueFeature(
-                        Icons.schedule,
-                        '${venue['totalBookings']} Bookings',
+                        Icons.info,
+                        venue['ground_size'] ?? 'Standard',
                       ),
                     ],
                   ],
@@ -596,11 +788,14 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                   SizedBox(height: 4),
                   Row(
                     children: [
-                      _buildVenueFeature(Icons.star, '${venue['rating']}'),
+                      _buildVenueFeature(
+                        Icons.star,
+                        '${venue['rating'] ?? 0.0}',
+                      ),
                       SizedBox(width: 12),
                       _buildVenueFeature(
-                        Icons.schedule,
-                        '${venue['totalBookings']} Bookings',
+                        Icons.info,
+                        venue['ground_size'] ?? 'Standard',
                       ),
                     ],
                   ),
@@ -675,23 +870,13 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
     );
   }
 
-  List<Map<String, dynamic>> _getFilteredVenues() {
-    List<Map<String, dynamic>> filtered = _demoVenues;
-
-    // Filter by status
-    filtered =
-        filtered.where((venue) => venue['status'] == _selectedStatus).toList();
-
-    return filtered;
-  }
-
   Color _getVenueStatusColor(String status) {
-    switch (status) {
-      case 'Active':
+    switch (status.toLowerCase()) {
+      case 'active':
         return Colors.green[600]!;
-      case 'Maintenance':
+      case 'maintenance':
         return Colors.orange[600]!;
-      case 'Inactive':
+      case 'inactive':
         return Colors.red[600]!;
       default:
         return AppColors.textSecondary;
@@ -767,7 +952,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                         ),
                       ),
                       Text(
-                        venue['location'],
+                        venue['address'] ?? venue['city'] ?? 'Unknown location',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -807,18 +992,35 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                   _buildVenueDetailSection('Owner Information', [
                     _buildVenueDetailItem(
                       'Owner Name',
-                      venue['owner'],
+                      venue['owner'] is Map
+                          ? (venue['owner']['full_name'] ?? 'Unknown Owner')
+                          : (venue['owner']?.toString() ?? 'Unknown Owner'),
                       Icons.person,
                     ),
                     _buildVenueDetailItem(
                       'Contact',
-                      venue['contact'],
+                      venue['owner'] is Map && venue['owner']['phone'] != null
+                          ? venue['owner']['phone']
+                          : 'No contact',
                       Icons.phone,
                     ),
-                    _buildVenueDetailItem('Email', venue['email'], Icons.email),
+                    _buildVenueDetailItem(
+                      'Email',
+                      venue['owner'] is Map && venue['owner']['email'] != null
+                          ? venue['owner']['email']
+                          : 'No email',
+                      Icons.email,
+                    ),
                     _buildVenueDetailItem(
                       'Joined',
-                      venue['joinedDate'],
+                      venue['owner'] is Map &&
+                              venue['owner']['created_at'] != null
+                          ? venue['owner']['created_at'].toString().split(
+                            'T',
+                          )[0]
+                          : venue['created_at'] != null
+                          ? venue['created_at'].toString().split('T')[0]
+                          : 'Unknown',
                       Icons.calendar_today,
                     ),
                   ], isMobile),
@@ -826,71 +1028,47 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
                   _buildVenueDetailSection('Venue Details', [
                     _buildVenueDetailItem(
                       'Price per Hour',
-                      '৳${venue['pricePerHour']}',
+                      '৳${venue['price_per_hour'] ?? 0}',
                       Icons.monetization_on,
                     ),
                     _buildVenueDetailItem(
-                      'Total Courts',
-                      '${venue['courts']}',
+                      'Total Capacity',
+                      '${venue['capacity'] ?? 0}',
                       Icons.sports_soccer,
                     ),
                     _buildVenueDetailItem(
-                      'Rating',
-                      '${venue['rating']}/5.0',
-                      Icons.star,
+                      'Location',
+                      venue['address'] ?? venue['city'] ?? 'Unknown location',
+                      Icons.location_on,
                     ),
                     _buildVenueDetailItem(
                       'Type',
-                      venue['type'],
+                      venue['type'] ?? 'Sports Venue',
                       Icons.category,
                     ),
                   ], isMobile),
                   SizedBox(height: 16),
                   _buildVenueDetailSection('Statistics', [
                     _buildVenueDetailItem(
-                      'Total Bookings',
-                      '${venue['totalBookings']}',
-                      Icons.book_online,
+                      'Venue Status',
+                      venue['status'] ?? 'Unknown',
+                      Icons.info,
                     ),
                     _buildVenueDetailItem(
-                      'This Month',
-                      '${venue['monthlyBookings']}',
-                      Icons.trending_up,
+                      'Created Date',
+                      venue['created_at'] != null
+                          ? venue['created_at'].toString().split('T')[0]
+                          : 'Unknown',
+                      Icons.calendar_today,
                     ),
                     _buildVenueDetailItem(
-                      'Total Income',
-                      '৳${venue['revenue']}',
-                      Icons.account_balance_wallet,
-                    ),
-                    _buildVenueDetailItem(
-                      'Commission',
-                      '৳${venue['commission']}',
-                      Icons.percent,
+                      'Updated Date',
+                      venue['updated_at'] != null
+                          ? venue['updated_at'].toString().split('T')[0]
+                          : 'Unknown',
+                      Icons.update,
                     ),
                   ], isMobile),
-                  if (venue['status'] == 'Maintenance') ...[
-                    SizedBox(height: 16),
-                    _buildVenueDetailSection('Maintenance Info', [
-                      if (venue['maintenanceReason'] != null)
-                        _buildVenueDetailItem(
-                          'Reason',
-                          venue['maintenanceReason'],
-                          Icons.build,
-                        ),
-                      if (venue['maintenanceStart'] != null)
-                        _buildVenueDetailItem(
-                          'Started',
-                          venue['maintenanceStart'],
-                          Icons.schedule,
-                        ),
-                      if (venue['estimatedEnd'] != null)
-                        _buildVenueDetailItem(
-                          'Estimated End',
-                          venue['estimatedEnd'],
-                          Icons.event,
-                        ),
-                    ], isMobile),
-                  ],
                 ],
               ),
             ),
@@ -977,157 +1155,4 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
       ),
     );
   }
-
-  static final List<Map<String, dynamic>> _demoVenues = [
-    {
-      'id': 'V001',
-      'name': 'Green Valley Sports Complex',
-      'owner': 'Md. Rahman',
-      'contact': '+8801712345678',
-      'email': 'rahman@greenvalley.com',
-      'location': 'Dhanmondi, Dhaka',
-      'status': 'Active',
-      'pricePerHour': 1500,
-      'courts': 3,
-      'rating': 4.8,
-      'type': 'Futsal',
-      'totalBookings': 245,
-      'monthlyBookings': 32,
-      'revenue': 150000,
-      'commission': 15000,
-      'joinedDate': '2024-01-15',
-    },
-    {
-      'id': 'V002',
-      'name': 'Elite Futsal Academy',
-      'owner': 'Salam Ahmed',
-      'contact': '+8801534567890',
-      'email': 'info@elitefutsal.com',
-      'location': 'Gulshan, Dhaka',
-      'status': 'Active',
-      'pricePerHour': 2000,
-      'courts': 2,
-      'rating': 4.9,
-      'type': 'Futsal',
-      'totalBookings': 189,
-      'monthlyBookings': 28,
-      'revenue': 220000,
-      'commission': 22000,
-      'joinedDate': '2024-02-20',
-    },
-    {
-      'id': 'V003',
-      'name': 'BKSP Sports Authority',
-      'owner': 'Karim Uddin',
-      'contact': '+8801723456789',
-      'email': 'contact@bksp.gov.bd',
-      'location': 'Savar, Dhaka',
-      'status': 'Maintenance',
-      'pricePerHour': 1200,
-      'courts': 4,
-      'rating': 4.6,
-      'type': 'Multi-Sport',
-      'totalBookings': 167,
-      'monthlyBookings': 15,
-      'revenue': 98000,
-      'commission': 9800,
-      'joinedDate': '2024-03-10',
-      'maintenanceReason': 'Turf replacement and facility upgrade',
-      'maintenanceStart': '2024-07-25',
-      'estimatedEnd': '2024-08-15',
-    },
-    {
-      'id': 'V004',
-      'name': 'Dhanmondi Futsal Ground',
-      'owner': 'Nasir Hossain',
-      'contact': '+8801656789012',
-      'email': 'nasir@dhanmondifutsal.com',
-      'location': 'Dhanmondi, Dhaka',
-      'status': 'Active',
-      'pricePerHour': 1800,
-      'courts': 2,
-      'rating': 4.7,
-      'type': 'Futsal',
-      'totalBookings': 203,
-      'monthlyBookings': 25,
-      'revenue': 175000,
-      'commission': 17500,
-      'joinedDate': '2024-01-28',
-    },
-    {
-      'id': 'V005',
-      'name': 'University Football Field',
-      'owner': 'Dr. Salma Khatun',
-      'contact': '+8801876543210',
-      'email': 'sports@university.edu.bd',
-      'location': 'Dhaka University',
-      'status': 'Active',
-      'pricePerHour': 800,
-      'courts': 2,
-      'rating': 4.5,
-      'type': 'Football',
-      'totalBookings': 134,
-      'monthlyBookings': 18,
-      'revenue': 85000,
-      'commission': 8500,
-      'joinedDate': '2024-03-22',
-    },
-    {
-      'id': 'V006',
-      'name': 'Premium Futsal Arena',
-      'owner': 'Ruhul Amin',
-      'contact': '+8801789012345',
-      'email': 'contact@premiumfutsal.com',
-      'location': 'Banani, Dhaka',
-      'status': 'Maintenance',
-      'pricePerHour': 2200,
-      'courts': 2,
-      'rating': 4.8,
-      'type': 'Futsal',
-      'totalBookings': 156,
-      'monthlyBookings': 8,
-      'revenue': 195000,
-      'commission': 19500,
-      'joinedDate': '2024-04-18',
-      'maintenanceReason': 'AC system repair and court maintenance',
-      'maintenanceStart': '2024-07-28',
-      'estimatedEnd': '2024-08-05',
-    },
-    {
-      'id': 'V007',
-      'name': 'Community Sports Center',
-      'owner': 'Fatima Begum',
-      'contact': '+8801890123456',
-      'email': 'info@communitysports.org',
-      'location': 'Uttara, Dhaka',
-      'status': 'Active',
-      'pricePerHour': 1300,
-      'courts': 2,
-      'rating': 4.4,
-      'type': 'Multi-Sport',
-      'totalBookings': 112,
-      'monthlyBookings': 16,
-      'revenue': 95000,
-      'commission': 9500,
-      'joinedDate': '2024-05-30',
-    },
-    {
-      'id': 'V008',
-      'name': 'Mirpur Sports Complex',
-      'owner': 'Abdul Karim',
-      'contact': '+8801945678901',
-      'email': 'karim@mirpursports.com',
-      'location': 'Mirpur, Dhaka',
-      'status': 'Inactive',
-      'pricePerHour': 1100,
-      'courts': 3,
-      'rating': 4.3,
-      'type': 'Multi-Sport',
-      'totalBookings': 89,
-      'monthlyBookings': 5,
-      'revenue': 65000,
-      'commission': 6500,
-      'joinedDate': '2024-06-10',
-    },
-  ];
 }

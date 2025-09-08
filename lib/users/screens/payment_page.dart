@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../widgets/common_drawer.dart';
+import '../../services/tournament_service.dart';
+import '../../services/payment_service.dart';
 import 'payment_success_page.dart' as success;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PaymentPage extends StatefulWidget {
   final Map<String, dynamic> tournament;
@@ -13,6 +16,15 @@ class PaymentPage extends StatefulWidget {
 }
 
 class _PaymentPageState extends State<PaymentPage> {
+  // Get actual current user ID from Supabase authentication
+  String getCurrentUserId() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      return user.id;
+    }
+    throw Exception('User not authenticated');
+  }
+
   String selectedPaymentMethod = '';
   final TextEditingController mobileController = TextEditingController();
   final TextEditingController pinController = TextEditingController();
@@ -580,6 +592,35 @@ class _PaymentPageState extends State<PaymentPage> {
 
     // Simulate payment processing
     await Future.delayed(const Duration(seconds: 3));
+
+    // Register for tournament after payment
+    final tournamentId = widget.tournament['id']?.toString() ?? '';
+    final userId = getCurrentUserId();
+    if (tournamentId.isNotEmpty && userId.isNotEmpty) {
+      String registrationFee =
+          widget.tournament['entryFee']
+              ?.replaceAll('৳', '')
+              .replaceAll(',', '') ??
+          '0';
+      bool registrationSuccess = await TournamentService.registerForTournament(
+        tournamentId,
+        userId,
+        registrationFee,
+        selectedPaymentMethod,
+      );
+      if (registrationSuccess) {
+        // Store payment info in payments table (like ground booking)
+        await PaymentService.createBookingPayment(
+          userId: userId,
+          bookingId:
+              tournamentId, // For tournaments, use tournamentId as bookingId
+          amount: double.tryParse(registrationFee) ?? 0.0,
+          paymentMethod: selectedPaymentMethod,
+          mobileNumber: mobileController.text,
+          pin: pinController.text,
+        );
+      }
+    }
 
     if (mounted) {
       setState(() {

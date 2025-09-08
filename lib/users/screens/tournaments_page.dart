@@ -18,25 +18,30 @@ class _TournamentsPageState extends State<TournamentsPage> {
   @override
   void initState() {
     super.initState();
-    _loadAllTournaments();
+    _loadUpcomingTournaments();
   }
 
-  Future<void> _loadAllTournaments() async {
+  Future<void> _loadUpcomingTournaments() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
     try {
-      print('🏆 TournamentsPage: Loading all tournaments...');
-      final allTournaments = await TournamentService.getAllTournaments();
+      print('🏆 TournamentsPage: Loading upcoming tournaments...');
+      final upcomingTournaments =
+          await TournamentService.getUpcomingTournaments(
+            limit: 50, // Get up to 50 upcoming tournaments
+          );
 
       setState(() {
-        tournaments = allTournaments;
+        tournaments = upcomingTournaments;
         _isLoading = false;
       });
 
-      print('✅ TournamentsPage: Loaded ${tournaments.length} tournaments');
+      print(
+        '✅ TournamentsPage: Loaded ${tournaments.length} upcoming tournaments',
+      );
     } catch (e) {
       print('❌ TournamentsPage: Error loading tournaments: $e');
       setState(() {
@@ -54,9 +59,16 @@ class _TournamentsPageState extends State<TournamentsPage> {
     if (data['image_url'] != null && data['image_url'].toString().isNotEmpty) {
       imageUrl = data['image_url'].toString();
     } else {
-      // Fallback image if no image in database
-      imageUrl =
-          'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80';
+      // Multiple fallback images for variety
+      final fallbackImages = [
+        'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1459865264687-595d652de67e?auto=format&fit=crop&w=800&q=80',
+      ];
+      // Use hash of tournament name to consistently pick same image
+      final hash = data['name']?.toString().hashCode ?? 0;
+      imageUrl = fallbackImages[hash.abs() % fallbackImages.length];
     }
 
     String formattedTime = '';
@@ -65,6 +77,7 @@ class _TournamentsPageState extends State<TournamentsPage> {
     }
 
     return {
+      'id': data['id']?.toString() ?? '', // Preserve the tournament ID
       'name': data['name']?.toString() ?? 'Tournament',
       'image': imageUrl,
       'date': data['tournament_date']?.toString() ?? '',
@@ -95,19 +108,6 @@ class _TournamentsPageState extends State<TournamentsPage> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {
-              // Add search functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Search functionality coming soon!'),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       drawer: const CommonDrawer(),
       body: SingleChildScrollView(
@@ -181,7 +181,7 @@ class _TournamentsPageState extends State<TournamentsPage> {
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
-                        onPressed: _loadAllTournaments,
+                        onPressed: _loadUpcomingTournaments,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                         ),
@@ -244,15 +244,64 @@ class _TournamentsPageState extends State<TournamentsPage> {
                               height: 200,
                               width: double.infinity,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
+                              loadingBuilder: (
+                                context,
+                                child,
+                                loadingProgress,
+                              ) {
+                                if (loadingProgress == null) return child;
                                 return Container(
                                   height: 200,
                                   width: double.infinity,
-                                  color: Colors.grey.shade300,
-                                  child: Icon(
-                                    Icons.sports_soccer,
-                                    size: 80,
-                                    color: Colors.grey.shade600,
+                                  color: Colors.grey.shade200,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.green,
+                                      value:
+                                          loadingProgress.expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                print('❌ Image load error: $error');
+                                return Container(
+                                  height: 200,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Colors.green.shade300,
+                                        Colors.green.shade600,
+                                      ],
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.emoji_events,
+                                        size: 60,
+                                        color: Colors.white,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Tournament',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 );
                               },
