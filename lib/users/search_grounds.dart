@@ -11,16 +11,17 @@ class SearchGrounds extends StatefulWidget {
 }
 
 class _SearchGroundsState extends State<SearchGrounds> {
-  String selectedLocation = 'All Locations';
+  String selectedArea = 'All Areas';
   String selectedPlayers = 'Any';
   DateTime selectedDate = DateTime.now();
-  final String locationLabel = "Location";
+  final String locationLabel = "Area";
   final String pvpLabel = "PVP (Players)";
 
   // Dynamic data from backend
   List<Map<String, dynamic>> allVenues = [];
   List<Map<String, dynamic>> filteredVenues = [];
   bool isLoadingVenues = true;
+  List<String> areas = ['All Areas'];
 
   @override
   void initState() {
@@ -37,23 +38,19 @@ class _SearchGroundsState extends State<SearchGrounds> {
     try {
       final venues = await VenueService.getAllVenues();
       if (venues.isNotEmpty) {
-        allVenues = venues;
-        filteredVenues = venues;
-
-        // Extract unique locations from venues
-        final venueLocations =
+        final venueAreas =
             venues
-                .map((venue) => venue['location']?.toString() ?? '')
-                .where((location) => location.isNotEmpty)
+                .map((venue) => (venue['area']?.toString() ?? '').trim())
+                .where((area) => area.isNotEmpty)
                 .toSet()
                 .toList();
-
-        // Update locations list with actual venue locations
-        _updateLocationsList(venueLocations);
-
+        setState(() {
+          allVenues = venues;
+          filteredVenues = venues;
+          areas = ['All Areas', ...venueAreas];
+        });
         print('✅ All venues loaded: ${venues.length}');
       } else {
-        // Fallback to static data if no venues from backend
         _loadFallbackVenues();
       }
     } catch (e) {
@@ -64,23 +61,6 @@ class _SearchGroundsState extends State<SearchGrounds> {
         isLoadingVenues = false;
       });
     }
-  }
-
-  // Update locations list with real venue locations
-  void _updateLocationsList(List<String> venueLocations) {
-    final defaultLocations = [
-      'All Locations',
-      'Mirpur',
-      'Dhanmondi',
-      'Gulshan',
-      'Uttara',
-      'Mohammadpur',
-      'Pallabi',
-    ];
-
-    // Combine default locations with actual venue locations
-    final allLocationSet = {...defaultLocations, ...venueLocations};
-    locations = allLocationSet.toList();
   }
 
   // Fallback static venues data
@@ -161,55 +141,58 @@ class _SearchGroundsState extends State<SearchGrounds> {
     filteredVenues = allVenues;
   }
 
-  List<String> locations = [
-    'All Locations',
-    'Mirpur',
-    'Dhanmondi',
-    'Gulshan',
-    'Uttara',
-    'Mohammadpur',
-    'Pallabi',
-  ];
+  // Remove locations list, use areas instead
 
-  final List<String> playerCounts = ['Any', '5v5', '7v7', '11v11'];
+  final List<String> playerCounts = ['Any', '5', '6', '7', '8', '9', '10'];
 
   // Apply filters to venues
   void _applyFilters() {
     setState(() {
       filteredVenues =
           allVenues.where((venue) {
-            bool locationMatch =
-                selectedLocation == 'All Locations' ||
-                venue['location']?.toString().toLowerCase() ==
-                    selectedLocation.toLowerCase();
+            final area = (venue['area']?.toString() ?? '').trim();
+            bool areaMatch =
+                selectedArea == 'All Areas' ||
+                area.toLowerCase() == selectedArea.toLowerCase();
 
-            // Player count filtering based on ground size or sport type
+            // Player count filtering based on selected number and venue's PVP field
             bool playerMatch = selectedPlayers == 'Any';
             if (!playerMatch) {
-              String sportType =
-                  venue['sport_type']?.toString().toLowerCase() ?? 'football';
-              String groundSize =
-                  venue['ground_size']?.toString().toLowerCase() ?? '';
-
-              if (selectedPlayers == '5v5') {
-                playerMatch =
-                    sportType.contains('5v5') ||
-                    groundSize.contains('small') ||
-                    groundSize.contains('30m');
-              } else if (selectedPlayers == '7v7') {
-                playerMatch =
-                    sportType.contains('7v7') ||
-                    groundSize.contains('medium') ||
-                    groundSize.contains('40m');
-              } else if (selectedPlayers == '11v11') {
-                playerMatch =
-                    sportType.contains('11v11') ||
-                    groundSize.contains('full') ||
-                    groundSize.contains('100m');
+              int selectedNum = int.tryParse(selectedPlayers) ?? 0;
+              int venueNum = 0;
+              // Try to get PVP field from venue first (Supabase int field)
+              if (venue.containsKey('PVP') && venue['PVP'] != null) {
+                if (venue['PVP'] is int) {
+                  venueNum = venue['PVP'];
+                } else {
+                  venueNum = int.tryParse(venue['PVP'].toString()) ?? 0;
+                }
               }
+              // Debug print for troubleshooting
+              print(
+                'Venue: \'${venue['name']}\' | PVP: $venueNum | Selected: $selectedNum',
+              );
+              // Fallback: Try to extract from ground_size or sport_type if PVP missing or not valid
+              if (venueNum <= 0) {
+                String groundSize =
+                    venue['ground_size']?.toString().toLowerCase() ?? '';
+                String sportType =
+                    venue['sport_type']?.toString().toLowerCase() ?? '';
+                RegExp vReg = RegExp(r'(\d+)v(\d+)');
+                var match = vReg.firstMatch(sportType);
+                if (match != null) {
+                  venueNum = int.tryParse(match.group(1) ?? '') ?? 0;
+                } else {
+                  RegExp nReg = RegExp(r'(\d+)');
+                  var nMatch = nReg.firstMatch(groundSize);
+                  if (nMatch != null) {
+                    venueNum = int.tryParse(nMatch.group(1) ?? '') ?? 0;
+                  }
+                }
+              }
+              playerMatch = venueNum == selectedNum;
             }
-
-            return locationMatch && playerMatch;
+            return areaMatch && playerMatch;
           }).toList();
     });
   }
@@ -236,7 +219,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       print('   ⚠️ No image found in either field');
     }
 
-    return {
+    return <String, String>{
       'id': venue['id']?.toString() ?? '', // Add venue ID
       'name': venue['name']?.toString() ?? '',
       'image': imageUrl, // Empty string if no image in table
@@ -247,6 +230,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       'rating': venue['rating']?.toString() ?? '0.0',
       'facilities': venue['facilities']?.toString() ?? '',
       'size': venue['ground_size']?.toString() ?? '',
+      'area': venue['area']?.toString() ?? '',
     };
   }
 
@@ -261,7 +245,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       context: context,
       initialDate: selectedDate,
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(Duration(days: 30)),
+      lastDate: DateTime.now().add(Duration(days: 7)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -342,7 +326,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: DropdownButton<String>(
-                              value: selectedLocation,
+                              value: selectedArea,
                               isExpanded: true,
                               underline: SizedBox(),
                               icon: Icon(
@@ -350,15 +334,15 @@ class _SearchGroundsState extends State<SearchGrounds> {
                                 color: Colors.green.shade900,
                               ),
                               items:
-                                  locations.map((String location) {
+                                  areas.map((String area) {
                                     return DropdownMenuItem<String>(
-                                      value: location,
-                                      child: Text(location),
+                                      value: area,
+                                      child: Text(area),
                                     );
                                   }).toList(),
                               onChanged: (String? newValue) {
                                 setState(() {
-                                  selectedLocation = newValue!;
+                                  selectedArea = newValue!;
                                 });
                                 _applyFilters();
                               },
@@ -483,6 +467,9 @@ class _SearchGroundsState extends State<SearchGrounds> {
                   title: groundData['name']!,
                   imageUrl: groundData['image']!,
                   onTap: () {
+                    print(
+                      '🚀 Navigating to GroundDetails with date: $selectedDate',
+                    );
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -498,6 +485,9 @@ class _SearchGroundsState extends State<SearchGrounds> {
                               rating: groundData['rating']!,
                               facilities: groundData['facilities']!,
                               size: groundData['size']!,
+                              area: groundData['area']!,
+                              initialSelectedDate:
+                                  selectedDate, // Pass the selected date
                             ),
                       ),
                     );

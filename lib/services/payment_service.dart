@@ -88,7 +88,7 @@ class PaymentService {
               booking_date,
               start_time,
               end_time,
-              venues:venue_id (name, location)
+              venues:venue_id (name, address)
             ),
             tournament_registrations:tournament_registration_id (
               tournament_id,
@@ -119,7 +119,7 @@ class PaymentService {
               booking_date,
               start_time,
               end_time,
-              venues:venue_id (name, location)
+              venues:venue_id (name, address)
             ),
             tournament_registrations:tournament_registration_id (
               tournament_id,

@@ -107,10 +107,30 @@ class UserService {
               .eq('id', userId)
               .single();
 
+      // Cascade delete: Delete payments for user's bookings
+      final userBookings = await _client
+          .from('bookings')
+          .select('booking_id')
+          .eq('user_id', userId);
+      for (final booking in userBookings) {
+        await _client
+            .from('payments')
+            .delete()
+            .eq('booking_id', booking['booking_id']);
+      }
+
+      // Delete bookings for user
+      await _client.from('bookings').delete().eq('user_id', userId);
+
+      // Delete payments directly linked to user (if any)
+      await _client.from('payments').delete().eq('user_id', userId);
+
       // Delete user profile
       await _client.from('user_profiles').delete().eq('id', userId);
 
-      print('✅ User ${user['full_name']} deleted successfully');
+      print(
+        '✅ User ${user['full_name']} and all related data deleted successfully',
+      );
     } catch (e) {
       print('❌ Error deleting user: $e');
       throw Exception('Failed to delete user: $e');
