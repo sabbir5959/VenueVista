@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'widgets/common_drawer.dart';
 import 'screens/ground_booking_payment_page.dart';
 import '../../services/booking_service.dart';
+import '../../services/venue_review_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GroundDetails extends StatefulWidget {
@@ -41,6 +42,11 @@ class GroundDetails extends StatefulWidget {
 
 class _GroundDetailsState extends State<GroundDetails> {
   final supabase = Supabase.instance.client;
+
+  // Rating state
+  double _averageRating = 0.0;
+  bool _isLoadingRating = true;
+
   // Helper to extract area from location string (e.g., 'Uptown, Dhaka' -> 'Uptown')
   String extractArea(String location) {
     if (location.contains(',')) {
@@ -194,6 +200,7 @@ class _GroundDetailsState extends State<GroundDetails> {
     );
     fetchBookedSlots();
     fetchRecommendedVenues();
+    _loadAverageRating();
   }
 
   Future<void> fetchBookedSlots() async {
@@ -274,6 +281,39 @@ class _GroundDetailsState extends State<GroundDetails> {
     }
   }
 
+  Future<void> _loadAverageRating() async {
+    if (widget.venueId == null || widget.venueId!.isEmpty) {
+      setState(() {
+        _averageRating = 0.0;
+        _isLoadingRating = false;
+      });
+      return;
+    }
+
+    try {
+      setState(() {
+        _isLoadingRating = true;
+      });
+
+      final averageRating = await VenueReviewService.getVenueAverageRating(
+        widget.venueId!,
+      );
+
+      setState(() {
+        _averageRating = averageRating;
+        _isLoadingRating = false;
+      });
+
+      print('✅ Average rating loaded: $_averageRating');
+    } catch (e) {
+      print('❌ Error loading average rating: $e');
+      setState(() {
+        _averageRating = 0.0;
+        _isLoadingRating = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -308,7 +348,12 @@ class _GroundDetailsState extends State<GroundDetails> {
             onPressed: () {
               showDialog(
                 context: context,
-                builder: (context) => _RatingDialog(groundName: widget.name),
+                builder:
+                    (context) => _RatingDialog(
+                      groundName: widget.name,
+                      venueId: widget.venueId ?? '',
+                      onRatingSubmitted: _loadAverageRating,
+                    ),
               );
             },
             icon: Icon(Icons.star_border, color: Colors.green.shade900),
@@ -414,8 +459,18 @@ class _GroundDetailsState extends State<GroundDetails> {
                     runSpacing: 8,
                     children:
                         widget.facilities.split(', ').map((facility) {
+                          // Remove brackets from the beginning and end of facility names
+                          String cleanedFacility = facility
+                              .replaceAll(
+                                RegExp(r'^[\[\(\{]+'),
+                                '',
+                              ) // Remove opening brackets
+                              .replaceAll(
+                                RegExp(r'[\]\)\}]+$'),
+                                '',
+                              ); // Remove closing brackets
                           return Chip(
-                            label: Text(facility),
+                            label: Text(cleanedFacility),
                             backgroundColor: Colors.green.shade50,
                             labelStyle: TextStyle(color: Colors.green.shade900),
                             shape: RoundedRectangleBorder(
@@ -888,18 +943,34 @@ class _GroundDetailsState extends State<GroundDetails> {
                         children: [
                           Icon(Icons.star, color: Colors.amber, size: 28),
                           const SizedBox(width: 6),
-                          Text(
-                            widget.rating,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          _isLoadingRating
+                              ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.green.shade700,
+                                ),
+                              )
+                              : Text(
+                                _averageRating > 0
+                                    ? _averageRating.toStringAsFixed(1)
+                                    : 'No ratings',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                          if (!_isLoadingRating && _averageRating > 0) ...[
+                            const SizedBox(width: 4),
+                            const Text(
+                              '/ 5',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            '/ 5',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
+                          ],
                         ],
                       ),
                       ElevatedButton.icon(
@@ -907,8 +978,11 @@ class _GroundDetailsState extends State<GroundDetails> {
                           showDialog(
                             context: context,
                             builder:
-                                (context) =>
-                                    _RatingDialog(groundName: widget.name),
+                                (context) => _RatingDialog(
+                                  groundName: widget.name,
+                                  venueId: widget.venueId ?? '',
+                                  onRatingSubmitted: _loadAverageRating,
+                                ),
                           );
                         },
                         icon: const Icon(Icons.star_border),
@@ -1001,8 +1075,14 @@ class _GroundDetailsState extends State<GroundDetails> {
 
 class _RatingDialog extends StatefulWidget {
   final String groundName;
+  final String venueId;
+  final VoidCallback? onRatingSubmitted;
 
-  const _RatingDialog({required this.groundName});
+  const _RatingDialog({
+    required this.groundName,
+    required this.venueId,
+    this.onRatingSubmitted,
+  });
 
   @override
   State<_RatingDialog> createState() => _RatingDialogState();
@@ -1011,11 +1091,86 @@ class _RatingDialog extends StatefulWidget {
 class _RatingDialogState extends State<_RatingDialog> {
   double _rating = 0;
   final TextEditingController _feedbackController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
     _feedbackController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitRating() async {
+    if (_rating == 0) return;
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      // Get current user
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Check if user has already reviewed this venue
+      final hasReviewed = await VenueReviewService.hasUserReviewedVenue(
+        venueId: widget.venueId,
+        userId: user.id,
+      );
+
+      if (hasReviewed) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('You have already reviewed this venue.'),
+            backgroundColor: Colors.orange.shade600,
+          ),
+        );
+        return;
+      }
+
+      // Submit the review
+      final success = await VenueReviewService.submitReview(
+        venueId: widget.venueId,
+        userId: user.id,
+        rating: _rating.toInt(),
+        reviewText:
+            _feedbackController.text.trim().isEmpty
+                ? null
+                : _feedbackController.text.trim(),
+      );
+
+      if (success) {
+        Navigator.pop(context);
+
+        // Call the callback to refresh the rating
+        if (widget.onRatingSubmitted != null) {
+          widget.onRatingSubmitted!();
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Thank you for your feedback!'),
+            backgroundColor: Colors.green.shade900,
+          ),
+        );
+      } else {
+        throw Exception('Failed to submit review');
+      }
+    } catch (e) {
+      print('❌ Error submitting rating: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error submitting review. Please try again.'),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
   }
 
   @override
@@ -1088,27 +1243,29 @@ class _RatingDialogState extends State<_RatingDialog> {
                 const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed:
-                      _rating == 0
-                          ? null
-                          : () {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Thank you for your feedback!'),
-                                backgroundColor: Colors.green.shade900,
-                              ),
-                            );
-                          },
+                      (_rating == 0 || _isSubmitting) ? null : _submitRating,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade900,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'Submit',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                  child:
+                      _isSubmitting
+                          ? SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                          : const Text(
+                            'Submit',
+                            style: TextStyle(color: Colors.white),
+                          ),
                 ),
               ],
             ),
