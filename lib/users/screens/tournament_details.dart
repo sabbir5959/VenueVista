@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../widgets/common_drawer.dart';
 import 'payment_page.dart';
+import '../../services/tournament_service.dart';
+import '../../services/supabase_config.dart';
 
 class TournamentDetails extends StatefulWidget {
+  final String? id;
   final String name;
   final String imageUrl;
   final String date;
@@ -18,6 +21,7 @@ class TournamentDetails extends StatefulWidget {
 
   const TournamentDetails({
     super.key,
+    this.id,
     required this.name,
     required this.imageUrl,
     required this.date,
@@ -37,6 +41,44 @@ class TournamentDetails extends StatefulWidget {
 }
 
 class _TournamentDetailsState extends State<TournamentDetails> {
+  bool isRegistered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkRegistrationStatus();
+  }
+
+  Future<void> _checkRegistrationStatus() async {
+    if (widget.id == null) return;
+
+    try {
+      final userId = SupabaseConfig.client.auth.currentUser?.id;
+      if (userId != null) {
+        print(
+          '🔍 TournamentDetails: Checking registration for tournament ID: ${widget.id}',
+        );
+        print('🔍 TournamentDetails: User ID: $userId');
+        print('🔍 TournamentDetails: Tournament name: ${widget.name}');
+
+        final hasRegistered = await TournamentService.hasUserRegistered(
+          widget.id!,
+          userId,
+        );
+
+        print(
+          '✅ TournamentDetails: Registration status for ${widget.name}: $hasRegistered',
+        );
+
+        setState(() {
+          isRegistered = hasRegistered;
+        });
+      }
+    } catch (e) {
+      print('❌ TournamentDetails: Error checking registration status: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -316,32 +358,77 @@ class _TournamentDetailsState extends State<TournamentDetails> {
 
                   SizedBox(height: 30),
 
-                  // Register Button
-                  if (widget.status == 'Registration Open')
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade700,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          elevation: 5,
+                  // Register Button - Updated logic to check registration status
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            isRegistered
+                                ? Colors.blue.shade600
+                                : (widget.status == 'Registration Open'
+                                    ? Colors.green.shade700
+                                    : Colors.grey.shade500),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
                         ),
-                        onPressed: () {
-                          _showRegistrationDialog();
-                        },
-                        child: Text(
-                          'Register for Tournament',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        elevation: 5,
+                      ),
+                      onPressed:
+                          isRegistered
+                              ? null
+                              : (widget.status == 'Registration Open'
+                                  ? () {
+                                    _showRegistrationDialog();
+                                  }
+                                  : null),
+                      child: Text(
+                        isRegistered
+                            ? 'Already Registered'
+                            : (widget.status == 'Registration Open'
+                                ? 'Register for Tournament'
+                                : widget.status),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
+                  ),
+
+                  // Registration Status Indicator
+                  if (isRegistered) ...[
+                    SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.blue.shade600,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'You are already registered for this tournament',
+                              style: TextStyle(
+                                color: Colors.blue.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   SizedBox(height: 20),
                 ],
@@ -526,6 +613,7 @@ class _TournamentDetailsState extends State<TournamentDetails> {
               onPressed: () {
                 // Create tournament data for payment page
                 final tournamentData = <String, dynamic>{
+                  'id': widget.id, // Include tournament ID
                   'name': widget.name,
                   'image': widget.imageUrl,
                   'date': widget.date,
@@ -543,24 +631,21 @@ class _TournamentDetailsState extends State<TournamentDetails> {
                 // Close dialog first
                 Navigator.of(context).pop();
 
-                // Show success message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Registration confirmed! Redirecting to payment...',
-                    ),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-
                 // Navigate directly to payment page
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder:
-                        (context) => PaymentPage(tournament: tournamentData),
-                  ),
-                );
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder:
+                            (context) =>
+                                PaymentPage(tournament: tournamentData),
+                      ),
+                    )
+                    .then((result) {
+                      // Refresh registration status after payment
+                      if (result == true) {
+                        _checkRegistrationStatus();
+                      }
+                    });
               },
               child: Text('Confirm Registration'),
             ),

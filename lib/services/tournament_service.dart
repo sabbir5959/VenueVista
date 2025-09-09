@@ -97,8 +97,8 @@ class TournamentService {
           .select('*')
           .eq('status', 'active')
           .ilike('sport_type', '%$sport%')
-          .gte('start_date', DateTime.now().toIso8601String())
-          .order('start_date', ascending: true);
+          .gte('tournament_date', DateTime.now().toIso8601String().split('T')[0])
+          .order('tournament_date', ascending: true);
 
       print('✅ Tournaments by sport fetched: ${response.length}');
       return List<Map<String, dynamic>>.from(response);
@@ -223,6 +223,24 @@ class TournamentService {
     } catch (e) {
       print('❌ Error fetching user tournament registrations: $e');
       return [];
+    }
+  }
+
+  // Check if user has registered for a tournament
+  static Future<bool> hasUserRegistered(String tournamentId, String userId) async {
+    try {
+      final response = await _supabase
+          .from('tournament_registrations')
+          .select('id')
+          .eq('tournament_id', tournamentId)
+          .eq('user_id', userId)
+          .limit(1);
+      
+      print('✅ Registration check complete for tournament: $tournamentId');
+      return response.isNotEmpty;
+    } catch (e) {
+      print('❌ Error checking tournament registration: $e');
+      return false;
     }
   }
 }

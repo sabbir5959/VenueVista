@@ -3,7 +3,6 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../widgets/common_drawer.dart';
-import '../dashboard.dart';
 
 class PaymentSuccessPage extends StatelessWidget {
   final Map<String, dynamic> tournament;
@@ -273,11 +272,11 @@ class PaymentSuccessPage extends StatelessWidget {
           height: 56,
           child: OutlinedButton.icon(
             onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => HomeActivity()),
-                (route) => false,
-              );
+              // Navigate back to tournaments page
+              Navigator.of(context).popUntil((route) {
+                // Keep popping until we find the tournaments page or reach the first route
+                return route.settings.name == '/tournaments' || route.isFirst;
+              });
             },
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: Colors.green.shade700, width: 2),
@@ -285,9 +284,9 @@ class PaymentSuccessPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            icon: Icon(Icons.home, color: Colors.green.shade700),
+            icon: Icon(Icons.arrow_back, color: Colors.green.shade700),
             label: Text(
-              'Back to Home',
+              'Back to Tournaments',
               style: TextStyle(
                 color: Colors.green.shade700,
                 fontSize: 16,

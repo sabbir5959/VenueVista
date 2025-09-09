@@ -41,6 +41,9 @@ class GroundDetails extends StatefulWidget {
 
 class _GroundDetailsState extends State<GroundDetails> {
   final supabase = Supabase.instance.client;
+  double _userRating = 0;
+  bool _isSubmittingRating = false;
+
   // Helper to extract area from location string (e.g., 'Uptown, Dhaka' -> 'Uptown')
   String extractArea(String location) {
     if (location.contains(',')) {
@@ -308,7 +311,10 @@ class _GroundDetailsState extends State<GroundDetails> {
             onPressed: () {
               showDialog(
                 context: context,
-                builder: (context) => _RatingDialog(groundName: widget.name),
+                builder: (context) => _RatingDialog(
+                  groundName: widget.name,
+                  venueId: widget.venueId,
+                ),
               );
             },
             icon: Icon(Icons.star_border, color: Colors.green.shade900),
@@ -908,7 +914,10 @@ class _GroundDetailsState extends State<GroundDetails> {
                             context: context,
                             builder:
                                 (context) =>
-                                    _RatingDialog(groundName: widget.name),
+                                    _RatingDialog(
+                                      groundName: widget.name,
+                                      venueId: widget.venueId,
+                                    ),
                           );
                         },
                         icon: const Icon(Icons.star_border),
@@ -1001,8 +1010,12 @@ class _GroundDetailsState extends State<GroundDetails> {
 
 class _RatingDialog extends StatefulWidget {
   final String groundName;
+  final String? venueId;
 
-  const _RatingDialog({required this.groundName});
+  const _RatingDialog({
+    required this.groundName,
+    required this.venueId,
+  });
 
   @override
   State<_RatingDialog> createState() => _RatingDialogState();
@@ -1087,10 +1100,82 @@ class _RatingDialogState extends State<_RatingDialog> {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed:
-                      _rating == 0
-                          ? null
-                          : () {
+                  onPressed: _rating == 0
+                      ? null
+                      : () async {
+                          try {
+                            final supabase = Supabase.instance.client;
+                            final user = supabase.auth.currentUser;
+                            
+                            if (user == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Please log in to submit a rating'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (widget.venueId == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Invalid venue information'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            final String venueId = widget.venueId!;
+                            
+                            // First, check if user has a booking for this venue
+                            final bookings = await supabase
+                                .from('bookings')
+                                .select('id')
+                                .eq('venue_id', venueId)
+                                .eq('user_id', user.id)
+                                .limit(1);
+
+                            if (bookings.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('You need to book this venue before rating'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                              return;
+                            }
+
+                            // Check if user has already rated this venue
+                            final existingReviews = await supabase
+                                .from('venue_reviews')
+                                .select()
+                                .eq('venue_id', venueId)
+                                .eq('user_id', user.id)
+                                .limit(1);
+
+                            if (existingReviews.isNotEmpty) {
+                              // Update existing review
+                              await supabase
+                                  .from('venue_reviews')
+                                  .update({
+                                    'rating': _rating.toInt(),
+                                    'review_text': _feedbackController.text.trim(), // Using the correct column name 'review_text'
+                                  })
+                                  .eq('venue_id', venueId)
+                                  .eq('user_id', user.id);
+                            } else {
+                              // Insert new review
+                              await supabase.from('venue_reviews').insert({
+                                'venue_id': venueId,
+                                'user_id': user.id,
+                                'booking_id': bookings[0]['id'],
+                                'rating': _rating.toInt(),
+                                'review_text': _feedbackController.text.trim(), // Using the correct column name 'review_text'
+                              });
+                            }
+
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -1098,7 +1183,15 @@ class _RatingDialogState extends State<_RatingDialog> {
                                 backgroundColor: Colors.green.shade900,
                               ),
                             );
-                          },
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to submit rating: ${e.toString()}'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade900,
                     shape: RoundedRectangleBorder(

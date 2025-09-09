@@ -186,6 +186,7 @@ class _HomeActivityState extends State<HomeActivity> {
     }
 
     return {
+      'id': data['id']?.toString() ?? '', // Add tournament ID
       'name': data['name']?.toString() ?? '',
       'image': imageUrl,
       'date': data['tournament_date']?.toString() ?? '',
@@ -200,7 +201,7 @@ class _HomeActivityState extends State<HomeActivity> {
               : 'Full',
       'description': data['description']?.toString() ?? '',
       'entryFee': '৳${data['entry_fee']?.toString() ?? '0'}',
-      'organizer': 'Tournament Organizer',
+      'organizer': venueName, // Use venue name as organizer
     };
   }
 
@@ -501,6 +502,7 @@ class _HomeActivityState extends State<HomeActivity> {
           MaterialPageRoute(
             builder:
                 (context) => TournamentDetails(
+                  id: tournamentData['id'], // Add tournament ID
                   name: tournamentData['name']!,
                   imageUrl: tournamentData['image']!,
                   date: tournamentData['date']!,
@@ -580,6 +582,7 @@ class _HomeActivityState extends State<HomeActivity> {
           MaterialPageRoute(
             builder:
                 (context) => TournamentDetails(
+                  id: tournamentData['id'], // Add tournament ID
                   name: tournamentData['name']!,
                   imageUrl: tournamentData['image']!,
                   date: tournamentData['date']!,
