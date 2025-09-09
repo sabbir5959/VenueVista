@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../widgets/common_drawer.dart';
+import '../../widgets/weather_popup.dart';
 import 'payment_page.dart';
 import '../../services/tournament_service.dart';
 import '../../services/supabase_config.dart';
@@ -589,6 +591,47 @@ class _TournamentDetailsState extends State<TournamentDetails> {
                 widget.name,
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on,
+                    size: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.location,
+                      style: TextStyle(color: Colors.grey.shade700),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.cloud,
+                      color: Colors.blue.shade600,
+                      size: 20,
+                    ),
+                    onPressed:
+                        () => _showWeatherPopup(
+                          context,
+                          widget.location,
+                          _parseDate(widget.date),
+                          widget.name,
+                        ),
+                    tooltip: 'Weather Update',
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.directions,
+                      color: Colors.green.shade700,
+                      size: 20,
+                    ),
+                    onPressed: () => _openDirections(context, widget.location),
+                    tooltip: 'Get Directions',
+                  ),
+                ],
+              ),
               SizedBox(height: 10),
               Text('Entry Fee: ${widget.entryFee}'),
               SizedBox(height: 10),
@@ -653,5 +696,44 @@ class _TournamentDetailsState extends State<TournamentDetails> {
         );
       },
     );
+  }
+
+  // Helper methods for weather and directions
+  void _showWeatherPopup(
+    BuildContext context,
+    String location,
+    DateTime tournamentDate,
+    String tournamentName,
+  ) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => WeatherPopup(
+            location: location,
+            bookingDate: tournamentDate,
+            groundName: tournamentName,
+          ),
+    );
+  }
+
+  DateTime _parseDate(String dateStr) {
+    try {
+      return DateTime.parse(dateStr);
+    } catch (e) {
+      return DateTime.now();
+    }
+  }
+
+  Future<void> _openDirections(BuildContext context, String location) async {
+    final url = 'https://www.google.com/maps/search/?api=1&query=$location';
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open map for directions')),
+        );
+      }
+    }
   }
 }

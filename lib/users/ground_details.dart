@@ -66,6 +66,8 @@ class _GroundDetailsState extends State<GroundDetails> {
       if (selectedTimeSlots.contains(slot)) {
         selectedTimeSlots.remove(slot);
       } else {
+        // Clear all previously selected slots and add only the new one
+        selectedTimeSlots.clear();
         selectedTimeSlots.add(slot);
       }
     });

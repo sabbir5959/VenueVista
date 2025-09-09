@@ -515,21 +515,6 @@ class _SchedulePageState extends State<SchedulePage>
                 ),
               ),
             ),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Registered',
-                style: TextStyle(
-                  color: Colors.orange.shade700,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ),
           ],
         ),
         SizedBox(height: 8),
@@ -561,9 +546,28 @@ class _SchedulePageState extends State<SchedulePage>
             Expanded(
               child: Text(
                 location,
-                style: TextStyle(color: Colors.grey.shade600),
-                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.grey.shade700),
               ),
+            ),
+            IconButton(
+              icon: Icon(Icons.cloud, color: Colors.blue.shade600, size: 20),
+              onPressed:
+                  () => _showWeatherPopup(
+                    context,
+                    location,
+                    _parseDate(tournamentDate),
+                    tournamentName,
+                  ),
+              tooltip: 'Weather Update',
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.directions,
+                color: Colors.green.shade700,
+                size: 20,
+              ),
+              onPressed: () => _openDirections(context, location),
+              tooltip: 'Get Directions',
             ),
           ],
         ),
@@ -701,7 +705,8 @@ class _SchedulePageState extends State<SchedulePage>
     final bookingDate = booking['booking_date'] ?? '';
     final startTime = booking['start_time'] ?? '';
     final endTime = booking['end_time'] ?? '';
-    final bookingId = booking['booking_id'] ?? '';
+    final bookingId =
+        booking['id'] ?? ''; // Use the UUID, not the booking_id string
 
     showDialog(
       context: context,
@@ -867,6 +872,10 @@ class _SchedulePageState extends State<SchedulePage>
     String bookingId,
   ) {
     Navigator.of(context).pop(); // Close the details dialog first
+
+    final TextEditingController _cancellationReasonController =
+        TextEditingController();
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -878,29 +887,53 @@ class _SchedulePageState extends State<SchedulePage>
               Text('Cancel Booking', style: TextStyle(color: Colors.red)),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Please note:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              SizedBox(height: 8),
-              Text('• Cancellation fee may apply'),
-              Text('• Refund will take 3-5 business days'),
-              Text('• This action cannot be undone'),
-              SizedBox(height: 16),
-              Text(
-                'Are you sure you want to cancel your booking for $groundName?',
-                style: TextStyle(color: Colors.red.shade700),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Please note:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('• Cancellation fee may apply'),
+                Text('• Refund will take 3-5 business days'),
+                Text('• This action cannot be undone'),
+                SizedBox(height: 16),
+                Text(
+                  'Are you sure you want to cancel your booking for $groundName?',
+                  style: TextStyle(color: Colors.red.shade700),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Reason for cancellation (optional):',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                SizedBox(height: 8),
+                TextField(
+                  controller: _cancellationReasonController,
+                  decoration: InputDecoration(
+                    hintText: 'e.g., Schedule conflict, weather, etc.',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                  maxLines: 3,
+                  maxLength: 200,
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
               child: Text('Keep Booking'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                _cancellationReasonController.dispose();
+                Navigator.of(context).pop();
+              },
             ),
             TextButton(
               child: Text(
@@ -910,29 +943,65 @@ class _SchedulePageState extends State<SchedulePage>
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              onPressed: () {
+              onPressed: () async {
+                final reason = _cancellationReasonController.text.trim();
+                _cancellationReasonController.dispose();
+
                 Navigator.of(context).pop();
+
+                // Show loading indicator
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Cancellation request sent for $groundName'),
-                    backgroundColor: Colors.red.shade700,
-                    duration: Duration(seconds: 2),
-                    action: SnackBarAction(
-                      label: 'UNDO',
-                      textColor: Colors.white,
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Cancellation request withdrawn'),
-                            backgroundColor: Colors.green.shade700,
+                    content: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
-                        );
-                      },
+                        ),
+                        SizedBox(width: 12),
+                        Text('Processing cancellation...'),
+                      ],
                     ),
+                    backgroundColor: Colors.orange.shade700,
+                    duration: Duration(seconds: 2),
                   ),
                 );
-                // Refresh the bookings list
-                _loadFutureBookings();
+
+                // Call the cancellation service
+                final success = await BookingService.cancelBookingWithReason(
+                  bookingId,
+                  reason,
+                );
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Booking cancelled successfully for $groundName',
+                      ),
+                      backgroundColor: Colors.red.shade700,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                  // Refresh the bookings list
+                  _loadFutureBookings();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Failed to cancel booking. Please try again.',
+                      ),
+                      backgroundColor: Colors.red.shade700,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
               },
             ),
           ],
@@ -948,14 +1017,11 @@ class _SchedulePageState extends State<SchedulePage>
   ) {
     final tournamentName = tournament?['name'] ?? 'Unknown Tournament';
     final tournamentDate = tournament?['tournament_date'] ?? '';
-    final entryFee = tournament?['entry_fee']?.toString() ?? '0';
     final firstPrize = tournament?['first_prize']?.toString() ?? '0';
     final maxTeams = tournament?['max_teams']?.toString() ?? '0';
     final playerFormat = tournament?['player_format'] ?? '';
     final venue = tournament?['venues'];
     final location = venue?['name'] ?? 'Tournament Venue';
-    final registrationDate = registration['created_at'] ?? '';
-    final paymentMethod = registration['payment_method'] ?? '';
 
     showDialog(
       context: context,
@@ -995,51 +1061,6 @@ class _SchedulePageState extends State<SchedulePage>
                   'First Prize',
                   '৳$firstPrize',
                 ),
-                SizedBox(height: 16),
-                Text(
-                  'Registration Details',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                SizedBox(height: 12),
-                _buildDetailRow(Icons.attach_money, 'Entry Fee', '৳$entryFee'),
-                _buildDetailRow(
-                  Icons.payment,
-                  'Payment Method',
-                  paymentMethod.toUpperCase(),
-                ),
-                _buildDetailRow(
-                  Icons.schedule,
-                  'Registered On',
-                  _formatDate(registrationDate),
-                ),
-                SizedBox(height: 20),
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.green.shade600),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'You are successfully registered for this tournament!',
-                          style: TextStyle(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -1047,6 +1068,20 @@ class _SchedulePageState extends State<SchedulePage>
             TextButton(
               child: Text('Close'),
               onPressed: () => Navigator.of(context).pop(),
+            ),
+            // Weather icon button
+            IconButton(
+              icon: Icon(Icons.wb_sunny, color: Colors.orange),
+              tooltip: 'Check Weather',
+              onPressed: () {
+                Navigator.of(context).pop();
+                _showWeatherPopup(
+                  context,
+                  venue?['address'] ?? location,
+                  _parseDate(tournamentDate),
+                  location,
+                );
+              },
             ),
             if (tournament != null && venue != null)
               ElevatedButton(

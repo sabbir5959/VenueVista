@@ -218,6 +218,134 @@ class BookingService {
     }
   }
 
+  /// Cancel booking with reason and store in cancellations table
+  static Future<bool> cancelBookingWithReason(
+    String bookingId,
+    String? cancellationReason,
+  ) async {
+    try {
+      // Get current user
+      final currentUser = _client.auth.currentUser;
+      if (currentUser == null) {
+        print('❌ User not authenticated');
+        return false;
+      }
+
+      // First get the booking details with payment information
+      final bookingResponse =
+          await _client
+              .from('bookings')
+              .select('''
+            *,
+            venues(name, address),
+            payments(amount)
+          ''')
+              .eq('id', bookingId)
+              .maybeSingle();
+
+      if (bookingResponse == null) {
+        print('❌ Booking not found: $bookingId');
+        return false;
+      }
+
+      final booking = bookingResponse;
+      final venue = booking['venues'];
+
+      // Verify the booking belongs to the current user
+      if (booking['user_id'] != currentUser.id) {
+        print('❌ Booking does not belong to current user');
+        return false;
+      }
+
+      // Calculate original amount from payment record
+      final payments = booking['payments'] as List?;
+      final originalAmount =
+          payments?.isNotEmpty == true
+              ? double.tryParse(payments!.first['amount'].toString()) ?? 0.0
+              : 0.0;
+
+      print('💳 Payment information:');
+      print('   Payments found: ${payments?.length ?? 0}');
+      if (payments?.isNotEmpty == true) {
+        print('   Payment amount: ৳${payments!.first['amount']}');
+      }
+      print('   Original amount to store: ৳$originalAmount');
+
+      // Prepare cancellation data with all available user-side information
+      final cancellationData = {
+        'booking_id':
+            bookingId, // This should be the UUID from booking.id, not booking.booking_id
+        'user_id': currentUser.id, // Current authenticated user
+        'venue_id': booking['venue_id'],
+        'venue_name': venue?['name'] ?? 'Unknown Venue',
+        'booking_date': booking['booking_date'],
+        'start_time': booking['start_time'],
+        'end_time': booking['end_time'],
+        'original_amount': originalAmount,
+        'cancellation_fee': null, // Set to NULL as requested
+        'refund_amount': null, // Set to NULL as requested
+        'cancellation_reason':
+            cancellationReason?.isEmpty == true ? null : cancellationReason,
+        'refund_status': null, // Set to NULL as requested
+        'cancelled_at': DateTime.now().toIso8601String(),
+      };
+
+      print('📝 Storing cancellation data:');
+      print('   Booking UUID: $bookingId'); // This is the correct UUID
+      print(
+        '   Booking ID String: ${booking['booking_id']}',
+      ); // This is the human-readable ID
+      print('   User ID: ${currentUser.id}');
+      print('   User Email: ${currentUser.email}');
+      print('   Venue: ${venue?['name'] ?? 'Unknown Venue'}');
+      print('   Date: ${booking['booking_date']}');
+      print('   Time: ${booking['start_time']} - ${booking['end_time']}');
+      print('   Original Amount: ৳$originalAmount');
+      print('   Cancellation Fee: NULL');
+      print('   Refund Amount: NULL');
+      print('   Refund Status: NULL');
+      print('   Reason: ${cancellationReason ?? "No reason provided"}');
+
+      // Store cancellation record first
+      print('🔄 Inserting cancellation record into database...');
+      final insertResult =
+          await _client.from('cancellations').insert(cancellationData).select();
+      print('✅ Cancellation record inserted: $insertResult');
+
+      // Update booking status
+      print('🔄 Updating booking status to cancelled...');
+      await _client
+          .from('bookings')
+          .update({
+            'status': 'cancelled',
+            'cancelled_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', bookingId);
+
+      print('✅ Booking cancelled successfully: $bookingId');
+      print('📊 Check cancellation_summary table for the new record');
+      return true;
+    } catch (e, stackTrace) {
+      print('❌ Error cancelling booking with reason: $e');
+      print('📍 Stack trace: $stackTrace');
+
+      // More detailed error information
+      if (e.toString().contains('violates')) {
+        print(
+          '💡 Possible cause: Foreign key constraint or data validation issue',
+        );
+      }
+      if (e.toString().contains('permission')) {
+        print('💡 Possible cause: RLS policy blocking the operation');
+      }
+      if (e.toString().contains('null')) {
+        print('💡 Possible cause: Required field is NULL');
+      }
+
+      return false;
+    }
+  }
+
   /// Get venue's bookings (for venue owners)
   static Future<List<Map<String, dynamic>>> getVenueBookings(
     String venueId,
@@ -313,6 +441,18 @@ class BookingService {
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('❌ Error fetching bookings in date range: $e');
+      return [];
+    }
+  }
+
+  // Method to query cancellation summary for debugging
+  static Future<List<Map<String, dynamic>>> getCancellationSummary() async {
+    try {
+      final result = await _client.from('cancellation_summary').select();
+      print('📊 Cancellation Summary Data: $result');
+      return result;
+    } catch (e) {
+      print('❌ Error querying cancellation summary: $e');
       return [];
     }
   }
