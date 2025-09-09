@@ -949,6 +949,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 try {
                   await UserService.deleteUser(user['id']);
 
+                  if (!mounted) return;
                   // Show success message
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -962,6 +963,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                   // Reload users
                   _loadUsers();
                 } catch (e) {
+                  if (!mounted) return;
                   // Show error message
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(

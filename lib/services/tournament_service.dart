@@ -108,7 +108,7 @@ class TournamentService {
     }
   }
 
-  
+  // Search tournaments
   static Future<List<Map<String, dynamic>>> searchTournaments(
     String query,
   ) async {
@@ -130,7 +130,7 @@ class TournamentService {
     }
   }
 
-  
+  // Get tournament by ID
   static Future<Map<String, dynamic>?> getTournamentById(
     String tournamentId,
   ) async {
