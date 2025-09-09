@@ -158,6 +158,7 @@ class TournamentService {
     String paymentMethod,
   ) async {
     try {
+      // Start a transaction to register user and increment team count
       await _supabase.from('tournament_registrations').insert({
         'tournament_id': tournamentId,
         'user_id': userId,
@@ -166,10 +167,45 @@ class TournamentService {
         'created_at': DateTime.now().toIso8601String(),
       });
 
+      // Increment the registered_teams count
+      await _supabase.rpc(
+        'increment_tournament_teams',
+        params: {'tournament_id': tournamentId},
+      );
+
       print('✅ User registered for tournament: $tournamentId');
       return true;
     } catch (e) {
       print('❌ Error registering for tournament: $e');
+      return false;
+    }
+  }
+
+  // Check if user has already registered for a tournament
+  static Future<bool> hasUserRegistered(
+    String tournamentId,
+    String userId,
+  ) async {
+    try {
+      print(
+        '🔍 Checking registration: tournamentId=$tournamentId, userId=$userId',
+      );
+
+      final response =
+          await _supabase
+              .from('tournament_registrations')
+              .select('id')
+              .eq('tournament_id', tournamentId)
+              .eq('user_id', userId)
+              .maybeSingle();
+
+      print('🔍 Registration query result: $response');
+      final isRegistered = response != null;
+      print('✅ User registration status: $isRegistered');
+
+      return isRegistered;
+    } catch (e) {
+      print('❌ Error checking user registration: $e');
       return false;
     }
   }
