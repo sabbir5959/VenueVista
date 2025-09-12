@@ -674,16 +674,22 @@ class _SchedulePageState extends State<SchedulePage>
           children: [
             Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
             SizedBox(width: 8),
-            Text(
-              _formatDate(bookingDate),
-              style: TextStyle(color: Colors.grey.shade700),
+            Flexible(
+              child: Text(
+                _formatDate(bookingDate),
+                style: TextStyle(color: Colors.grey.shade700),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             SizedBox(width: 16),
             Icon(Icons.access_time, size: 16, color: Colors.grey.shade600),
             SizedBox(width: 8),
-            Text(
-              '$startTime - $endTime',
-              style: TextStyle(color: Colors.grey.shade700),
+            Flexible(
+              child: Text(
+                '$startTime - $endTime',
+                style: TextStyle(color: Colors.grey.shade700),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -694,31 +700,42 @@ class _SchedulePageState extends State<SchedulePage>
               Icon(Icons.location_on, size: 16, color: Colors.grey.shade600),
               SizedBox(width: 8),
               Expanded(
+                flex: 3,
                 child: Text(
                   location,
                   style: TextStyle(color: Colors.grey.shade700),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.cloud, color: Colors.blue.shade600, size: 20),
-                onPressed:
-                    () => _showWeatherPopup(
-                      context,
-                      location,
-                      _parseDate(bookingDate),
-                      groundName,
-                    ),
-                tooltip: 'Weather Update',
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.directions,
-                  color: Colors.green.shade700,
-                  size: 20,
+              SizedBox(width: 4),
+              Flexible(
+                child: IconButton(
+                  icon: Icon(Icons.cloud, color: Colors.blue.shade600, size: 18),
+                  onPressed:
+                      () => _showWeatherPopup(
+                        context,
+                        location,
+                        _parseDate(bookingDate),
+                        groundName,
+                      ),
+                  tooltip: 'Weather Update',
+                  padding: EdgeInsets.all(4),
+                  constraints: BoxConstraints(minWidth: 32, minHeight: 32),
                 ),
-                onPressed:
-                    () => _openDirections(context, '$groundName, $location'),
-                tooltip: 'Get Directions',
+              ),
+              Flexible(
+                child: IconButton(
+                  icon: Icon(
+                    Icons.directions,
+                    color: Colors.green.shade700,
+                    size: 18,
+                  ),
+                  onPressed:
+                      () => _openDirections(context, '$groundName, $location'),
+                  tooltip: 'Get Directions',
+                  padding: EdgeInsets.all(4),
+                  constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
               ),
             ],
           ),
@@ -732,11 +749,14 @@ class _SchedulePageState extends State<SchedulePage>
             children: [
               Icon(Icons.money, size: 16, color: Colors.green.shade600),
               SizedBox(width: 8),
-              Text(
-                'Refund Amount: ৳${cancellations?.first['refund_amount'] ?? '0'}',
-                style: TextStyle(
-                  color: Colors.green.shade700,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  'Refund Amount: ৳${cancellations?.first['refund_amount'] ?? '0'}',
+                  style: TextStyle(
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
