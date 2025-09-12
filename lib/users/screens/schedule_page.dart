@@ -608,6 +608,11 @@ class _SchedulePageState extends State<SchedulePage>
           statusColor = Colors.orange.shade700;
           statusBgColor = Colors.orange.shade100;
           break;
+        case 'rejected':
+          statusText = 'Reject Cancellation';
+          statusColor = Colors.red.shade700;
+          statusBgColor = Colors.red.shade100;
+          break;
         case 'completed':
         case 'accepted':
           statusText = 'Accepted';
@@ -784,6 +789,9 @@ class _SchedulePageState extends State<SchedulePage>
       switch (refundStatus) {
         case 'pending':
           statusText = 'Pending Cancellation';
+          break;
+        case 'rejected':
+          statusText = 'Cancellation Rejected';
           break;
         case 'completed':
         case 'accepted':

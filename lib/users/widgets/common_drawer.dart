@@ -16,6 +16,7 @@ class CommonDrawer extends StatefulWidget {
 class _CommonDrawerState extends State<CommonDrawer> {
   String userName = '';
   String userEmail = '';
+  String? profileImageUrl;
   bool isLoading = true;
 
   @override
@@ -30,21 +31,48 @@ class _CommonDrawerState extends State<CommonDrawer> {
       
       if (user != null) {
         // Fetch user profile from user_profiles table
-        final response = await Supabase.instance.client
-            .from('user_profiles')
-            .select('full_name, email')
-            .eq('id', user.id)
-            .single();
+        try {
+          final response = await Supabase.instance.client
+              .from('user_profiles')
+              .select('full_name, email, profile_image_url')
+              .eq('id', user.id)
+              .single();
 
-        setState(() {
-          userName = response['full_name'] ?? 'User';
-          userEmail = response['email'] ?? user.email ?? 'No email';
-          isLoading = false;
-        });
+          setState(() {
+            userName = response['full_name'] ?? 'User';
+            userEmail = response['email'] ?? user.email ?? 'No email';
+            profileImageUrl = response['profile_image_url'];
+            isLoading = false;
+          });
+        } catch (columnError) {
+          // If profile_image_url column doesn't exist, try without it
+          if (columnError.toString().contains('column') && 
+              columnError.toString().contains('does not exist')) {
+            try {
+              final response = await Supabase.instance.client
+                  .from('user_profiles')
+                  .select('full_name, email')
+                  .eq('id', user.id)
+                  .single();
+
+              setState(() {
+                userName = response['full_name'] ?? 'User';
+                userEmail = response['email'] ?? user.email ?? 'No email';
+                profileImageUrl = null;
+                isLoading = false;
+              });
+            } catch (fallbackError) {
+              throw fallbackError;
+            }
+          } else {
+            throw columnError;
+          }
+        }
       } else {
         setState(() {
           userName = 'Guest User';
           userEmail = 'Not logged in';
+          profileImageUrl = null;
           isLoading = false;
         });
       }
@@ -53,6 +81,7 @@ class _CommonDrawerState extends State<CommonDrawer> {
       setState(() {
         userName = 'Error loading';
         userEmail = 'Error loading';
+        profileImageUrl = null;
         isLoading = false;
       });
     }
@@ -79,6 +108,9 @@ class _CommonDrawerState extends State<CommonDrawer> {
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: Colors.white,
+                  backgroundImage: profileImageUrl != null
+                      ? NetworkImage(profileImageUrl!)
+                      : null,
                   child: isLoading
                       ? SizedBox(
                           width: 20,
@@ -88,11 +120,13 @@ class _CommonDrawerState extends State<CommonDrawer> {
                             strokeWidth: 2,
                           ),
                         )
-                      : Icon(
-                          Icons.person,
-                          size: 35,
-                          color: Colors.green.shade700,
-                        ),
+                      : profileImageUrl == null
+                          ? Icon(
+                              Icons.person,
+                              size: 35,
+                              color: Colors.green.shade700,
+                            )
+                          : null,
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -155,6 +189,14 @@ class _CommonDrawerState extends State<CommonDrawer> {
                 context,
                 MaterialPageRoute(builder: (context) => const SchedulePage()),
               );
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.person, color: Colors.green.shade700),
+            title: const Text('Profile'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/profile');
             },
           ),
           ListTile(
