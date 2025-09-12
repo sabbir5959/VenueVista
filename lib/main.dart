@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/supabase_config.dart';
 import 'services/auth_service.dart';
 import 'screens/landing_page.dart';
