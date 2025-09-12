@@ -126,6 +126,13 @@ class BookingService {
               address,
               price_per_hour,
               image_urls
+            ),
+            cancellations!left(
+              id,
+              refund_status,
+              refund_amount,
+              cancelled_at,
+              cancellation_reason
             )
           ''')
           .eq('user_id', userId)
@@ -224,6 +231,8 @@ class BookingService {
     String? cancellationReason,
   ) async {
     try {
+      print('🔄 Starting booking cancellation for ID: $bookingId');
+      
       // Get current user
       final currentUser = _client.auth.currentUser;
       if (currentUser == null) {
@@ -231,100 +240,131 @@ class BookingService {
         return false;
       }
 
-      // First get the booking details with payment information
+      print('👤 User authenticated: ${currentUser.id}');
+
+      // Get booking details with venue information to calculate original amount from venue price
+      print('📋 Fetching booking details with venue information...');
       final bookingResponse =
           await _client
               .from('bookings')
               .select('''
             *,
-            venues(name, address),
-            payments(amount)
+            venues!inner(
+              id,
+              name,
+              price_per_hour
+            )
           ''')
               .eq('id', bookingId)
+              .eq('user_id', currentUser.id) // Ensure user owns this booking
               .maybeSingle();
 
       if (bookingResponse == null) {
-        print('❌ Booking not found: $bookingId');
+        print('❌ Booking not found or user does not own this booking');
         return false;
       }
 
+      print('✅ Booking found: $bookingResponse');
+      
       final booking = bookingResponse;
       final venue = booking['venues'];
 
-      // Verify the booking belongs to the current user
-      if (booking['user_id'] != currentUser.id) {
-        print('❌ Booking does not belong to current user');
-        return false;
+      // Calculate original amount based on venue's price per hour and booking duration
+      final pricePerHour = (venue['price_per_hour'] ?? 0).toDouble();
+      final startTime = booking['start_time'] ?? '';
+      final endTime = booking['end_time'] ?? '';
+      
+      // Calculate hours between start and end time
+      double hours = 1.0; // Default to 1 hour if calculation fails
+      try {
+        final start = DateTime.parse('2000-01-01 $startTime');
+        final end = DateTime.parse('2000-01-01 $endTime');
+        hours = end.difference(start).inMinutes / 60.0;
+      } catch (e) {
+        print('⚠️  Could not calculate hours, using default: $e');
       }
+      
+      final originalAmount = pricePerHour * hours;
+      
+      print('💰 Price calculation:');
+      print('   Venue: ${venue['name']}');
+      print('   Price per hour: ৳$pricePerHour');
+      print('   Start time: $startTime');
+      print('   End time: $endTime');
+      print('   Hours: $hours');
+      print('   Original amount: ৳$originalAmount');
 
-      // Calculate original amount from payment record
-      final payments = booking['payments'] as List?;
-      final originalAmount =
-          payments?.isNotEmpty == true
-              ? double.tryParse(payments!.first['amount'].toString()) ?? 0.0
-              : 0.0;
-
-      print('💳 Payment information:');
-      print('   Payments found: ${payments?.length ?? 0}');
-      if (payments?.isNotEmpty == true) {
-        print('   Payment amount: ৳${payments!.first['amount']}');
-      }
-      print('   Original amount to store: ৳$originalAmount');
-
-      // Prepare cancellation data with all available user-side information
+      // Prepare cancellation data according to your exact requirements
       final cancellationData = {
-        'booking_id':
-            bookingId, // This should be the UUID from booking.id, not booking.booking_id
-        'user_id': currentUser.id, // Current authenticated user
+        'booking_id': bookingId,
+        'user_id': currentUser.id,
         'venue_id': booking['venue_id'],
-        'venue_name': venue?['name'] ?? 'Unknown Venue',
+        'venue_name': venue['name'], // Store actual venue name
         'booking_date': booking['booking_date'],
         'start_time': booking['start_time'],
         'end_time': booking['end_time'],
-        'original_amount': originalAmount,
-        'cancellation_fee': null, // Set to NULL as requested
-        'refund_amount': null, // Set to NULL as requested
-        'cancellation_reason':
-            cancellationReason?.isEmpty == true ? null : cancellationReason,
-        'refund_status': null, // Set to NULL as requested
-        'cancelled_at': DateTime.now().toIso8601String(),
+        'original_amount': originalAmount, // From venue price_per_hour * hours
+        'cancellation_fee': 0, // Set to 0 as requested
+        'refund_amount': 0, // Set to 0 as requested  
+        'cancellation_reason': cancellationReason?.isNotEmpty == true ? cancellationReason : null,
+        'cancelled_at': null, // Set to NULL as requested
+        'refund_status': 'pending', // Set to pending as requested
+        'refund_processed_at': null,
+        'processed_by': null,
+        'admin_notes': null, // Set to NULL as requested
       };
 
-      print('📝 Storing cancellation data:');
-      print('   Booking UUID: $bookingId'); // This is the correct UUID
-      print(
-        '   Booking ID String: ${booking['booking_id']}',
-      ); // This is the human-readable ID
-      print('   User ID: ${currentUser.id}');
-      print('   User Email: ${currentUser.email}');
-      print('   Venue: ${venue?['name'] ?? 'Unknown Venue'}');
-      print('   Date: ${booking['booking_date']}');
-      print('   Time: ${booking['start_time']} - ${booking['end_time']}');
-      print('   Original Amount: ৳$originalAmount');
-      print('   Cancellation Fee: NULL');
-      print('   Refund Amount: NULL');
-      print('   Refund Status: NULL');
-      print('   Reason: ${cancellationReason ?? "No reason provided"}');
+      print('📝 Storing cancellation data per your requirements:');
+      print('   📍 Venue Name: ${venue['name']}');
+      print('   💰 Original Amount: ৳$originalAmount (from venue price)');
+      print('   💸 Cancellation Fee: 0');
+      print('   💳 Refund Amount: 0');
+      print('   ⏰ Cancelled Time: NULL');
+      print('   📊 Refund Status: pending');
+      print('   📝 Admin Notes: NULL');
+      print('   🏢 Venue Name Current (in view): NULL');
+      print('   💬 Reason: ${cancellationReason ?? 'No reason provided'}');
 
-      // Store cancellation record first
+      // Insert into cancellations table
       print('🔄 Inserting cancellation record into database...');
-      final insertResult =
-          await _client.from('cancellations').insert(cancellationData).select();
-      print('✅ Cancellation record inserted: $insertResult');
+      final cancellationResponse = await _client
+          .from('cancellations')
+          .insert(cancellationData)
+          .select()
+          .single();
 
-      // Update booking status
+      print('✅ Cancellation record inserted with ID: ${cancellationResponse['id']}');
+
+      // Update booking status to cancelled
       print('🔄 Updating booking status to cancelled...');
       await _client
           .from('bookings')
-          .update({
-            'status': 'cancelled',
-            'cancelled_at': DateTime.now().toIso8601String(),
-          })
+          .update({'status': 'cancelled'})
           .eq('id', bookingId);
 
-      print('✅ Booking cancelled successfully: $bookingId');
-      print('📊 Check cancellation_summary table for the new record');
+      print('✅ Booking status updated to cancelled');
+      print('🎉 Cancellation completed successfully!');
+      
+      // Verify the record was stored in cancellation_summary
+      print('🔍 Verifying data in cancellation_summary...');
+      final summaryCheck = await _client
+          .from('cancellation_summary')
+          .select('*')
+          .eq('booking_id', bookingId)
+          .maybeSingle();
+          
+      if (summaryCheck != null) {
+        print('✅ Data confirmed in cancellation_summary:');
+        print('   Original Amount: ${summaryCheck['original_amount']}');
+        print('   Cancellation Fee: ${summaryCheck['cancellation_fee']}');
+        print('   Refund Amount: ${summaryCheck['refund_amount']}');
+        print('   Venue Name Current: ${summaryCheck['venue_name_current']}');
+        print('   Refund Status: ${summaryCheck['refund_status']}');
+        print('   Admin Notes: ${summaryCheck['admin_notes']}');
+      }
+
       return true;
+
     } catch (e, stackTrace) {
       print('❌ Error cancelling booking with reason: $e');
       print('📍 Stack trace: $stackTrace');

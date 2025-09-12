@@ -34,21 +34,21 @@ CREATE TABLE public.cancellations (
   end_time TIME NOT NULL,
   
   -- Financial information
-  original_amount DECIMAL(10, 2) NOT NULL, -- Amount from payments table for this booking
-  cancellation_fee DECIMAL(10, 2) DEFAULT NULL,  -- Allow NULL
-  refund_amount DECIMAL(10, 2) DEFAULT NULL,     -- Allow NULL
+  original_amount DECIMAL(10, 2) NOT NULL, -- Calculated from venue price_per_hour * hours
+  cancellation_fee DECIMAL(10, 2) DEFAULT 0,  -- Set to 0 as requested
+  refund_amount DECIMAL(10, 2) DEFAULT 0,     -- Set to 0 as requested
   
   -- Cancellation details
   cancellation_reason TEXT,
-  cancelled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  cancelled_at TIMESTAMP WITH TIME ZONE DEFAULT NULL, -- NULL as requested
   
   -- Processing status
-  refund_status VARCHAR(20) DEFAULT NULL CHECK (refund_status IN ('pending', 'processing', 'completed', 'failed', NULL)),
+  refund_status VARCHAR(20) DEFAULT 'pending' CHECK (refund_status IN ('pending', 'processing', 'completed', 'failed', NULL)),
   refund_processed_at TIMESTAMP WITH TIME ZONE,
   
   -- Administrative fields
   processed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL, -- For admin processing
-  admin_notes TEXT,
+  admin_notes TEXT DEFAULT NULL, -- NULL as requested
   
   -- Timestamps
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -92,7 +92,7 @@ CREATE TRIGGER trigger_update_cancellations_updated_at
 CREATE VIEW public.cancellation_summary AS
 SELECT 
   c.*,
-  v.name as venue_name_current,
+  NULL as venue_name_current, -- Set to NULL as requested
   v.address as venue_address,
   u.email as user_email
 FROM public.cancellations c
