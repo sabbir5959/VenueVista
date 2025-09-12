@@ -78,23 +78,37 @@ class AdminStatsService {
     }
   }
 
-  /// Get total revenue from payments
+  /// Get total revenue from payments (net after refunds)
   static Future<double> _getTotalRevenue() async {
     try {
+      // Get all completed payments - using payment_id to identify refunds
       final response = await _client
           .from('payments')
-          .select('amount')
+          .select('amount, payment_id')
           .eq('payment_status', 'completed');
 
       if (response.isEmpty) return 0.0;
 
-      double total = 0.0;
+      double totalReceived = 0.0;
+      double totalRefunded = 0.0;
+
       for (final payment in response) {
-        total += (payment['amount'] as num).toDouble();
+        final amount = (payment['amount'] as num).toDouble();
+        final paymentId = payment['payment_id'] as String?;
+
+        // Check if this is a refund payment (payment_id starts with "REF")
+        if (paymentId != null && paymentId.startsWith('REF')) {
+          totalRefunded += amount;
+        } else {
+          // Regular payment from users
+          totalReceived += amount;
+        }
       }
 
-      return total;
+      // Return net revenue (received - refunded)
+      return totalReceived - totalRefunded;
     } catch (e) {
+      print('Error calculating total revenue: $e');
       return 0.0;
     }
   }
@@ -262,18 +276,31 @@ class AdminStatsService {
           .gte('booking_date', startOfMonth.toIso8601String().split('T')[0])
           .lte('booking_date', endOfMonth.toIso8601String().split('T')[0]);
 
-      // Get monthly revenue
+      // Get monthly revenue (net after refunds)
       final monthlyPayments = await _client
           .from('payments')
-          .select('amount, created_at')
+          .select('amount, created_at, payment_id')
           .eq('payment_status', 'completed')
           .gte('created_at', startOfMonth.toIso8601String())
           .lte('created_at', endOfMonth.toIso8601String());
 
-      double monthlyRevenue = 0.0;
+      double monthlyReceived = 0.0;
+      double monthlyRefunded = 0.0;
+
       for (final payment in monthlyPayments) {
-        monthlyRevenue += (payment['amount'] as num).toDouble();
+        final amount = (payment['amount'] as num).toDouble();
+        final paymentId = payment['payment_id'] as String?;
+
+        // Check if this is a refund payment (payment_id starts with "REF")
+        if (paymentId != null && paymentId.startsWith('REF')) {
+          monthlyRefunded += amount;
+        } else {
+          // Regular payment from users
+          monthlyReceived += amount;
+        }
       }
+
+      double monthlyRevenue = monthlyReceived - monthlyRefunded;
 
       return {
         'monthlyBookings': monthlyBookings.length,
