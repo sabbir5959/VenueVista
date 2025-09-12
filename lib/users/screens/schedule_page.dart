@@ -379,6 +379,13 @@ class _SchedulePageState extends State<SchedulePage>
         itemBuilder: (context, index) {
           final booking = futureBookings[index];
           final venue = booking['venues'];
+          
+          // Check if booking should be disabled from clicking
+          final cancellations = booking['cancellations'] as List?;
+          final isDisabled = cancellations?.isNotEmpty == true && 
+              (cancellations?.first['refund_status'] == 'completed' || 
+               cancellations?.first['refund_status'] == 'accepted' ||
+               cancellations?.first['refund_status'] == 'pending');
 
           return Card(
             elevation: 4,
@@ -389,7 +396,7 @@ class _SchedulePageState extends State<SchedulePage>
             child: ListTile(
               contentPadding: EdgeInsets.all(16),
               title: _buildBookingTitle(booking, venue),
-              onTap: () => _showBookingDetails(context, booking, venue),
+              onTap: isDisabled ? null : () => _showBookingDetails(context, booking, venue),
             ),
           );
         },
@@ -584,6 +591,50 @@ class _SchedulePageState extends State<SchedulePage>
     final startTime = booking['start_time'] ?? '';
     final endTime = booking['end_time'] ?? '';
     final location = venue?['address'] ?? '';
+    
+    // Check cancellation status
+    final cancellations = booking['cancellations'] as List?;
+    String statusText = 'Click to Cancel';
+    Color statusColor = Colors.green.shade700;
+    Color statusBgColor = Colors.green.shade100;
+    
+    if (cancellations?.isNotEmpty == true) {
+      final cancellation = cancellations!.first;
+      final refundStatus = cancellation['refund_status'];
+      
+      switch (refundStatus) {
+        case 'pending':
+          statusText = 'Pending';
+          statusColor = Colors.orange.shade700;
+          statusBgColor = Colors.orange.shade100;
+          break;
+        case 'rejected':
+          statusText = 'Reject Cancellation';
+          statusColor = Colors.red.shade700;
+          statusBgColor = Colors.red.shade100;
+          break;
+        case 'completed':
+        case 'accepted':
+          statusText = 'Accepted';
+          statusColor = Colors.blue.shade700;
+          statusBgColor = Colors.blue.shade100;
+          break;
+        case 'processing':
+          statusText = 'Processing';
+          statusColor = Colors.purple.shade700;
+          statusBgColor = Colors.purple.shade100;
+          break;
+        case 'failed':
+          statusText = 'Failed';
+          statusColor = Colors.red.shade700;
+          statusBgColor = Colors.red.shade100;
+          break;
+        default:
+          statusText = 'Click to Cancel';
+          statusColor = Colors.green.shade700;
+          statusBgColor = Colors.green.shade100;
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,13 +655,13 @@ class _SchedulePageState extends State<SchedulePage>
             Container(
               padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.green.shade100,
+                color: statusBgColor,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                'Confirmed',
+                statusText,
                 style: TextStyle(
-                  color: Colors.green.shade700,
+                  color: statusColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -672,6 +723,25 @@ class _SchedulePageState extends State<SchedulePage>
             ],
           ),
         ],
+        // Show refund amount if cancellation is accepted/completed
+        if (cancellations?.isNotEmpty == true && 
+            (cancellations?.first['refund_status'] == 'completed' || 
+             cancellations?.first['refund_status'] == 'accepted')) ...[
+          SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.money, size: 16, color: Colors.green.shade600),
+              SizedBox(width: 8),
+              Text(
+                'Refund Amount: ৳${cancellations?.first['refund_amount'] ?? '0'}',
+                style: TextStyle(
+                  color: Colors.green.shade700,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -708,6 +778,39 @@ class _SchedulePageState extends State<SchedulePage>
     final bookingId =
         booking['id'] ?? ''; // Use the UUID, not the booking_id string
 
+    // Check cancellation status for dialog
+    final cancellations = booking['cancellations'] as List?;
+    String statusText = 'Confirmed';
+    
+    if (cancellations?.isNotEmpty == true) {
+      final cancellation = cancellations!.first;
+      final refundStatus = cancellation['refund_status'];
+      
+      switch (refundStatus) {
+        case 'pending':
+          statusText = 'Pending Cancellation';
+          break;
+        case 'rejected':
+          statusText = 'Cancellation Rejected';
+          break;
+        case 'completed':
+        case 'accepted':
+          final refundAmount = cancellation['refund_amount'] ?? 0;
+          statusText = 'Cancellation Accepted - Refund: ৳$refundAmount';
+          break;
+        case 'processing':
+          statusText = 'Processing Cancellation';
+          break;
+        case 'failed':
+          statusText = 'Cancellation Failed';
+          break;
+        default:
+          statusText = 'Confirmed - Ready to Cancel';
+      }
+    } else {
+      statusText = 'Confirmed - Ready to Cancel';
+    }
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -731,7 +834,7 @@ class _SchedulePageState extends State<SchedulePage>
               Text('Date: ${_formatDate(bookingDate)}'),
               Text('Time: $startTime - $endTime'),
               Text('Booking ID: $bookingId'),
-              Text('Status: Confirmed'),
+              Text('Status: $statusText'),
               SizedBox(height: 16),
               Row(
                 children: [
@@ -759,14 +862,18 @@ class _SchedulePageState extends State<SchedulePage>
               child: Text('Close'),
               onPressed: () => Navigator.of(context).pop(),
             ),
-            TextButton(
-              child: Text(
-                'Cancel Booking',
-                style: TextStyle(color: Colors.red),
+            // Only show cancel button if there's no pending/accepted/processing cancellation
+            if (cancellations?.isEmpty == true || 
+                (cancellations?.isNotEmpty == true && 
+                 !['pending', 'accepted', 'completed', 'processing'].contains(cancellations?.first['refund_status'])))
+              TextButton(
+                child: Text(
+                  'Cancel Booking',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onPressed:
+                    () => _showCancelDialog(context, groundName, bookingId),
               ),
-              onPressed:
-                  () => _showCancelDialog(context, groundName, bookingId),
-            ),
           ],
         );
       },

@@ -8,6 +8,7 @@ import 'screens/registration_page.dart';
 import 'admin/screens/admin_dashboard.dart';
 import 'owners/screens/owner_dashboard.dart';
 import 'users/dashboard.dart';
+import 'users/screens/profile_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -75,6 +76,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         '/register': (context) => const RegistrationPage(),
         '/admin': (context) => const AdminDashboard(),
         '/owner': (context) => const OwnerDashboard(),
+        '/profile': (context) => const ProfilePage(),
       },
     );
   }
