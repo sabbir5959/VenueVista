@@ -852,10 +852,12 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
     ); // Now includes cash + refunds
   }
 
+  // ignore: unused_element
   String _calculatePendingRefunds() {
     return _pendingRefundAmount.toStringAsFixed(0);
   }
 
+  // ignore: unused_element
   String _calculateTotalRefunded() {
     // Calculate refunds from payments
     final refunded = _payments
