@@ -44,7 +44,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
 
     if (state == AppLifecycleState.resumed) {
-      print('📱 App resumed - checking auth state...');
       _checkAuthState();
     }
   }
@@ -52,13 +51,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void _checkAuthState() async {
     final user = AuthService.currentUser;
     if (user != null) {
-      print('✅ User is authenticated: ${user.email}');
       // You can trigger UI updates or navigation here
     }
   }
 
   void _handleIncomingLinks() {
-    print('🔗 Deep link handling delegated to Supabase');
+    // Deep link handling delegated to Supabase
   }
 
   @override

@@ -40,10 +40,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
       final pendingRefundAmount =
           await AdminPaymentService.calculatePendingRefundAmount();
 
-      print(
-        '📊 Loaded ${payments.length} payments and ${cashRecords.length} cash records',
-      );
-
       setState(() {
         _payments =
             payments
@@ -58,10 +54,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
         _stats = stats;
         _isLoading = false;
       });
-
-      print('💰 Total payments in UI: ${_payments.length}');
-      print('💵 Total cash records in UI: ${_cashRecords.length}');
-      print('🔄 Total pending refunds: ${_pendingRefunds.length}');
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(
@@ -744,13 +736,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
     // Combine payments and cash records
     List<Map<String, dynamic>> allPayments = [..._payments, ..._cashRecords];
 
-    print('🔍 Filtering - Total payments: ${_payments.length}');
-    print('🔍 Filtering - Total cash records: ${_cashRecords.length}');
-    print('🔍 Filtering - Combined total: ${allPayments.length}');
-    print(
-      '🔍 Filter settings - Type: $_selectedPaymentType, Status: $_selectedStatus',
-    );
-
     List<Map<String, dynamic>> filtered = allPayments;
 
     // Filter by payment type
@@ -771,7 +756,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
 
       filtered =
           filtered.where((payment) => payment['type'] == filterType).toList();
-      print('🔍 After type filter ($filterType): ${filtered.length}');
     }
 
     // Filter by status
@@ -793,7 +777,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                     payment['status'].toString().toLowerCase() == filterStatus,
               )
               .toList();
-      print('🔍 After status filter ($filterStatus): ${filtered.length}');
     }
 
     // Filter by date range
@@ -845,8 +828,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
   }
 
   String _calculateTotalPaid() {
-    print('💳 _stats in UI: $_stats');
-    print('💳 totalPaid value: ${_stats['totalPaid']}');
     return (_stats['totalPaid'] ?? 0.0).toStringAsFixed(
       0,
     ); // Now includes cash + refunds

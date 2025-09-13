@@ -44,13 +44,6 @@ class TournamentService {
           .order('tournament_date', ascending: true)
           .limit(limit);
 
-      print('✅ Featured tournaments fetched: ${response.length}');
-      // Debug: Print tournament data
-      for (var tournament in response) {
-        print(
-          '🏆 ${tournament['name']}: ${tournament['tournament_date']} at ${tournament['venues']?['name'] ?? 'Unknown Venue'}',
-        );
-      }
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('❌ Error fetching featured tournaments: $e');

@@ -43,9 +43,6 @@ class AdminStatsService {
           .select('*')
           .eq('role', 'user'); // Only count normal users
 
-      print('Normal users (role=user) count: ${response.length}');
-      print('Sample normal users: ${response.take(3).toList()}');
-
       return response.length;
     } catch (e) {
       print('Error fetching normal users: $e');
@@ -57,8 +54,6 @@ class AdminStatsService {
   static Future<int> _getTotalVenues() async {
     try {
       final response = await _client.from('venues').select('*');
-
-      print('Total venues query response: ${response.length}');
 
       return response.length;
     } catch (e) {
@@ -171,8 +166,6 @@ class AdminStatsService {
             .order('created_at', ascending: false)
             .limit(5);
 
-        print('Bookings fetched: ${bookings.length}');
-
         // Add booking activities
         for (final booking in bookings) {
           if (booking['user_profiles'] != null && booking['venues'] != null) {
@@ -202,8 +195,6 @@ class AdminStatsService {
             .order('created_at', ascending: false)
             .limit(3);
 
-        print('New venues fetched: ${newVenues.length}');
-
         // Add venue activities
         for (final venue in newVenues) {
           if (venue['user_profiles'] != null) {
@@ -231,8 +222,6 @@ class AdminStatsService {
             .order('created_at', ascending: false)
             .limit(3);
 
-        print('New users fetched: ${newUsers.length}');
-
         // Add user activities
         for (final user in newUsers) {
           activity.add({
@@ -254,7 +243,6 @@ class AdminStatsService {
             DateTime.parse(b['time']).compareTo(DateTime.parse(a['time'])),
       );
 
-      print('Total activity items: ${activity.length}');
       return activity.take(10).toList();
     } catch (e) {
       print('Error in _getRecentActivity: $e');

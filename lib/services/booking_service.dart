@@ -37,16 +37,6 @@ class BookingService {
           .eq('venue_id', venueId)
           .eq('booking_date', bookingDate);
 
-      print('📊 BookingService: Filtered result for "$bookingDate":');
-      print(
-        '   Found ${response.length} bookings matching venue "$venueId" and date "$bookingDate"',
-      );
-      for (var booking in response) {
-        print(
-          '   ✅ MATCH - Venue: "${booking['venue_id']}", Date: "${booking['booking_date']}", Time: ${booking['start_time']}-${booking['end_time']}',
-        );
-      }
-
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('❌ Error fetching bookings for venue and date: $e');
@@ -232,7 +222,7 @@ class BookingService {
   ) async {
     try {
       print('🔄 Starting booking cancellation for ID: $bookingId');
-      
+
       // Get current user
       final currentUser = _client.auth.currentUser;
       if (currentUser == null) {
@@ -265,7 +255,7 @@ class BookingService {
       }
 
       print('✅ Booking found: $bookingResponse');
-      
+
       final booking = bookingResponse;
       final venue = booking['venues'];
 
@@ -273,7 +263,7 @@ class BookingService {
       final pricePerHour = (venue['price_per_hour'] ?? 0).toDouble();
       final startTime = booking['start_time'] ?? '';
       final endTime = booking['end_time'] ?? '';
-      
+
       // Calculate hours between start and end time
       double hours = 1.0; // Default to 1 hour if calculation fails
       try {
@@ -283,9 +273,9 @@ class BookingService {
       } catch (e) {
         print('⚠️  Could not calculate hours, using default: $e');
       }
-      
+
       final originalAmount = pricePerHour * hours;
-      
+
       print('💰 Price calculation:');
       print('   Venue: ${venue['name']}');
       print('   Price per hour: ৳$pricePerHour');
@@ -305,8 +295,9 @@ class BookingService {
         'end_time': booking['end_time'],
         'original_amount': originalAmount, // From venue price_per_hour * hours
         'cancellation_fee': 0, // Set to 0 as requested
-        'refund_amount': 0, // Set to 0 as requested  
-        'cancellation_reason': cancellationReason?.isNotEmpty == true ? cancellationReason : null,
+        'refund_amount': 0, // Set to 0 as requested
+        'cancellation_reason':
+            cancellationReason?.isNotEmpty == true ? cancellationReason : null,
         'cancelled_at': null, // Set to NULL as requested
         'refund_status': 'pending', // Set to pending as requested
         'refund_processed_at': null,
@@ -327,13 +318,16 @@ class BookingService {
 
       // Insert into cancellations table
       print('🔄 Inserting cancellation record into database...');
-      final cancellationResponse = await _client
-          .from('cancellations')
-          .insert(cancellationData)
-          .select()
-          .single();
+      final cancellationResponse =
+          await _client
+              .from('cancellations')
+              .insert(cancellationData)
+              .select()
+              .single();
 
-      print('✅ Cancellation record inserted with ID: ${cancellationResponse['id']}');
+      print(
+        '✅ Cancellation record inserted with ID: ${cancellationResponse['id']}',
+      );
 
       // Update booking status to cancelled
       print('🔄 Updating booking status to cancelled...');
@@ -344,15 +338,16 @@ class BookingService {
 
       print('✅ Booking status updated to cancelled');
       print('🎉 Cancellation completed successfully!');
-      
+
       // Verify the record was stored in cancellation_summary
       print('🔍 Verifying data in cancellation_summary...');
-      final summaryCheck = await _client
-          .from('cancellation_summary')
-          .select('*')
-          .eq('booking_id', bookingId)
-          .maybeSingle();
-          
+      final summaryCheck =
+          await _client
+              .from('cancellation_summary')
+              .select('*')
+              .eq('booking_id', bookingId)
+              .maybeSingle();
+
       if (summaryCheck != null) {
         print('✅ Data confirmed in cancellation_summary:');
         print('   Original Amount: ${summaryCheck['original_amount']}');
@@ -364,7 +359,6 @@ class BookingService {
       }
 
       return true;
-
     } catch (e, stackTrace) {
       print('❌ Error cancelling booking with reason: $e');
       print('📍 Stack trace: $stackTrace');
@@ -489,7 +483,6 @@ class BookingService {
   static Future<List<Map<String, dynamic>>> getCancellationSummary() async {
     try {
       final result = await _client.from('cancellation_summary').select();
-      print('📊 Cancellation Summary Data: $result');
       return result;
     } catch (e) {
       print('❌ Error querying cancellation summary: $e');

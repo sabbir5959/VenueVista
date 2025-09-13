@@ -34,12 +34,9 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
         _error = null;
       });
 
-      print('🔄 Loading tournaments...');
       final tournaments = await AdminTournamentService.getAllTournaments();
-      print('📊 Raw tournaments loaded: ${tournaments.length}');
 
       final stats = await AdminTournamentService.getTournamentStats();
-      print('📈 Stats loaded: $stats');
 
       final formattedTournaments = <Map<String, dynamic>>[];
       for (final tournament in tournaments) {
@@ -49,9 +46,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
           );
           formattedTournaments.add(formatted);
         } catch (e) {
-          print(
-            '⚠️ Error formatting tournament ${tournament['tournament_id']}: $e',
-          );
           // Skip this tournament but continue with others
         }
       }
@@ -61,15 +55,11 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
         _stats = stats;
         _isLoading = false;
       });
-
-      print('✅ Loaded ${_tournaments.length} formatted tournaments');
-    } catch (e, stackTrace) {
+    } catch (e) {
       setState(() {
         _error = 'Failed to load tournaments: ${e.toString()}';
         _isLoading = false;
       });
-      print('❌ Error loading tournaments: $e');
-      print('📍 Stack trace: $stackTrace');
     }
   }
 

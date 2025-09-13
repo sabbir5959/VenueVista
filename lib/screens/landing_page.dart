@@ -41,14 +41,8 @@ class _LandingPageState extends State<LandingPage>
       final rememberMe = prefs.getBool('remember_me') ?? false;
       final isLoggedOut = prefs.getBool('is_logged_out') ?? false;
 
-      print('🔍 Remember me: $rememberMe, Is logged out: $isLoggedOut');
-      print('🔍 Current user: ${AuthService.currentUser?.email}');
-      print('🔍 Is signed in: ${AuthService.isSignedIn}');
-
       // If user has remember me enabled and hasn't explicitly logged out
       if (rememberMe && !isLoggedOut && AuthService.isSignedIn) {
-        print('✅ Auto-login successful - navigating to dashboard');
-
         // Wait for animation to complete
         await Future.delayed(const Duration(seconds: 2));
 
@@ -73,7 +67,6 @@ class _LandingPageState extends State<LandingPage>
           }
         }
       } else {
-        print('🏠 No auto-login - going to login page');
         // Navigate to login page after animation
         await Future.delayed(const Duration(seconds: 2));
         if (mounted) {

@@ -24,9 +24,6 @@ class AdminTournamentService {
             // Handle null values safely
             final tournamentDateStr = tournament['tournament_date'] as String?;
             if (tournamentDateStr == null || tournamentDateStr.isEmpty) {
-              print(
-                '⚠️ Tournament has null/empty date: ${tournament['tournament_id']}',
-              );
               return {
                 ...tournament,
                 'status': 'upcoming',
@@ -59,14 +56,10 @@ class AdminTournamentService {
                 'end_date': endDate.toIso8601String(),
               };
             } catch (e) {
-              print(
-                '⚠️ Error parsing tournament date ${tournamentDateStr}: $e',
-              );
               return {...tournament, 'status': 'upcoming', 'end_date': null};
             }
           }).toList();
 
-      print('📊 Fetched ${tournamentsWithStatus.length} tournaments');
       return tournamentsWithStatus;
     } catch (e) {
       print('❌ Error fetching tournaments: $e');
@@ -157,7 +150,6 @@ class AdminTournamentService {
           .update({'status': status})
           .eq('tournament_id', tournamentId);
 
-      print('✅ Tournament status updated: $tournamentId -> $status');
       return true;
     } catch (e) {
       print('❌ Error updating tournament status: $e');
@@ -173,7 +165,6 @@ class AdminTournamentService {
           .delete()
           .eq('tournament_id', tournamentId);
 
-      print('✅ Tournament deleted: $tournamentId');
       return true;
     } catch (e) {
       print('❌ Error deleting tournament: $e');
@@ -243,11 +234,6 @@ class AdminTournamentService {
       final venue = tournament['venues'] as Map<String, dynamic>?;
       final organizer = tournament['user_profiles'] as Map<String, dynamic>?;
 
-      // Debug print to check what data we're getting
-      print('🔍 Formatting tournament: ${tournament['tournament_id']}');
-      print('📍 Venue data: $venue');
-      print('👤 Organizer data: $organizer');
-
       final formattedData = {
         'id': tournament['tournament_id']?.toString() ?? '',
         'name': tournament['name']?.toString() ?? 'Unknown Tournament',
@@ -274,11 +260,9 @@ class AdminTournamentService {
         'createdAt': tournament['created_at']?.toString(),
       };
 
-      print('✅ Formatted data: $formattedData');
       return formattedData;
     } catch (e) {
       print('❌ Error formatting tournament data: $e');
-      print('🔍 Tournament data: $tournament');
 
       // Return safe fallback data
       return {
@@ -359,9 +343,6 @@ class AdminTournamentService {
                 'end_date': endDate.toIso8601String(),
               };
             } catch (e) {
-              print(
-                '❌ Error parsing tournament date for tournament ${tournament['tournament_id']}: $e',
-              );
               return {...tournament, 'status': 'unknown', 'end_date': null};
             }
           }).toList();
