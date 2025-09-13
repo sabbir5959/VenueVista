@@ -11,10 +11,6 @@ class AdminVenueService {
     String? statusFilter,
   }) async {
     try {
-      print('🚀 Fetching admin venues from Supabase...');
-      print('📄 Page: $page, Limit: $limit');
-      print('🔍 Search: $searchQuery, Status: $statusFilter');
-
       // Calculate offset for pagination
       final offset = (page - 1) * limit;
 
@@ -66,9 +62,6 @@ class AdminVenueService {
       final venues = List<Map<String, dynamic>>.from(venuesResult);
       final totalPages = (totalCount / limit).ceil();
 
-      print('✅ Admin venues fetched: ${venues.length}');
-      print('📊 Total count: $totalCount, Total pages: $totalPages');
-
       return {
         'venues': venues,
         'totalCount': totalCount,
@@ -84,8 +77,6 @@ class AdminVenueService {
   // Get venue statistics
   static Future<Map<String, int>> getVenueStats() async {
     try {
-      print('🚀 Fetching venue statistics...');
-
       // Get all venues
       final allVenues = await _supabase.from('venues').select('id, status');
 
@@ -96,12 +87,6 @@ class AdminVenueService {
           allVenues.where((v) => v['status'] == 'maintenance').length;
       final inactiveVenues =
           allVenues.where((v) => v['status'] == 'inactive').length;
-
-      print('✅ Venue stats fetched:');
-      print('   - Total: $totalVenues');
-      print('   - Active: $activeVenues');
-      print('   - Maintenance: $maintenanceVenues');
-      print('   - Inactive: $inactiveVenues');
 
       return {
         'totalVenues': totalVenues,
@@ -124,10 +109,6 @@ class AdminVenueService {
     DateTime? maintenanceEnd,
   }) async {
     try {
-      print('🚀 Updating venue status...');
-      print('🆔 Venue ID: $venueId');
-      print('📝 New Status: $newStatus');
-
       Map<String, dynamic> updateData = {
         'status': newStatus.toLowerCase(),
         'updated_at': DateTime.now().toIso8601String(),

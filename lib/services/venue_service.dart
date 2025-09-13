@@ -12,15 +12,6 @@ class VenueService {
           .select('*')
           .eq('status', 'active')
           .order('created_at', ascending: false);
-
-      print('✅ Venues fetched: ${response.length}');
-      print('📊 Raw response: $response');
-
-      // Debug: Print actual data to see what's in the table
-      for (int i = 0; i < response.length && i < 3; i++) {
-        print('🔍 Venue ${i + 1}: ${response[i]}');
-        print('🖼️ Image URL: ${response[i]['image_url']}');
-      }
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('❌ Error fetching venues: $e');
@@ -43,19 +34,6 @@ class VenueService {
           .order('created_at', ascending: false)
           .limit(limit);
 
-      print('✅ Featured venues fetched: ${response.length}');
-      // Debug: Print detailed image URLs to see what's stored
-      for (var venue in response) {
-        print('🖼️ VENUE: ${venue['name']}');
-        print('   - image_url field exists: ${venue.containsKey('image_url')}');
-        print('   - image_url value: "${venue['image_url']}"');
-        print('   - image_url type: ${venue['image_url'].runtimeType}');
-        print(
-          '   - image_url isEmpty: ${venue['image_url']?.toString().isEmpty}',
-        );
-        print('   - All fields: ${venue.keys.toList()}');
-        print('---');
-      }
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('❌ Error fetching featured venues: $e');

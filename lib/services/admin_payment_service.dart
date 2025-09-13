@@ -137,22 +137,14 @@ class AdminPaymentService {
           .from('owner_record_cash')
           .select('*'); // Select all to avoid column name issues
 
-      print('🧾 Cash records raw data: $cashResponse');
-
       final totalCash = cashResponse.fold(0.0, (sum, record) {
         final amount = record['cash amount']; // Space in column name
-        print(
-          '💰 Processing cash amount: $amount (type: ${amount.runtimeType})',
-        );
         if (amount is String) {
           final parsed = double.tryParse(amount) ?? 0.0;
-          print('📝 Parsed string amount: $parsed');
           return sum + parsed;
         }
         return sum + (amount as num).toDouble();
       });
-
-      print('💵 Total cash calculated: $totalCash');
 
       // Count totals
       final paymentCount = receivedResponse.length;
@@ -363,25 +355,12 @@ class AdminPaymentService {
       print('🔄 Attempting to fetch from cancellations table...');
 
       // First try to get all records to check table access
-      final allRecords = await _client
-          .from('cancellations')
-          .select('*')
-          .limit(5);
-
-      print('🔄 All cancellations records (first 5): $allRecords');
-
-      if (allRecords.isEmpty) {
-        print('🔄 Table is empty or no access. This could be RLS issue.');
-      }
-
       // Get refunds that are 'accepted' - simple query first
       final response = await _client
           .from('cancellations')
           .select('*')
           .eq('refund_status', 'accepted')
           .order('cancelled_at', ascending: false);
-
-      print('🔄 Raw pending refunds data: $response');
 
       // Now fetch user details for each refund
       List<Map<String, dynamic>> enrichedRefunds = [];
@@ -404,7 +383,6 @@ class AdminPaymentService {
             'user_email': userDetails['email'],
           });
         } catch (e) {
-          print('❌ Error fetching user details for ${refund['user_id']}: $e');
           // Add refund without user details
           enrichedRefunds.add({
             ...refund,
@@ -415,7 +393,6 @@ class AdminPaymentService {
         }
       }
 
-      print('🔄 Enriched refunds count: ${enrichedRefunds.length}');
       return enrichedRefunds;
     } catch (e) {
       print('❌ Error fetching pending refunds: $e');
@@ -427,20 +404,15 @@ class AdminPaymentService {
   static Future<double> calculatePendingRefundAmount() async {
     try {
       final pendingRefunds = await getPendingRefunds();
-      print('🔄 Pending refunds count: ${pendingRefunds.length}');
       double total = 0.0;
 
       for (final refund in pendingRefunds) {
         final amount = refund['refund_amount'];
-        print(
-          '🔄 Processing refund amount: $amount (type: ${amount.runtimeType})',
-        );
         if (amount != null) {
           total += (amount as num).toDouble();
         }
       }
 
-      print('🔄 Total pending refund amount: $total');
       return total;
     } catch (e) {
       print('❌ Error calculating pending refund amount: $e');

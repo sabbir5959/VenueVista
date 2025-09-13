@@ -174,8 +174,6 @@ class _SchedulePageState extends State<SchedulePage>
         }
       }
 
-      print('🎯 Future bookings filtered: ${filtered.length}');
-
       setState(() {
         futureBookings = filtered;
         isLoading = false;
@@ -379,13 +377,14 @@ class _SchedulePageState extends State<SchedulePage>
         itemBuilder: (context, index) {
           final booking = futureBookings[index];
           final venue = booking['venues'];
-          
+
           // Check if booking should be disabled from clicking
           final cancellations = booking['cancellations'] as List?;
-          final isDisabled = cancellations?.isNotEmpty == true && 
-              (cancellations?.first['refund_status'] == 'completed' || 
-               cancellations?.first['refund_status'] == 'accepted' ||
-               cancellations?.first['refund_status'] == 'pending');
+          final isDisabled =
+              cancellations?.isNotEmpty == true &&
+              (cancellations?.first['refund_status'] == 'completed' ||
+                  cancellations?.first['refund_status'] == 'accepted' ||
+                  cancellations?.first['refund_status'] == 'pending');
 
           return Card(
             elevation: 4,
@@ -396,7 +395,10 @@ class _SchedulePageState extends State<SchedulePage>
             child: ListTile(
               contentPadding: EdgeInsets.all(16),
               title: _buildBookingTitle(booking, venue),
-              onTap: isDisabled ? null : () => _showBookingDetails(context, booking, venue),
+              onTap:
+                  isDisabled
+                      ? null
+                      : () => _showBookingDetails(context, booking, venue),
             ),
           );
         },
@@ -591,17 +593,17 @@ class _SchedulePageState extends State<SchedulePage>
     final startTime = booking['start_time'] ?? '';
     final endTime = booking['end_time'] ?? '';
     final location = venue?['address'] ?? '';
-    
+
     // Check cancellation status
     final cancellations = booking['cancellations'] as List?;
     String statusText = 'Click to Cancel';
     Color statusColor = Colors.green.shade700;
     Color statusBgColor = Colors.green.shade100;
-    
+
     if (cancellations?.isNotEmpty == true) {
       final cancellation = cancellations!.first;
       final refundStatus = cancellation['refund_status'];
-      
+
       switch (refundStatus) {
         case 'pending':
           statusText = 'Pending';
@@ -724,9 +726,9 @@ class _SchedulePageState extends State<SchedulePage>
           ),
         ],
         // Show refund amount if cancellation is accepted/completed
-        if (cancellations?.isNotEmpty == true && 
-            (cancellations?.first['refund_status'] == 'completed' || 
-             cancellations?.first['refund_status'] == 'accepted')) ...[
+        if (cancellations?.isNotEmpty == true &&
+            (cancellations?.first['refund_status'] == 'completed' ||
+                cancellations?.first['refund_status'] == 'accepted')) ...[
           SizedBox(height: 8),
           Row(
             children: [
@@ -781,11 +783,11 @@ class _SchedulePageState extends State<SchedulePage>
     // Check cancellation status for dialog
     final cancellations = booking['cancellations'] as List?;
     String statusText = 'Confirmed';
-    
+
     if (cancellations?.isNotEmpty == true) {
       final cancellation = cancellations!.first;
       final refundStatus = cancellation['refund_status'];
-      
+
       switch (refundStatus) {
         case 'pending':
           statusText = 'Pending Cancellation';
@@ -863,9 +865,14 @@ class _SchedulePageState extends State<SchedulePage>
               onPressed: () => Navigator.of(context).pop(),
             ),
             // Only show cancel button if there's no pending/accepted/processing cancellation
-            if (cancellations?.isEmpty == true || 
-                (cancellations?.isNotEmpty == true && 
-                 !['pending', 'accepted', 'completed', 'processing'].contains(cancellations?.first['refund_status'])))
+            if (cancellations?.isEmpty == true ||
+                (cancellations?.isNotEmpty == true &&
+                    ![
+                      'pending',
+                      'accepted',
+                      'completed',
+                      'processing',
+                    ].contains(cancellations?.first['refund_status'])))
               TextButton(
                 child: Text(
                   'Cancel Booking',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../constants/app_colors.dart';
+import '../../services/admin_booking_service.dart';
 
 class AdminBookingsPage extends StatefulWidget {
   const AdminBookingsPage({super.key});
@@ -16,9 +17,117 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
   final int _itemsPerPage = 8;
   String _selectedStatus = 'All';
 
+  // State for real data
+  List<Map<String, dynamic>> _bookings = [];
+  List<Map<String, dynamic>> _cancellationRequests = [];
+  Map<String, dynamic> _stats = {};
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBookingsData();
+  }
+
+  Future<void> _loadBookingsData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final bookings = await AdminBookingService.getAllBookings();
+      final cancellations =
+          await AdminBookingService.getAllCancellationRequests();
+      final stats = await AdminBookingService.getBookingStats();
+
+      final formattedBookings = <Map<String, dynamic>>[];
+      for (final booking in bookings) {
+        try {
+          final formatted = AdminBookingService.formatBookingForDisplay(
+            booking,
+          );
+          formattedBookings.add(formatted);
+        } catch (e) {
+          // Silently skip malformed booking
+        }
+      }
+
+      // Cancellations are already formatted by AdminBookingService
+      setState(() {
+        _bookings = formattedBookings;
+        _cancellationRequests = cancellations;
+        _stats = stats;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to load bookings: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
+
+    // Show loading state
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              SizedBox(height: 16),
+              Text(
+                'Loading bookings...',
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show error state
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: AppColors.error),
+              SizedBox(height: 16),
+              Text(
+                'Error loading bookings',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadBookingsData,
+                child: Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final filteredBookings = _getFilteredBookings();
     final totalPages = (filteredBookings.length / _itemsPerPage).ceil();
     final startIndex = (_currentPage - 1) * _itemsPerPage;
@@ -35,7 +144,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            
             Row(
               children: [
                 Expanded(
@@ -65,7 +173,26 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     ],
                   ),
                 ),
-               
+                SizedBox(width: 12),
+                // Refresh Button
+                Container(
+                  padding: EdgeInsets.all(isMobile ? 8 : 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: InkWell(
+                    onTap: _loadBookingsData,
+                    child: Icon(
+                      Icons.refresh,
+                      color: AppColors.primary,
+                      size: isMobile ? 18 : 20,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12),
+                // Export Button
                 Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: isMobile ? 12 : 16,
@@ -110,7 +237,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
             SizedBox(height: isMobile ? 20 : 32),
 
-            
             GridView.count(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
@@ -121,7 +247,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
               children: [
                 _buildStatCard(
                   'Total Bookings',
-                  '${_demoBookings.length}',
+                  '${_stats['totalBookings'] ?? 0}',
                   Icons.sports_soccer,
                   Colors.blue[600]!,
                   isMobile,
@@ -129,34 +255,33 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                 ),
                 _buildStatCard(
                   'Confirmed',
-                  '${_demoBookings.where((b) => b['status'] == 'Confirmed').length}',
+                  '${_stats['confirmedBookings'] ?? 0}',
                   Icons.check_circle_outline,
                   Colors.green[600]!,
                   isMobile,
-                  'Confirmed',
+                  'confirmed',
                 ),
                 _buildStatCard(
                   'Completed',
-                  '${_demoBookings.where((b) => b['status'] == 'Completed').length}',
+                  '${_stats['completedBookings'] ?? 0}',
                   Icons.done_all_outlined,
                   Colors.purple[600]!,
                   isMobile,
-                  'Completed',
+                  'completed',
                 ),
                 _buildStatCard(
-                  'Cancel Requests',
-                  '${_demoBookings.where((b) => b['status'] == 'Cancelled').length}',
+                  'Cancel Bookings',
+                  '${_cancellationRequests.length}',
                   Icons.cancel_outlined,
                   Colors.red[600]!,
                   isMobile,
-                  'Cancelled',
+                  'cancelled',
                 ),
               ],
             ),
 
             SizedBox(height: isMobile ? 20 : 24),
 
-       
             Container(
               decoration: BoxDecoration(
                 color: AppColors.surface,
@@ -171,7 +296,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
               ),
               child: Column(
                 children: [
-                  
                   Container(
                     padding: EdgeInsets.all(isMobile ? 16 : 20),
                     decoration: BoxDecoration(
@@ -205,7 +329,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     ),
                   ),
 
-                  
                   ListView.separated(
                     shrinkWrap: true,
                     physics: NeverScrollableScrollPhysics(),
@@ -221,7 +344,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     },
                   ),
 
-                 
                   if (totalPages > 1)
                     Container(
                       padding: EdgeInsets.all(isMobile ? 16 : 20),
@@ -235,7 +357,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                         
                           IconButton(
                             onPressed:
                                 _currentPage > 1
@@ -248,7 +369,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                                     : AppColors.textSecondary,
                           ),
 
-                          
                           ...List.generate(totalPages, (index) {
                             final page = index + 1;
                             final isCurrentPage = page == _currentPage;
@@ -290,7 +410,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                             );
                           }),
 
-                          
                           IconButton(
                             onPressed:
                                 _currentPage < totalPages
@@ -309,7 +428,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
               ),
             ),
 
-            SizedBox(height: 40), 
+            SizedBox(height: 40),
           ],
         ),
       ),
@@ -330,7 +449,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
       onTap: () {
         setState(() {
           _selectedStatus = filterStatus;
-          _currentPage = 1; 
+          _currentPage = 1;
         });
       },
       borderRadius: BorderRadius.circular(16),
@@ -415,12 +534,33 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
     );
   }
 
-  Widget _buildBookingListItem(Map<String, dynamic> booking, bool isMobile) {
+  Widget _buildBookingListItem(Map<String, dynamic> item, bool isMobile) {
+    // Check if this is a cancellation request or regular booking
+    final isCancellation = item.containsKey('reason');
+
+    // Use formatted data directly - formatting function already processed the data
+    final venueName = item['venue_name'] ?? 'Unknown Venue';
+    final userName = item['user_name'] ?? 'Unknown User';
+
+    final bookingDate = item['booking_date'] ?? item['date'] ?? '';
+    final startTime = item['start_time'] ?? '';
+    final endTime = item['end_time'] ?? '';
+    final timeSlot =
+        (startTime.isNotEmpty && endTime.isNotEmpty)
+            ? '$startTime - $endTime'
+            : (item['time'] ?? '');
+
+    final amount =
+        item['total_amount'] ?? item['total_price'] ?? item['amount'] ?? 0;
+    final formattedAmount = amount is String ? amount : '৳${amount.toString()}';
+
+    // Determine status
+    final status = item['status'] ?? (isCancellation ? 'Cancelled' : 'Unknown');
+
     return Container(
       padding: EdgeInsets.all(isMobile ? 16 : 20),
       child: Row(
         children: [
-          
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,7 +569,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        booking['venue'],
+                        venueName,
                         style: TextStyle(
                           fontSize: isMobile ? 14 : 16,
                           fontWeight: FontWeight.w600,
@@ -441,17 +581,18 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _getBookingStatusColor(
-                          booking['status'],
-                        ).withOpacity(0.1),
+                        color: _getBookingStatusColor(status).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        booking['status'],
+                        status.isNotEmpty
+                            ? status[0].toUpperCase() +
+                                status.substring(1).toLowerCase()
+                            : status,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: _getBookingStatusColor(booking['status']),
+                          color: _getBookingStatusColor(status),
                         ),
                       ),
                     ),
@@ -459,12 +600,25 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Booked by ${booking['user']}',
+                  isCancellation
+                      ? 'Cancellation request by $userName'
+                      : 'Booked by $userName',
                   style: TextStyle(
                     fontSize: isMobile ? 12 : 14,
                     color: AppColors.textSecondary,
                   ),
                 ),
+                if (isCancellation && item['reason'] != null) ...[
+                  SizedBox(height: 4),
+                  Text(
+                    'Reason: ${item['reason']}',
+                    style: TextStyle(
+                      fontSize: isMobile ? 11 : 12,
+                      color: Colors.orange[700],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
                 SizedBox(height: 8),
                 Row(
                   children: [
@@ -474,45 +628,55 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                       color: AppColors.textSecondary,
                     ),
                     SizedBox(width: 4),
-                    Text(
-                      booking['date'],
-                      style: TextStyle(
-                        fontSize: 12,
+                    Flexible(
+                      child: Text(
+                        bookingDate,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (timeSlot.isNotEmpty) ...[
+                      SizedBox(width: 8),
+                      Icon(
+                        Icons.access_time_outlined,
+                        size: 14,
                         color: AppColors.textSecondary,
                       ),
-                    ),
-                    SizedBox(width: 16),
-                    Icon(
-                      Icons.access_time_outlined,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      booking['time'],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
+                      SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          timeSlot,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                    Spacer(),
-                    Text(
-                      booking['amount'],
-                      style: TextStyle(
-                        fontSize: isMobile ? 14 : 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
+                    ],
+                    if (!isCancellation) ...[
+                      SizedBox(width: 8),
+                      Text(
+                        formattedAmount,
+                        style: TextStyle(
+                          fontSize: isMobile ? 14 : 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ],
             ),
           ),
           SizedBox(width: 12),
-          
+
           InkWell(
-            onTap: () => _showBookingDetails(booking),
+            onTap: () => _showBookingDetails(item),
             borderRadius: BorderRadius.circular(8),
             child: Container(
               padding: EdgeInsets.symmetric(
@@ -551,32 +715,51 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
   }
 
   List<Map<String, dynamic>> _getFilteredBookings() {
-    List<Map<String, dynamic>> filtered = _demoBookings;
+    List<Map<String, dynamic>> filtered = [];
 
-    // Filter by status
-    if (_selectedStatus != 'All') {
-      filtered =
-          filtered
-              .where((booking) => booking['status'] == _selectedStatus)
-              .toList();
+    // For cancelled status, show cancellation requests instead of bookings
+    if (_selectedStatus == 'cancelled') {
+      filtered = List.from(_cancellationRequests);
+    } else {
+      filtered = List.from(_bookings);
+
+      // Filter by status for regular bookings
+      if (_selectedStatus != 'All') {
+        filtered =
+            filtered
+                .where(
+                  (booking) =>
+                      (booking['status'] ?? '').toLowerCase() ==
+                      _selectedStatus.toLowerCase(),
+                )
+                .toList();
+      }
     }
 
-    
+    // Filter by date range
     if (_startDate != null || _endDate != null) {
       filtered =
-          filtered.where((booking) {
-            DateTime bookingDate = DateTime.parse(booking['date']);
+          filtered.where((item) {
+            try {
+              String? dateStr = item['booking_date'];
+              if (dateStr == null || dateStr.isEmpty) return false;
 
-            if (_startDate != null && bookingDate.isBefore(_startDate!)) {
+              DateTime bookingDate = DateTime.parse(dateStr);
+
+              if (_startDate != null && bookingDate.isBefore(_startDate!)) {
+                return false;
+              }
+
+              if (_endDate != null &&
+                  bookingDate.isAfter(_endDate!.add(Duration(days: 1)))) {
+                return false;
+              }
+
+              return true;
+            } catch (e) {
+              // Skip items with invalid dates
               return false;
             }
-
-            if (_endDate != null &&
-                bookingDate.isAfter(_endDate!.add(Duration(days: 1)))) {
-              return false;
-            }
-
-            return true;
           }).toList();
     }
 
@@ -584,155 +767,17 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
   }
 
   Color _getBookingStatusColor(String status) {
-    switch (status) {
-      case 'Confirmed':
+    switch (status.toLowerCase()) {
+      case 'confirmed':
         return Colors.green[600]!;
-      case 'Cancelled':
+      case 'cancelled':
         return Colors.red[600]!;
-      case 'Completed':
+      case 'completed':
         return Colors.purple[600]!;
       default:
         return AppColors.textSecondary;
     }
   }
-
-  static final List<Map<String, dynamic>> _demoBookings = [
-    {
-      'id': 'BK001',
-      'venue': 'Green Valley Football Ground',
-      'user': 'Ahmed Rahman',
-      'date': '2024-07-20',
-      'time': '10:00 - 11:00',
-      'amount': '৳1,500',
-      'status': 'Confirmed',
-    },
-    {
-      'id': 'BK002',
-      'venue': 'Dhanmondi Football Complex',
-      'user': 'Fatima Khan',
-      'date': '2024-07-21',
-      'time': '14:00 - 15:00',
-      'amount': '৳1,200',
-      'status': 'Confirmed',
-    },
-    {
-      'id': 'BK003',
-      'venue': 'National Football Stadium',
-      'user': 'Mohammad Ali',
-      'date': '2024-07-22',
-      'time': '09:00 - 12:00',
-      'amount': '৳3,500',
-      'status': 'Confirmed',
-    },
-    {
-      'id': 'BK004',
-      'venue': 'Uttara Football Arena',
-      'user': 'Rashida Begum',
-      'date': '2024-07-19',
-      'time': '16:00 - 17:00',
-      'amount': '৳800',
-      'status': 'Completed',
-    },
-    {
-      'id': 'BK005',
-      'venue': 'Gulshan Football Ground',
-      'user': 'Karim Hassan',
-      'date': '2024-07-23',
-      'time': '18:00 - 19:00',
-      'amount': '৳1,000',
-      'status': 'Confirmed',
-    },
-    {
-      'id': 'BK006',
-      'venue': 'University Football Field',
-      'user': 'Salma Khatun',
-      'date': '2024-07-18',
-      'time': '08:00 - 09:00',
-      'amount': '৳900',
-      'status': 'Cancelled',
-    },
-    {
-      'id': 'BK007',
-      'venue': 'Elite Football Academy',
-      'user': 'Abdul Mannan',
-      'date': '2024-07-25',
-      'time': '16:00 - 18:00',
-      'amount': '৳4,000',
-      'status': 'Confirmed',
-    },
-    {
-      'id': 'BK008',
-      'venue': 'Banani Football Club',
-      'user': 'Nazia Ahmed',
-      'date': '2024-07-26',
-      'time': '17:30 - 18:30',
-      'amount': '৳1,200',
-      'status': 'Confirmed',
-    },
-    {
-      'id': 'BK009',
-      'venue': 'Chittagong Football Stadium',
-      'user': 'Ruhul Amin',
-      'date': '2024-07-24',
-      'time': '14:00 - 16:00',
-      'amount': '৳5,500',
-      'status': 'Cancelled',
-    },
-    {
-      'id': 'BK010',
-      'venue': 'Mirpur Football Arena',
-      'user': 'Fahmida Khan',
-      'date': '2024-07-22',
-      'time': '19:00 - 20:00',
-      'amount': '৳750',
-      'status': 'Completed',
-    },
-    {
-      'id': 'BK011',
-      'venue': 'Wari Football Field',
-      'user': 'Shariful Islam',
-      'date': '2024-07-27',
-      'time': '15:00 - 16:30',
-      'amount': '৳2,800',
-      'status': 'Confirmed',
-    },
-    {
-      'id': 'BK012',
-      'venue': 'Motijheel Football Ground',
-      'user': 'Nasreen Sultana',
-      'date': '2024-07-28',
-      'time': '07:00 - 08:00',
-      'amount': '৳950',
-      'status': 'Confirmed',
-    },
-    {
-      'id': 'BK013',
-      'venue': 'Rajshahi Football Complex',
-      'user': 'Mizanur Rahman',
-      'date': '2024-07-29',
-      'time': '10:00 - 12:00',
-      'amount': '৳3,200',
-      'status': 'Cancelled',
-    },
-    {
-      'id': 'BK014',
-      'venue': 'Lalmatia Football Ground',
-      'user': 'Sultana Begum',
-      'date': '2024-07-21',
-      'time': '17:00 - 18:00',
-      'amount': '৳1,800',
-      'status': 'Completed',
-    },
-    {
-      'id': 'BK015',
-      'venue': 'Mohammadpur Football Complex',
-      'user': 'Jahangir Alam',
-      'date': '2024-07-30',
-      'time': '20:00 - 21:00',
-      'amount': '৳1,500',
-      'status': 'Confirmed',
-    },
-  ];
 
   void _showExportDialog(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
@@ -774,7 +819,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      
                       Text(
                         'Export Format',
                         style: TextStyle(
@@ -793,7 +837,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                       ),
                       SizedBox(height: 16),
 
-                     
                       Row(
                         children: [
                           Expanded(
@@ -822,7 +865,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                       SizedBox(height: 24),
 
-                      
                       Text(
                         'Filter Settings',
                         style: TextStyle(
@@ -833,7 +875,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                       ),
                       SizedBox(height: 16),
 
-                     
                       Text(
                         'Booking Status',
                         style: TextStyle(
@@ -936,7 +977,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                       SizedBox(height: 16),
 
-                      
                       Text(
                         'Time Period',
                         style: TextStyle(
@@ -1135,54 +1175,44 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
   }
 
   void _exportToExcel() async {
-   
-    Navigator.of(context).pop(); 
+    Navigator.of(context).pop();
 
-   
     _showExportProgress('Excel');
 
     try {
-      
       List<Map<String, dynamic>> filteredBookings = _getFilteredBookings();
 
-      
       await Future.delayed(Duration(seconds: 2));
       if (Navigator.canPop(context)) {
-        Navigator.of(context).pop(); 
+        Navigator.of(context).pop();
       }
 
-      
       _showOnlineExcelViewer(filteredBookings);
     } catch (e) {
       if (Navigator.canPop(context)) {
-        Navigator.of(context).pop(); 
+        Navigator.of(context).pop();
       }
       _showErrorDialog('Failed to generate Excel: $e');
     }
   }
 
   void _exportToPDF() async {
-    
     Navigator.of(context).pop();
 
-    
     _showExportProgress('PDF');
 
     try {
-     
       List<Map<String, dynamic>> filteredBookings = _getFilteredBookings();
 
-      
       await Future.delayed(Duration(seconds: 2));
       if (Navigator.canPop(context)) {
-        Navigator.of(context).pop(); 
+        Navigator.of(context).pop();
       }
 
-      
       _showOnlinePDFViewer(filteredBookings);
     } catch (e) {
       if (Navigator.canPop(context)) {
-        Navigator.of(context).pop(); 
+        Navigator.of(context).pop();
       }
       _showErrorDialog('Failed to generate PDF: $e');
     }
@@ -1194,7 +1224,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black54, 
+      barrierColor: Colors.black54,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
@@ -1233,7 +1263,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
             height: MediaQuery.of(context).size.height * 0.6,
             child: Column(
               children: [
-                
                 Row(
                   children: [
                     Expanded(
@@ -1252,7 +1281,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                 ),
                 SizedBox(height: 16),
 
-                
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -1335,7 +1363,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                 SizedBox(height: 16),
 
-                
                 Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -1387,7 +1414,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black54, 
+      barrierColor: Colors.black54,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
@@ -1426,7 +1453,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
             height: MediaQuery.of(context).size.height * 0.6,
             child: Column(
               children: [
-                
                 Row(
                   children: [
                     Expanded(
@@ -1445,7 +1471,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                 ),
                 SizedBox(height: 16),
 
-                
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -1465,7 +1490,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          
                           Center(
                             child: Column(
                               children: [
@@ -1500,7 +1524,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                           SizedBox(height: 16),
 
-                         
                           Expanded(
                             child: SingleChildScrollView(
                               child: Column(
@@ -1602,7 +1625,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
                 SizedBox(height: 16),
 
-                
                 Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -1680,7 +1702,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
           '${booking['id']}\t${booking['venue']}\t${booking['user']}\t${booking['date']}\t${booking['time']}\t${booking['amount']}\t${booking['status']}\n';
     }
 
-    
     Clipboard.setData(ClipboardData(text: clipboardData));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1693,33 +1714,58 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
     );
   }
 
-  void _showBookingDetails(Map<String, dynamic> booking) {
+  void _showBookingDetails(Map<String, dynamic> item) {
     final isMobile = MediaQuery.of(context).size.width < 768;
+    final isCancellation = item.containsKey('reason');
+
+    // Use formatted data directly - formatting function already processed the data
+    final venueName = item['venue_name'] ?? 'Unknown Venue';
+    final userName = item['user_name'] ?? 'Unknown User';
+    final userEmail = item['user_email'] ?? '';
+    final userPhone = item['user_phone'] ?? '';
+
+    final bookingDate = item['booking_date'] ?? item['date'] ?? '';
+    final startTime = item['start_time'] ?? '';
+    final endTime = item['end_time'] ?? '';
+    final timeSlot =
+        (startTime.isNotEmpty && endTime.isNotEmpty)
+            ? '$startTime - $endTime'
+            : (item['time'] ?? '');
+
+    final amount =
+        item['total_amount'] ?? item['original_amount'] ?? item['amount'] ?? 0;
+    final formattedAmount =
+        amount is String ? '৳$amount' : '৳${amount.toString()}';
+
+    final status = item['status'] ?? (isCancellation ? 'cancelled' : 'Unknown');
+    final itemId = item['id']?.toString() ?? '';
+    final reason = item['reason'] ?? '';
+    final createdAt = item['created_at'] ?? '';
 
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          contentPadding: EdgeInsets.zero, 
+          contentPadding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           title: Padding(
-            padding: EdgeInsets.all(16), 
+            padding: EdgeInsets.all(16),
             child: Row(
               children: [
                 Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _getBookingStatusColor(
-                      booking['status'],
-                    ).withOpacity(0.1),
+                    color: _getBookingStatusColor(status).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
-                    Icons.sports_soccer,
-                    color: _getBookingStatusColor(booking['status']),
+                    isCancellation
+                        ? Icons.cancel_outlined
+                        : Icons.sports_soccer,
+                    color: _getBookingStatusColor(status),
                     size: 20,
                   ),
                 ),
@@ -1729,7 +1775,9 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Booking Details',
+                        isCancellation
+                            ? 'Cancellation Request'
+                            : 'Booking Details',
                         style: TextStyle(
                           fontSize: isMobile ? 16 : 18,
                           fontWeight: FontWeight.w600,
@@ -1737,7 +1785,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                         ),
                       ),
                       Text(
-                        'ID: ${booking['id']}',
+                        'ID: $itemId',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -1749,17 +1797,15 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getBookingStatusColor(
-                      booking['status'],
-                    ).withOpacity(0.1),
+                    color: _getBookingStatusColor(status).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    booking['status'],
+                    status,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: _getBookingStatusColor(booking['status']),
+                      color: _getBookingStatusColor(status),
                     ),
                   ),
                 ),
@@ -1767,113 +1813,100 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
             ),
           ),
           content: Container(
-            padding: EdgeInsets.all(16), 
+            padding: EdgeInsets.all(16),
             width: isMobile ? double.maxFinite : 400,
-            height: MediaQuery.of(context).size.height * 0.6, 
+            height: MediaQuery.of(context).size.height * 0.6,
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  
                   _buildDetailSection('Venue Information', [
                     _buildDetailItem(
                       'Venue Name',
-                      booking['venue'],
+                      venueName,
                       Icons.location_on_outlined,
                     ),
                     _buildDetailItem(
                       'Booking ID',
-                      booking['id'],
+                      itemId,
                       Icons.confirmation_number_outlined,
                     ),
                   ], isMobile),
 
                   SizedBox(height: 12),
 
-                  
                   _buildDetailSection('Customer Information', [
                     _buildDetailItem(
                       'Customer Name',
-                      booking['user'],
+                      userName,
                       Icons.person_outline,
                     ),
-                    _buildDetailItem(
-                      'Contact',
-                      '+880 1712-345678',
-                      Icons.phone_outlined,
-                    ),
-                    _buildDetailItem(
-                      'Email',
-                      '${booking['user'].toLowerCase().replaceAll(' ', '.')}@email.com',
-                      Icons.email_outlined,
-                    ),
+                    if (userPhone.isNotEmpty)
+                      _buildDetailItem(
+                        'Contact',
+                        userPhone,
+                        Icons.phone_outlined,
+                      ),
+                    if (userEmail.isNotEmpty)
+                      _buildDetailItem(
+                        'Email',
+                        userEmail,
+                        Icons.email_outlined,
+                      ),
                   ], isMobile),
 
                   SizedBox(height: 12),
 
-                  
                   _buildDetailSection('Booking Information', [
                     _buildDetailItem(
                       'Date',
-                      booking['date'],
+                      bookingDate,
                       Icons.calendar_today_outlined,
                     ),
-                    _buildDetailItem(
-                      'Time Slot',
-                      booking['time'],
-                      Icons.access_time_outlined,
-                    ),
-                    _buildDetailItem(
-                      'Duration',
-                      '1 Hour',
-                      Icons.timer_outlined,
-                    ),
-                    _buildDetailItem(
-                      'Total Amount',
-                      booking['amount'],
-                      Icons.payments_outlined,
-                    ),
+                    if (timeSlot.isNotEmpty)
+                      _buildDetailItem(
+                        'Time Slot',
+                        timeSlot,
+                        Icons.access_time_outlined,
+                      ),
+                    if (!isCancellation)
+                      _buildDetailItem(
+                        'Total Amount',
+                        formattedAmount,
+                        Icons.payments_outlined,
+                      ),
                   ], isMobile),
 
                   SizedBox(height: 12),
 
-                  
                   _buildDetailSection('Status Information', [
                     _buildDetailItem(
                       'Current Status',
-                      booking['status'],
+                      status,
                       Icons.flag_outlined,
                     ),
-                    _buildDetailItem(
-                      'Booked On',
-                      '2024-07-15 14:30',
-                      Icons.schedule_outlined,
-                    ),
-                    _buildDetailItem(
-                      'Payment Status',
-                      booking['status'] == 'Cancelled' ? 'Refunded' : 'Paid',
-                      Icons.payment_outlined,
-                    ),
+                    if (createdAt.isNotEmpty)
+                      _buildDetailItem(
+                        isCancellation ? 'Requested On' : 'Booked On',
+                        createdAt.split('T')[0], // Format date part only
+                        Icons.schedule_outlined,
+                      ),
+                    if (!isCancellation)
+                      _buildDetailItem(
+                        'Payment Status',
+                        status == 'completed' ? 'Completed' : 'Pending',
+                        Icons.payment_outlined,
+                      ),
                   ], isMobile),
 
-                  
-                  if (booking['status'] == 'Cancelled') ...[
+                  if (isCancellation && reason.isNotEmpty) ...[
                     SizedBox(height: 12),
                     _buildDetailSection('Cancellation Details', [
+                      _buildDetailItem('Reason', reason, Icons.info_outline),
                       _buildDetailItem(
-                        'Cancelled On',
-                        '2024-07-16 09:15',
+                        'Requested On',
+                        createdAt.isNotEmpty ? createdAt.split('T')[0] : '',
                         Icons.cancel_outlined,
-                      ),
-                      _buildDetailItem(
-                        'Reason',
-                        'Customer requested due to emergency',
-                        Icons.info_outline,
-                      ),
-                      _buildDetailItem(
-                        'Refund Status',
-                        'Completed',
-                        Icons.account_balance_wallet_outlined,
                       ),
                     ], isMobile),
                   ],
@@ -1928,7 +1961,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, 
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 14, color: AppColors.textSecondary),
           SizedBox(width: 8),
@@ -1953,15 +1986,41 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     SizedBox(width: 8),
                     Expanded(
                       flex: 3,
-                      child: Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.right,
-                      ),
+                      child:
+                          label == 'Current Status'
+                              ? Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getBookingStatusColor(
+                                    value,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  value.isNotEmpty
+                                      ? value[0].toUpperCase() +
+                                          value.substring(1).toLowerCase()
+                                      : value,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _getBookingStatusColor(value),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              )
+                              : Text(
+                                value,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.right,
+                              ),
                     ),
                   ],
                 ),
@@ -2042,7 +2101,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
       },
     );
 
-    
     Future.delayed(Duration(seconds: 2), () {
       Navigator.of(context).pop();
     });

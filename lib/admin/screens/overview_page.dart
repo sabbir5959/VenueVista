@@ -22,6 +22,8 @@ class _AdminOverviewPageState extends State<AdminOverviewPage> {
 
   Future<void> _loadStats() async {
     try {
+      if (!mounted) return;
+
       setState(() {
         _isLoading = true;
         _error = null;
@@ -30,11 +32,15 @@ class _AdminOverviewPageState extends State<AdminOverviewPage> {
       final stats = await AdminStatsService.getOverviewStats();
       final monthlyStats = await AdminStatsService.getMonthlyStats();
 
+      if (!mounted) return;
+
       setState(() {
         _stats = {...stats, ...monthlyStats};
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _error = e.toString();
         _isLoading = false;

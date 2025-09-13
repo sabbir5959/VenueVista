@@ -13,16 +13,12 @@ class UserService {
     String? statusFilter,
   }) async {
     try {
-      print('🔄 Fetching users - Page: $page, Limit: $limit');
-
       // Simple approach - get all data and filter in code
       final allUsers = await _client
           .from('user_profiles')
           .select('*')
           .eq('role', 'user')
           .order('created_at', ascending: false);
-
-      print('✅ Fetched ${allUsers.length} total users from database');
 
       // Apply search filter
       List<Map<String, dynamic>> filteredUsers = allUsers;
@@ -57,8 +53,6 @@ class UserService {
         offset,
         endIndex > filteredUsers.length ? filteredUsers.length : endIndex,
       );
-
-      print('✅ Fetched ${paginatedUsers.length} users, Total: $totalCount');
 
       return {
         'users': paginatedUsers.map((user) => _formatUserData(user)).toList(),

@@ -90,7 +90,7 @@ class _AdminVenuesPageState extends State<AdminVenuesPage> {
         _stats = stats;
       });
     } catch (e) {
-      print('Error loading stats: $e');
+      // Silently handle stats loading error
     }
   }
 

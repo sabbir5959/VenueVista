@@ -40,7 +40,6 @@ class _HomeActivityState extends State<HomeActivity> {
 
     try {
       // Load venues
-      print('📞 Dashboard: Loading venues...');
       final venues = await VenueService.getFeaturedVenues(limit: 10);
       if (venues.isEmpty) {
         final allVenues = await VenueService.getAllVenues();
@@ -65,7 +64,6 @@ class _HomeActivityState extends State<HomeActivity> {
       }
 
       // Load tournaments
-      print('📞 Dashboard: Loading tournaments...');
       final tournaments = await TournamentService.getFeaturedTournaments(
         limit: 5,
       );
@@ -76,10 +74,6 @@ class _HomeActivityState extends State<HomeActivity> {
       } else {
         _featuredTournaments = tournaments;
       }
-
-      print(
-        '✅ Dashboard data loaded - Venues: ${_featuredGrounds.length}, Tournaments: ${_featuredTournaments.length}',
-      );
     } catch (e) {
       print('❌ Error loading dashboard data: $e');
       // Keep fallback data if backend fails
