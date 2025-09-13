@@ -40,20 +40,25 @@ CREATE TABLE public.venues (
   ground_payment numeric DEFAULT 0,
   capacity integer,
   ground_size text,
-  venue_type character varying DEFAULT 'football'::character varying CHECK (venue_type::text = 'football'::text),
-  facilities ARRAY,
+  venue_type varchar DEFAULT 'football' CHECK (venue_type IN ('football', 'cricket', 'basketball')),
+  facilities text[],
   rating numeric DEFAULT 0.0 CHECK (rating >= 0.0 AND rating <= 5.0),
-  status character varying DEFAULT 'active'::character varying CHECK (status::text = ANY (ARRAY['active'::character varying, 'inactive'::character varying, 'maintenance'::character varying, 'owner_suspended'::character varying]::text[])),
+  status varchar DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'maintenance', 'owner_suspended')),
   maintenance_reason text,
   maintenance_start date,
   maintenance_end date,
-  image_urls ARRAY,
+  image_urls text[],
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   area text,
+  discount_per_hour text,
+  discount_start_date date,
+  discount_end_date date,
+  CHECK (discount_end_date IS NULL OR discount_start_date IS NULL OR discount_end_date >= discount_start_date),
   CONSTRAINT venues_pkey PRIMARY KEY (id),
   CONSTRAINT venues_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.user_profiles(id)
 );
+
 
 -- Update dummy owner profiles
 UPDATE public.user_profiles SET 

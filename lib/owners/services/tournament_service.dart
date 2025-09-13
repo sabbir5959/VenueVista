@@ -3,6 +3,30 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class OwnerTournamentService {
   static final SupabaseClient _client = Supabase.instance.client;
 
+  /// Check if the tournament date conflicts with maintenance
+  static Future<bool> checkMaintenanceConflict(String venueId, DateTime tournamentDate) async {
+    try {
+      final response = await _client
+          .from('venues')
+          .select('maintenance_start, maintenance_end, maintenance_reason')
+          .eq('id', venueId)
+          .not('maintenance_start', 'is', null)
+          .not('maintenance_end', 'is', null);
+
+      if (response.isEmpty) return false;
+
+      final venue = response.first;
+      final maintenanceStart = DateTime.parse(venue['maintenance_start']);
+      final maintenanceEnd = DateTime.parse(venue['maintenance_end']);
+
+      return tournamentDate.isAfter(maintenanceStart.subtract(const Duration(days: 1))) &&
+             tournamentDate.isBefore(maintenanceEnd.add(const Duration(days: 1)));
+    } catch (e) {
+      print('Error checking maintenance conflict: $e');
+      return false;
+    }
+  }
+
   /// Create a new tournament (Owner specific)
   static Future<Map<String, dynamic>> createTournament({
     required String name,
@@ -22,6 +46,27 @@ class OwnerTournamentService {
     String? imageUrl,
   }) async {
     try {
+      // First check for maintenance conflicts
+      final hasMaintenanceConflict = await checkMaintenanceConflict(venueId, tournamentDate);
+      if (hasMaintenanceConflict) {
+        // Get maintenance details for error message
+        final maintenanceResponse = await _client
+            .from('venues')
+            .select('maintenance_start, maintenance_end, maintenance_reason')
+            .eq('id', venueId)
+            .single();
+        
+        final reason = maintenanceResponse['maintenance_reason'] ?? 'Maintenance scheduled';
+        final startDate = DateTime.parse(maintenanceResponse['maintenance_start']).toLocal();
+        final endDate = DateTime.parse(maintenanceResponse['maintenance_end']).toLocal();
+        
+        throw Exception(
+          'Cannot create tournament on this date. Venue maintenance is scheduled: '
+          '$reason (${startDate.day}/${startDate.month}/${startDate.year} - '
+          '${endDate.day}/${endDate.month}/${endDate.year})'
+        );
+      }
+
       // Generate unique tournament ID
       final tournamentId = 'TOURN${DateTime.now().millisecondsSinceEpoch}';
 
@@ -92,16 +137,36 @@ class OwnerTournamentService {
   static Future<List<Map<String, dynamic>>> getOwnerVenues(String ownerId) async {
     try {
       print('DEBUG [OWNER]: Fetching venues for owner: $ownerId');
-      
-      final response = await _client
+      // First attempt: fetch active venues
+      final activeResponse = await _client
           .from('venues')
-          .select('id, name, city, area, capacity')
+          .select('id, name, city, area, capacity, status, maintenance_start, maintenance_end')
           .eq('owner_id', ownerId)
           .eq('status', 'active')
           .order('name', ascending: true);
-      
-      print('DEBUG [OWNER]: Retrieved ${response.length} venues for owner');
-      return List<Map<String, dynamic>>.from(response);
+
+      print('DEBUG [OWNER]: Active venues count: ${activeResponse.length}');
+
+      if (activeResponse.isNotEmpty) {
+        return List<Map<String, dynamic>>.from(activeResponse);
+      }
+
+      // If no active venues, fallback to any venues (maybe under maintenance)
+      final anyResponse = await _client
+          .from('venues')
+          .select('id, name, city, area, capacity, status, maintenance_start, maintenance_end')
+          .eq('owner_id', ownerId)
+          .order('name', ascending: true);
+
+      print('DEBUG [OWNER]: Fallback any-status venues count: ${anyResponse.length}');
+      if (anyResponse.isEmpty) {
+        print('DEBUG [OWNER]: No venues found at all for owner $ownerId');
+      } else {
+        final statuses = anyResponse.map((v) => v['status']).toSet();
+        print('DEBUG [OWNER]: Found venues with statuses: $statuses');
+      }
+
+      return List<Map<String, dynamic>>.from(anyResponse);
     } catch (e) {
       print('DEBUG [OWNER]: Error fetching venues by owner: $e');
       if (e is PostgrestException) {
@@ -122,7 +187,7 @@ class OwnerTournamentService {
       final response = await _client
           .from('tournaments')
           .update(updates)
-          .eq('tournament_id', tournamentId)
+          .eq('id', tournamentId)  // Use 'id' (UUID) instead of 'tournament_id'
           .select()
           .single();
       
@@ -145,7 +210,7 @@ class OwnerTournamentService {
       await _client
           .from('tournaments')
           .delete()
-          .eq('tournament_id', tournamentId);
+          .eq('id', tournamentId);  // Use 'id' (UUID) instead of 'tournament_id'
       
       print('DEBUG [OWNER]: Tournament deleted successfully');
     } catch (e) {

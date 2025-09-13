@@ -3,9 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/venue_owner_sidebar.dart';
 import '../widgets/owner_profile_widget.dart';
-import '../models/discount_schedule.dart';
-import '../services/dynamic_pricing_service.dart';
-import 'edit_schedule_page.dart';
 
 class DynamicPricingPage extends StatefulWidget {
   const DynamicPricingPage({Key? key}) : super(key: key);
@@ -16,35 +13,34 @@ class DynamicPricingPage extends StatefulWidget {
 
 class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final DynamicPricingService _pricingService = DynamicPricingService.instance;
   final SupabaseClient _supabase = Supabase.instance.client;
-  
-  // Owner venue information
+
+  // Venue data
   Map<String, dynamic>? _ownerVenue;
-  
-  // Base price
-  double _basePrice = 500.0;
+  double _basePrice = 0;
   final TextEditingController _basePriceController = TextEditingController();
-  
-  // Discount form controllers
-  DateTime? _startDate;
-  DateTime? _endDate;
+
+  // Active discount (stored in venue row)
+  double? _discountPrice; // discount_per_hour
+  DateTime? _discountStartDate; // discount_start_date
+  DateTime? _discountEndDate; // discount_end_date (nullable/open-ended)
+
+  // Scheduling form
+  String _discountType = 'percentage'; // 'percentage' or 'flat'
   final TextEditingController _discountValueController = TextEditingController();
   final TextEditingController _labelController = TextEditingController();
-  String _discountType = 'percentage'; // 'percentage' or 'flat'
-  
-  // Data
+
+  // Local list of scheduled/applied discounts (only holds current + session history)
+  final List<Map<String, dynamic>> _appliedDiscounts = [];
+
   bool _isLoading = false;
-  
-  // Applied discounts storage (in-memory for now)
-  List<Map<String, dynamic>> _appliedDiscounts = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _basePriceController.text = _basePrice.toString();
     _loadOwnerVenue();
+    _loadAppliedDiscounts();
   }
 
   @override
@@ -59,131 +55,257 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
   Future<void> _loadOwnerVenue() async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user != null) {
-        final response = await _supabase
-            .from('venues')
-            .select('id, name, address, city, price_per_hour')
-            .eq('owner_id', user.id)
-            .single();
-        
-        setState(() {
-          _ownerVenue = response;
-          _basePrice = (response['price_per_hour'] as num?)?.toDouble() ?? 500.0;
-          _basePriceController.text = _basePrice.toString();
-        });
-      }
+      if (user == null) return;
+      final response = await _supabase
+          .from('venues')
+          .select('id, name, address, city, price_per_hour, discount_per_hour, discount_start_date, discount_end_date')
+          .eq('owner_id', user.id)
+          .single();
+
+      setState(() {
+        _ownerVenue = response;
+        _basePrice = (response['price_per_hour'] as num?)?.toDouble() ?? 0;
+        _basePriceController.text = _basePrice.toStringAsFixed(0);
+        _discountPrice = (response['discount_per_hour'] as num?)?.toDouble();
+        final startIso = response['discount_start_date'];
+        final endIso = response['discount_end_date'];
+        _discountStartDate = startIso != null ? DateTime.parse(startIso).toLocal() : null;
+        _discountEndDate = endIso != null ? DateTime.parse(endIso).toLocal() : null;
+      });
     } catch (e) {
-      print('Error loading owner venue: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading venue information: $e'),
-            backgroundColor: Colors.orange,
-          ),
+          SnackBar(content: Text('Error loading venue: $e'), backgroundColor: Colors.orange),
         );
       }
     }
   }
 
-  Future<void> _applyDynamicDiscount() async {
-    if (_ownerVenue == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Venue information not loaded'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (_startDate == null || _endDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select start and end dates'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (_discountValueController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter discount value'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
+  Future<void> _loadAppliedDiscounts() async {
     try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      final response = await _supabase
+          .from('venues')
+          .select('id, name, address, city, price_per_hour, discount_per_hour, discount_start_date, discount_end_date')
+          .eq('owner_id', user.id)
+          .single();
+
       setState(() {
-        _isLoading = true;
-      });
-
-      final discountValue = double.parse(_discountValueController.text);
-      final originalPrice = _basePrice;
-      double discountedPrice;
-
-      if (_discountType == 'percentage') {
-        discountedPrice = originalPrice - (originalPrice * discountValue / 100);
-      } else {
-        discountedPrice = originalPrice - discountValue;
-      }
-
-      // Ensure price doesn't go below 0
-      discountedPrice = discountedPrice < 0 ? 0 : discountedPrice;
-
-      // Store discount information (don't update venue price in database)
-      final discountInfo = {
-        'venue_id': _ownerVenue!['id'],
-        'venue_name': _ownerVenue!['name'],
-        'original_price': originalPrice,
-        'discounted_price': discountedPrice,
-        'discount_value': discountValue,
-        'discount_type': _discountType,
-        'start_date': _startDate!.toIso8601String(),
-        'end_date': _endDate!.toIso8601String(),
-        'label': _labelController.text.isNotEmpty ? _labelController.text : 'Discount Applied',
-        'created_at': DateTime.now().toIso8601String(),
-      };
-
-      // Add to applied discounts list
-      setState(() {
-        _appliedDiscounts.add(discountInfo);
-        _isLoading = false;
+        _appliedDiscounts.clear();
         
-        // Clear form
-        _startDate = null;
-        _endDate = null;
-        _discountValueController.clear();
-        _labelController.clear();
+        // Check if venue has discount data
+        final discountPerHour = (response['discount_per_hour'] as num?)?.toDouble();
+        final basePrice = (response['price_per_hour'] as num?)?.toDouble() ?? 0;
+        final startDateIso = response['discount_start_date'];
+        final endDateIso = response['discount_end_date'];
+        
+        if (discountPerHour != null && discountPerHour < basePrice && startDateIso != null) {
+          // Calculate discount value based on the difference
+          final discountValue = basePrice - discountPerHour;
+          
+          // Determine discount type (we'll assume flat amount since we can calculate it)
+          final discountPercentage = (discountValue / basePrice) * 100;
+          final isPercentage = discountPercentage % 1 == 0 && discountPercentage <= 50; // Simple heuristic
+          
+          _appliedDiscounts.add({
+            'id': response['id'],
+            'venue_id': response['id'],
+            'venue_name': response['name'],
+            'original_price': basePrice,
+            'discounted_price': discountPerHour,
+            'discount_value': isPercentage ? discountPercentage : discountValue,
+            'discount_type': isPercentage ? 'percentage' : 'flat',
+            'start_date': startDateIso,
+            'end_date': endDateIso,
+            'label': 'Active Discount',
+            'created_at': DateTime.now().toIso8601String(),
+          });
+        }
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Discount scheduled successfully! ৳${discountedPrice.toStringAsFixed(2)} (${discountValue}${_discountType == 'percentage' ? '%' : ' Tk'} off)',
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error applying discount: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading discounts: $e'), backgroundColor: Colors.orange),
+        );
+      }
     }
   }
 
-  // Simple wrapper method for button calls
-  Future<void> _applyDiscount() async {
-    await _applyDynamicDiscount();
+  bool _isDiscountCurrentlyActive() {
+    if (_discountPrice == null || _discountStartDate == null) return false;
+    if (_discountPrice! >= _basePrice) return false; // not a real discount or reset state
+    final now = DateTime.now();
+    final started = !now.isBefore(_discountStartDate!);
+    final notEnded = _discountEndDate == null || !now.isAfter(_discountEndDate!.add(const Duration(hours: 23, minutes: 59, seconds: 59)));
+    return started && notEnded;
+  }
+
+  Future<void> _scheduleDiscount() async {
+    if (_ownerVenue == null) { _showError('Venue not loaded'); return; }
+    if (_discountStartDate == null) { _showError('Select start date'); return; }
+    if (_discountEndDate != null && !_discountEndDate!.isAfter(_discountStartDate!)) { _showError('End date must be after start'); return; }
+    if (_discountValueController.text.isEmpty) { _showError('Enter discount value'); return; }
+
+    final rawValue = double.tryParse(_discountValueController.text);
+    if (rawValue == null || rawValue <= 0) { _showError('Invalid discount value'); return; }
+    if (_discountType == 'percentage' && rawValue >= 100) { _showError('Percentage must be < 100'); return; }
+    if (_discountType == 'flat' && rawValue >= _basePrice) { _showError('Flat amount must be < base price'); return; }
+
+    double discountedPrice = _basePrice;
+    if (_discountType == 'percentage') {
+      discountedPrice = _basePrice - (_basePrice * rawValue / 100.0);
+    } else { // flat
+      discountedPrice = _basePrice - rawValue;
+    }
+    if (discountedPrice < 0) discountedPrice = 0;
+
+    try {
+      setState(() { _isLoading = true; });
+      await _supabase.from('venues').update({
+        'discount_per_hour': discountedPrice,
+        'discount_start_date': DateTime(_discountStartDate!.year, _discountStartDate!.month, _discountStartDate!.day).toUtc().toIso8601String(),
+        'discount_end_date': _discountEndDate != null ? DateTime(_discountEndDate!.year, _discountEndDate!.month, _discountEndDate!.day).toUtc().toIso8601String() : null,
+      }).eq('id', _ownerVenue!['id']);
+
+      await _loadOwnerVenue();
+      await _loadAppliedDiscounts();
+
+      setState(() {
+        _discountPrice = discountedPrice;
+        // Clear form
+        _discountValueController.clear();
+        _labelController.clear();
+        _discountStartDate = null;
+        _discountEndDate = null;
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Discount scheduled (৳${discountedPrice.toStringAsFixed(2)})'), backgroundColor: Colors.green),
+        );
+        _tabController.animateTo(1);
+      }
+    } catch (e) {
+      setState(() { _isLoading = false; });
+      _showError('Error scheduling discount: $e');
+    }
+  }
+
+  Future<void> _clearDiscount() async {
+    if (_ownerVenue == null) return;
+    try {
+      setState(() { _isLoading = true; });
+      await _supabase.from('venues').update({
+        'discount_per_hour': _basePrice,
+        'discount_start_date': null,
+        'discount_end_date': null,
+      }).eq('id', _ownerVenue!['id']);
+      await _loadOwnerVenue();
+      await _loadAppliedDiscounts();
+      setState(() {
+        _discountPrice = null;
+        _discountStartDate = null;
+        _discountEndDate = null;
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Discount cleared'), backgroundColor: Colors.orange),
+        );
+      }
+    } catch (e) {
+      setState(() { _isLoading = false; });
+      _showError('Error clearing discount: $e');
+    }
+  }
+
+  Future<void> _selectDiscountDate(bool isStart) async {
+    final now = DateTime.now();
+    final firstSelectable = DateTime(now.year, now.month, now.day + 1);
+    final initial = isStart
+        ? (_discountStartDate ?? firstSelectable)
+        : (_discountStartDate != null ? _discountStartDate!.add(const Duration(days: 1)) : firstSelectable);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: isStart ? firstSelectable : (_discountStartDate != null ? _discountStartDate!.add(const Duration(days: 1)) : firstSelectable),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isStart) {
+        _discountStartDate = picked;
+        if (_discountEndDate != null && !_discountEndDate!.isAfter(picked)) {
+          _discountEndDate = null;
+        }
+      } else {
+        if (_discountStartDate != null && !picked.isAfter(_discountStartDate!)) {
+          _showError('End date must be after start date');
+          return;
+        }
+        _discountEndDate = picked;
+      }
+    });
+  }
+
+  void _updateBasePrice() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Update Base Price'),
+        content: TextFormField(
+          controller: _basePriceController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'Base Price per Hour (৳)',
+            hintText: 'e.g., 500',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final newPrice = double.tryParse(_basePriceController.text);
+              if (newPrice == null || newPrice <= 0) {
+                _showError('Enter valid price');
+                return;
+              }
+              try {
+                if (_ownerVenue != null) {
+                  await _supabase.from('venues').update({
+                    'price_per_hour': newPrice,
+                    if (_discountPrice == null || _discountPrice == _basePrice) 'discount_per_hour': newPrice,
+                  }).eq('id', _ownerVenue!['id']);
+                }
+                await _loadOwnerVenue();
+              } catch (e) {
+                _showError('Update failed: $e');
+                return;
+              }
+              if (mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Base price updated'), backgroundColor: Colors.green),
+                );
+              }
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -192,20 +314,12 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
       appBar: AppBar(
         title: const Text('Dynamic Pricing'),
         backgroundColor: Colors.green[700],
-        actions: [
-          OwnerProfileWidget(),
-        ],
+        actions: const [OwnerProfileWidget()],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(
-              icon: Icon(Icons.price_change),
-              text: 'Manage Pricing',
-            ),
-            Tab(
-              icon: Icon(Icons.list_alt),
-              text: 'Scheduled Discounts',
-            ),
+            Tab(icon: Icon(Icons.price_change), text: 'Manage Pricing'),
+            Tab(icon: Icon(Icons.list_alt), text: 'Scheduled Discounts'),
           ],
         ),
       ),
@@ -222,44 +336,47 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
 
   Widget _buildManagePricingTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Venue Information Display
           _buildVenueInfoCard(),
-          
           const SizedBox(height: 20),
-          
-          // Current Base Price Display
           _buildBasePriceCard(),
-          
           const SizedBox(height: 20),
-          
-          // Discount Scheduler
           _buildDiscountSchedulerCard(),
-          
-          const SizedBox(height: 40),
-          
-          // Apply Discount Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _scheduleDiscount,
-              icon: const Icon(Icons.schedule),
-              label: const Text(
-                'Apply Discount',
-                style: TextStyle(fontSize: 18),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[700],
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.all(16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          const SizedBox(height: 32),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _scheduleDiscount,
+                  icon: _isLoading
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.schedule),
+                  label: Text(_isLoading ? 'Scheduling...' : 'Schedule Discount'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[700],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 12),
+              if (_isDiscountCurrentlyActive())
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _clearDiscount,
+                    icon: const Icon(Icons.clear),
+                    label: const Text('Clear'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[600],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.all(16),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -276,16 +393,12 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
             children: [
               Icon(Icons.info_outline, size: 48, color: Colors.grey[400]),
               const SizedBox(height: 8),
-              Text(
-                'Loading venue information...',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
+              Text('Loading venue information...', style: TextStyle(color: Colors.grey[600])),
             ],
           ),
         ),
       );
     }
-
     return Card(
       elevation: 4,
       child: Padding(
@@ -297,11 +410,8 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
               children: [
                 Icon(Icons.business, color: Colors.green[700], size: 30),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Venue Information',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
+                const Expanded(
+                  child: Text('Venue Information', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -312,7 +422,11 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
             const SizedBox(height: 8),
             _buildInfoRow(Icons.home, 'Address', _ownerVenue!['address'] ?? 'N/A'),
             const SizedBox(height: 8),
-            _buildInfoRow(Icons.monetization_on, 'Current Price', '৳${_basePrice.toStringAsFixed(2)}/hour'),
+            _buildInfoRow(Icons.monetization_on, 'Base Price', '৳${_basePrice.toStringAsFixed(2)}/hour'),
+            if (_isDiscountCurrentlyActive() && _discountPrice != null) ...[
+              const SizedBox(height: 8),
+              _buildInfoRow(Icons.local_offer, 'Effective Price', '৳${_discountPrice!.toStringAsFixed(2)}/hour'),
+            ],
           ],
         ),
       ),
@@ -324,16 +438,8 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
       children: [
         Icon(icon, size: 20, color: Colors.grey[600]),
         const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(color: Colors.grey[700]),
-          ),
-        ),
+        Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w600)),
+        Expanded(child: Text(value, style: TextStyle(color: Colors.grey[700]))),
       ],
     );
   }
@@ -350,12 +456,8 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
               children: [
                 Icon(Icons.attach_money, color: Colors.green[700], size: 30),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Current Base Price',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                const Expanded(
+                  child: Text('Current Base Price', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                 ),
               ],
             ),
@@ -373,26 +475,13 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Base Rate',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
-                      Text(
-                        '৳${_basePrice.toStringAsFixed(0)}/hour',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green[700],
-                        ),
-                      ),
+                      const Text('Base Rate', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                      Text('৳${_basePrice.toStringAsFixed(0)}/hour', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green[700])),
                     ],
                   ),
                   ElevatedButton(
                     onPressed: _updateBasePrice,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[600],
-                      foregroundColor: Colors.white,
-                    ),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[600], foregroundColor: Colors.white),
                     child: const Text('Update'),
                   ),
                 ],
@@ -416,89 +505,53 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
               children: [
                 Icon(Icons.schedule, color: Colors.orange[700], size: 30),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Schedule New Discount',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+                const Expanded(child: Text('Schedule New Discount', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
               ],
             ),
             const SizedBox(height: 16),
-            
-            // Date Selection
-            const Text(
-              'Select Date Range',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
+            const Text('Select Date Range', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _selectDate(true),
+                    onPressed: () => _selectDiscountDate(true),
                     icon: const Icon(Icons.calendar_today, size: 16),
                     label: Text(
-                      _startDate != null
-                          ? DateFormat('MMM dd, yyyy').format(_startDate!)
-                          : 'Start Date',
+                      _discountStartDate != null ? DateFormat('MMM dd, yyyy').format(_discountStartDate!) : 'Select Start Date',
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                      foregroundColor: Colors.green[700],
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _selectDate(false),
+                    onPressed: () => _selectDiscountDate(false),
                     icon: const Icon(Icons.event, size: 16),
                     label: Text(
-                      _endDate != null
-                          ? DateFormat('MMM dd, yyyy').format(_endDate!)
-                          : 'End Date',
+                      _discountEndDate != null ? DateFormat('MMM dd, yyyy').format(_discountEndDate!) : 'Select End Date',
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                      foregroundColor: Colors.green[700],
                     ),
                   ),
                 ),
               ],
             ),
-            
             const SizedBox(height: 16),
-            
-            // Discount Type & Value
-            const Text(
-              'Discount Details',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
+            const Text('Discount Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     value: _discountType,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Discount Type',
-                    ),
+                    decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Type'),
                     items: const [
                       DropdownMenuItem(value: 'percentage', child: Text('% Off')),
                       DropdownMenuItem(value: 'flat', child: Text('Flat Off')),
                     ],
-                    onChanged: (value) {
-                      setState(() {
-                        _discountType = value!;
-                      });
-                    },
+                    onChanged: (v) => setState(() => _discountType = v!),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -515,42 +568,17 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
                 ),
               ],
             ),
-            
-            const SizedBox(height: 16),
-            
-            // Label/Reason
+            const SizedBox(height: 12),
             TextFormField(
               controller: _labelController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                labelText: 'Label/Reason (Optional)',
-                hintText: 'e.g., "Independence Day Special", "Kickoff Deals"',
+                labelText: 'Label / Reason (optional)',
+                hintText: 'e.g., Independence Day Offer',
               ),
             ),
-            
-            const SizedBox(height: 20),
-            
-            // Apply Discount Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _applyDynamicDiscount,
-                icon: _isLoading 
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.discount),
-                label: Text(_isLoading ? 'Applying...' : 'Apply Discount'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[700],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
+            const SizedBox(height: 12),
+            if (_isDiscountCurrentlyActive()) _buildActiveDiscountBanner(),
           ],
         ),
       ),
@@ -558,32 +586,17 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
   }
 
   Widget _buildScheduledDiscountsTab() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Current Venue Pricing Status
           _buildCurrentPricingCard(),
-          
           const SizedBox(height: 20),
-          
-          // Applied Discounts Section
-          Text(
-            'Applied Discounts',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          const Text('Applied Discounts', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          
-          // If no venue loaded yet
-          if (_ownerVenue == null)
-            _buildNoVenueCard()
-          else
-            _buildAppliedDiscountCard(),
+          if (_appliedDiscounts.isEmpty) _buildNoDiscountsCard() else ..._appliedDiscounts.map(_buildDiscountDisplayCard),
         ],
       ),
     );
@@ -601,10 +614,7 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
               children: [
                 Icon(Icons.info_outline, color: Colors.blue[700], size: 24),
                 const SizedBox(width: 8),
-                const Text(
-                  'Current Pricing Status',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                const Text('Current Pricing Status', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 12),
@@ -613,10 +623,9 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
               const SizedBox(height: 4),
               Text('Location: ${_ownerVenue!['address']}, ${_ownerVenue!['city']}'),
               const SizedBox(height: 4),
-              Text(
-                'Current Price: ৳${_basePrice.toStringAsFixed(2)}/hour',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
+              Text('Current Price: ৳${_basePrice.toStringAsFixed(2)}/hour', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              if (_isDiscountCurrentlyActive() && _discountPrice != null)
+                Text('Discounted: ৳${_discountPrice!.toStringAsFixed(2)}/hour', style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.w600)),
             ] else ...[
               const Text('Loading venue information...'),
             ],
@@ -626,66 +635,42 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
     );
   }
 
-  Widget _buildNoVenueCard() {
+  Widget _buildNoDiscountsCard() {
     return Card(
       elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Icon(Icons.info_outline, size: 48, color: Colors.grey[400]),
+            Icon(Icons.discount_outlined, size: 48, color: Colors.grey[400]),
             const SizedBox(height: 8),
-            Text(
-              'No venue information available',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
+            Text('No discounts scheduled', style: TextStyle(color: Colors.grey[600])),
+            const SizedBox(height: 4),
+            const Text('Use the Manage Pricing tab to add one', style: TextStyle(fontSize: 12)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAppliedDiscountCard() {
-    if (_appliedDiscounts.isEmpty) {
-      return Card(
-        elevation: 2,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              Icon(Icons.discount_outlined, size: 48, color: Colors.grey[400]),
-              const SizedBox(height: 8),
-              Text(
-                'No discounts applied yet',
-                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Use the Dynamic Pricing tab to create discounts',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children: _appliedDiscounts.map((discount) => _buildDiscountDisplayCard(discount)).toList(),
-    );
-  }
-
   Widget _buildDiscountDisplayCard(Map<String, dynamic> discount) {
-    final originalPrice = discount['original_price'] as double;
-    final discountedPrice = discount['discounted_price'] as double;
-    final discountValue = discount['discount_value'] as double;
-    final discountType = discount['discount_type'] as String;
-    final startDate = DateTime.parse(discount['start_date']);
-    final endDate = DateTime.parse(discount['end_date']);
-    final label = discount['label'] as String;
-
-    final dateRange = '${DateFormat('MMM dd').format(startDate)} - ${DateFormat('MMM dd, yyyy').format(endDate)}';
-    final discountText = discountType == 'percentage' ? '${discountValue.toInt()}% off' : '৳${discountValue.toInt()} off';
+    final originalPrice = (discount['original_price'] as num?)?.toDouble() ?? 0.0;
+    final discountedPrice = (discount['discounted_price'] as num?)?.toDouble() ?? 0.0;
+    final discountValue = (discount['discount_value'] as num?)?.toDouble() ?? 0.0;
+    final discountType = discount['discount_type'] as String? ?? 'derived';
+    final startDateIso = discount['start_date'];
+    final endDateIso = discount['end_date'];
+    final label = discount['label'] as String? ?? 'Discount';
+    final startDate = startDateIso != null ? DateTime.parse(startDateIso) : null;
+    final endDate = endDateIso != null ? DateTime.parse(endDateIso) : null;
+    final discountText = discountType == 'percentage'
+        ? '${discountValue.toInt()}% off'
+        : discountType == 'flat'
+            ? '৳${discountValue.toInt()} off'
+            : '৳${(originalPrice - discountedPrice).toStringAsFixed(0)} off';
+    final dateRange = startDate != null
+        ? '${DateFormat('MMM dd').format(startDate)} - ${endDate != null ? DateFormat('MMM dd, yyyy').format(endDate) : 'Open'}'
+        : 'N/A';
 
     return Card(
       elevation: 2,
@@ -695,303 +680,77 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with edit button
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                Expanded(child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                if (_isDiscountCurrentlyActive() && discountedPrice == _discountPrice)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.green[50], borderRadius: BorderRadius.circular(12)),
+                    child: Text('Active', style: TextStyle(color: Colors.green[700], fontSize: 12, fontWeight: FontWeight.bold)),
                   ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => _editDiscount(discount),
-                  icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Edit'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 12),
-            
-            // Price display with strikethrough
             Row(
               children: [
                 Icon(Icons.monetization_on, color: Colors.green[700], size: 20),
                 const SizedBox(width: 8),
-                // Discounted price (bold)
-                Text(
-                  '৳${discountedPrice.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 18, 
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
-                ),
+                Text('৳${discountedPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
                 const SizedBox(width: 12),
-                // Original price with strikethrough
-                Text(
-                  '৳${originalPrice.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    decoration: TextDecoration.lineThrough,
-                    color: Colors.grey[600],
-                  ),
-                ),
+                Text('৳${originalPrice.toStringAsFixed(2)}', style: TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey[600])),
                 const SizedBox(width: 12),
-                // Discount badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    discountText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange[700],
-                    ),
-                  ),
+                  decoration: BoxDecoration(color: Colors.orange[100], borderRadius: BorderRadius.circular(12)),
+                  child: Text(discountText, style: TextStyle(color: Colors.orange[700], fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            
-            // Date range
             Row(
               children: [
-                Icon(Icons.calendar_today, color: Colors.blue[700], size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Valid: $dateRange',
-                  style: const TextStyle(fontSize: 14),
-                ),
+                Icon(Icons.calendar_today, size: 18, color: Colors.blue[700]),
+                const SizedBox(width: 6),
+                Text('Valid: $dateRange'),
               ],
             ),
-            const SizedBox(height: 8),
-            
-            // Venue info
-            Row(
-              children: [
-                Icon(Icons.location_on, color: Colors.red[700], size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Venue: ${discount['venue_name']}',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ),
-              ],
-            ),
+            if (discount['venue_name'] != null) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.location_on, size: 18, color: Colors.red[700]),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text('Venue: ${discount['venue_name']}')),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  void _editDiscount(Map<String, dynamic> discount) {
-    // Create a discount schedule object for editing
-    final startDate = DateTime.parse(discount['start_date']);
-    final endDate = DateTime.parse(discount['end_date']);
+  Widget _buildActiveDiscountBanner() {
+    if (_discountPrice == null) return const SizedBox.shrink();
     
-    final scheduleForEdit = DiscountSchedule(
-      id: 0,
-      startDate: startDate,
-      endDate: endDate,
-      startTime: const TimeOfDay(hour: 0, minute: 0),
-      endTime: const TimeOfDay(hour: 23, minute: 59),
-      discountType: discount['discount_type'] == 'percentage' ? DiscountType.percentage : DiscountType.flat,
-      discountValue: discount['discount_value'] as double,
-      label: discount['label'] as String,
-      applyToIndividual: true,
-      applyToTeams: true,
-      allowOverlapping: false,
-    );
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditSchedulePage(
-          schedule: scheduleForEdit,
-        ),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.green[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.green[200]!),
       ),
-    ).then((result) {
-      if (result == true) {
-        // Refresh data after editing
-        setState(() {});
-      }
-    });
-  }
-
-  Future<void> _selectDate(bool isStartDate) async {
-    final DateTime now = DateTime.now();
-    final DateTime tomorrow = DateTime(now.year, now.month, now.day + 1);
-    
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: isStartDate 
-          ? tomorrow 
-          : (_startDate != null ? _startDate!.add(const Duration(days: 1)) : tomorrow),
-      firstDate: isStartDate 
-          ? tomorrow 
-          : (_startDate != null ? _startDate!.add(const Duration(days: 1)) : tomorrow),
-      lastDate: DateTime(now.year + 2),
-    );
-
-    if (pickedDate != null) {
-      setState(() {
-        if (isStartDate) {
-          _startDate = pickedDate;
-          // Reset end date if it's before or same as the new start date
-          if (_endDate != null && (_endDate!.isBefore(pickedDate) || _endDate!.isAtSameMomentAs(pickedDate))) {
-            _endDate = null;
-          }
-        } else {
-          // Additional validation: End date must be after start date
-          if (_startDate != null && !pickedDate.isAfter(_startDate!)) {
-            _showError('End date must be after start date');
-            return;
-          }
-          _endDate = pickedDate;
-        }
-      });
-    }
-  }
-
-  void _updateBasePrice() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Update Base Price'),
-        content: TextFormField(
-          controller: _basePriceController,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            labelText: 'Base Price per Hour (৳)',
-            hintText: 'e.g., 500',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final newPrice = double.tryParse(_basePriceController.text);
-              if (newPrice != null && newPrice > 0) {
-                await _pricingService.updateBasePrice(newPrice);
-                setState(() {
-                  _basePrice = newPrice;
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Base price updated successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter a valid price'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            child: const Text('Update'),
+      child: Row(
+        children: [
+          Icon(Icons.local_offer, color: Colors.green[700]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('Active discount: ৳${_discountPrice!.toStringAsFixed(2)} until '
+                '${_discountEndDate != null ? DateFormat('MMM dd, yyyy').format(_discountEndDate!) : 'open-ended'}'),
           ),
         ],
-      ),
-    );
-  }
-
-  void _scheduleDiscount() async {
-    // Validation
-    if (_startDate == null) {
-      _showError('Please select a start date');
-      return;
-    }
-    
-    // Validate end date 
-    if (_endDate != null) {
-      if (_endDate!.isBefore(_startDate!) || _endDate!.isAtSameMomentAs(_startDate!)) {
-        _showError('End date must be after start date');
-        return;
-      }
-    }
-    
-    if (_discountValueController.text.isEmpty) {
-      _showError('Please enter a discount value');
-      return;
-    }
-    
-    final discountValue = double.tryParse(_discountValueController.text);
-    if (discountValue == null || discountValue <= 0) {
-      _showError('Please enter a valid discount value');
-      return;
-    }
-    
-    if (_discountType == 'percentage' && discountValue >= 100) {
-      _showError('Percentage discount must be less than 100%');
-      return;
-    }
-
-    try {
-      final newDiscount = DiscountSchedule(
-        id: DateTime.now().millisecondsSinceEpoch,
-        startDate: _startDate!,
-        endDate: _endDate,
-        // Fixed times for full-day discounts - shows date pickers
-        startTime: const TimeOfDay(hour: 0, minute: 0), // All day start
-        endTime: const TimeOfDay(hour: 23, minute: 59), // All day end
-        discountType: _discountType == 'percentage' ? DiscountType.percentage : DiscountType.flat,
-        discountValue: discountValue,
-        label: _labelController.text,
-        applyToIndividual: true,
-        applyToTeams: true,
-        allowOverlapping: false,
-      );
-      //save using service
-      await _pricingService.addDiscountSchedule(newDiscount);
-      await _loadOwnerVenue();
-
-      // Clear form
-      setState(() {
-        _startDate = null;
-        _endDate = null;
-        _discountValueController.clear();
-        _labelController.clear();
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Discount scheduled successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Switch to scheduled discounts tab
-      _tabController.animateTo(1);
-    } catch (e) {
-      _showError('Error scheduling discount: $e');
-    }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
       ),
     );
   }
