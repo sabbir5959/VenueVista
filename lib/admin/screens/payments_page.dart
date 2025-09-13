@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
+import '../../services/admin_payment_service.dart';
 
 class AdminPaymentsPage extends StatefulWidget {
   const AdminPaymentsPage({super.key});
@@ -15,9 +16,73 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
   final int _itemsPerPage = 8;
   String _selectedPaymentType = 'All';
   String _selectedStatus = 'All';
+  List<Map<String, dynamic>> _payments = [];
+  List<Map<String, dynamic>> _cashRecords = [];
+  List<Map<String, dynamic>> _pendingRefunds = [];
+  bool _isLoading = true;
+  Map<String, dynamic> _stats = {};
+  double _pendingRefundAmount = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPaymentData();
+  }
+
+  Future<void> _loadPaymentData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final payments = await AdminPaymentService.getAllPayments();
+      final cashRecords = await AdminPaymentService.getAllCashRecords();
+      final stats = await AdminPaymentService.getPaymentStats();
+      final pendingRefunds = await AdminPaymentService.getPendingRefunds();
+      final pendingRefundAmount =
+          await AdminPaymentService.calculatePendingRefundAmount();
+
+      print(
+        '📊 Loaded ${payments.length} payments and ${cashRecords.length} cash records',
+      );
+
+      setState(() {
+        _payments =
+            payments
+                .map((p) => AdminPaymentService.formatPaymentForDisplay(p))
+                .toList();
+        _cashRecords =
+            cashRecords
+                .map((c) => AdminPaymentService.formatCashRecordForDisplay(c))
+                .toList();
+        _pendingRefunds = pendingRefunds;
+        _pendingRefundAmount = pendingRefundAmount;
+        _stats = stats;
+        _isLoading = false;
+      });
+
+      print('💰 Total payments in UI: ${_payments.length}');
+      print('💵 Total cash records in UI: ${_cashRecords.length}');
+      print('🔄 Total pending refunds: ${_pendingRefunds.length}');
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading payment data: $e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
+        ),
+      );
+    }
+
     final isMobile = MediaQuery.of(context).size.width < 768;
     final filteredPayments = _getFilteredPayments();
     final totalPages = (filteredPayments.length / _itemsPerPage).ceil();
@@ -114,13 +179,17 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                 ),
                 SizedBox(width: 16),
                 Expanded(
-                  child: _buildSummaryCard(
-                    'Total Refunded',
-                    '৳${_calculateTotalRefunded()}',
-                    Icons.undo,
-                    Colors.orange[600]!,
-                    'Refund processed',
-                    isMobile,
+                  child: InkWell(
+                    onTap:
+                        () => _showPendingRefundsDialog(), // Make it clickable
+                    child: _buildSummaryCard(
+                      'Pending Refund',
+                      '${_pendingRefunds.length}', // Show count instead of amount
+                      Icons.pending_actions,
+                      Colors.amber[700]!, // Changed to amber for better look
+                      'Refund requests',
+                      isMobile,
+                    ),
                   ),
                 ),
               ],
@@ -219,8 +288,8 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                         },
                       ),
                       _buildFilterChip(
-                        'Processing',
-                        'Processing',
+                        'Successful',
+                        'Successful',
                         _selectedStatus,
                         (value) {
                           setState(() {
@@ -474,16 +543,18 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
     Function(String) onTap,
   ) {
     final isSelected = currentValue == value;
+    final isRefund = value == 'Refund';
+    final selectedColor = isRefund ? Colors.amber[700]! : AppColors.primary;
 
     return InkWell(
       onTap: () => onTap(value),
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surface,
+          color: isSelected ? selectedColor : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.borderLight,
+            color: isSelected ? selectedColor : AppColors.borderLight,
           ),
         ),
         child: Text(
@@ -541,8 +612,9 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _getPaymentStatusColor(
+                        color: _getRefundStatusColor(
                           payment['status'],
+                          payment['type'],
                         ).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -551,7 +623,10 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: _getPaymentStatusColor(payment['status']),
+                          color: _getRefundStatusColor(
+                            payment['status'],
+                            payment['type'],
+                          ),
                         ),
                       ),
                     ),
@@ -604,9 +679,11 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                         fontSize: isMobile ? 16 : 18,
                         fontWeight: FontWeight.w700,
                         color:
-                            payment['type'] == 'From User'
-                                ? Colors.green[600]
-                                : Colors.red[600],
+                            payment['type'] == 'user'
+                                ? Colors
+                                    .green[600] // Green for incoming user payments
+                                : Colors
+                                    .red[600], // Red for outgoing owner payments
                       ),
                     ),
                   ],
@@ -664,102 +741,189 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
   }
 
   List<Map<String, dynamic>> _getFilteredPayments() {
-    List<Map<String, dynamic>> filtered = _demoPayments;
+    // Combine payments and cash records
+    List<Map<String, dynamic>> allPayments = [..._payments, ..._cashRecords];
+
+    print('🔍 Filtering - Total payments: ${_payments.length}');
+    print('🔍 Filtering - Total cash records: ${_cashRecords.length}');
+    print('🔍 Filtering - Combined total: ${allPayments.length}');
+    print(
+      '🔍 Filter settings - Type: $_selectedPaymentType, Status: $_selectedStatus',
+    );
+
+    List<Map<String, dynamic>> filtered = allPayments;
 
     // Filter by payment type
     if (_selectedPaymentType != 'All') {
+      // Map filter button text to actual payment types
+      String filterType = '';
+      if (_selectedPaymentType == 'From User') {
+        // Fixed: button value is 'From User' not 'From Users'
+        filterType = 'user';
+      } else if (_selectedPaymentType == 'To Owner') {
+        // Fixed: button value is 'To Owner' not 'To Owners'
+        filterType = 'owner';
+      } else if (_selectedPaymentType == 'Refund') {
+        filterType = 'refund';
+      } else {
+        filterType = _selectedPaymentType.toLowerCase();
+      }
+
       filtered =
-          filtered
-              .where((payment) => payment['type'] == _selectedPaymentType)
-              .toList();
+          filtered.where((payment) => payment['type'] == filterType).toList();
+      print('🔍 After type filter ($filterType): ${filtered.length}');
     }
 
     // Filter by status
     if (_selectedStatus != 'All') {
+      // Map filter button text to actual status values
+      String filterStatus = '';
+      if (_selectedStatus == 'Completed') {
+        filterStatus = 'completed';
+      } else if (_selectedStatus == 'Successful') {
+        filterStatus = 'successful';
+      } else {
+        filterStatus = _selectedStatus.toLowerCase();
+      }
+
       filtered =
           filtered
-              .where((payment) => payment['status'] == _selectedStatus)
+              .where(
+                (payment) =>
+                    payment['status'].toString().toLowerCase() == filterStatus,
+              )
               .toList();
+      print('🔍 After status filter ($filterStatus): ${filtered.length}');
     }
 
     // Filter by date range
     if (_startDate != null || _endDate != null) {
       filtered =
           filtered.where((payment) {
-            DateTime paymentDate = DateTime.parse(payment['date']);
+            try {
+              DateTime paymentDate = DateTime.parse(payment['date']);
 
-            if (_startDate != null && paymentDate.isBefore(_startDate!)) {
-              return false;
+              if (_startDate != null && paymentDate.isBefore(_startDate!)) {
+                return false;
+              }
+
+              if (_endDate != null &&
+                  paymentDate.isAfter(_endDate!.add(Duration(days: 1)))) {
+                return false;
+              }
+
+              return true;
+            } catch (e) {
+              return true; // Include if date parsing fails
             }
-
-            if (_endDate != null &&
-                paymentDate.isAfter(_endDate!.add(Duration(days: 1)))) {
-              return false;
-            }
-
-            return true;
           }).toList();
     }
+
+    // Sort by date - newest first (latest records at top)
+    filtered.sort((a, b) {
+      try {
+        DateTime dateA = DateTime.parse('${a['date']} ${a['time']}');
+        DateTime dateB = DateTime.parse('${b['date']} ${b['time']}');
+        return dateB.compareTo(dateA); // Newest first
+      } catch (e) {
+        // Fallback to date only if time parsing fails
+        try {
+          DateTime dateA = DateTime.parse(a['date']);
+          DateTime dateB = DateTime.parse(b['date']);
+          return dateB.compareTo(dateA);
+        } catch (e2) {
+          return 0;
+        }
+      }
+    });
 
     return filtered;
   }
 
   String _calculateTotalReceived() {
-    return _demoPayments
-        .where((p) => p['type'] == 'From User' && p['status'] == 'Completed')
-        .fold(0, (sum, p) => sum + (p['amount'] as int))
-        .toString();
+    return (_stats['totalReceived'] ?? 0.0).toStringAsFixed(0);
   }
 
   String _calculateTotalPaid() {
-    return _demoPayments
-        .where((p) => p['type'] == 'To Owner' && p['status'] == 'Completed')
-        .fold(0, (sum, p) => sum + (p['amount'] as int))
-        .toString();
+    print('💳 _stats in UI: $_stats');
+    print('💳 totalPaid value: ${_stats['totalPaid']}');
+    return (_stats['totalPaid'] ?? 0.0).toStringAsFixed(
+      0,
+    ); // Now includes cash + refunds
   }
 
+  // ignore: unused_element
+  String _calculatePendingRefunds() {
+    return _pendingRefundAmount.toStringAsFixed(0);
+  }
+
+  // ignore: unused_element
   String _calculateTotalRefunded() {
-    return _demoPayments
-        .where((p) => p['type'] == 'Refund' && p['status'] == 'Completed')
-        .fold(0, (sum, p) => sum + (p['amount'] as int))
-        .toString();
+    // Calculate refunds from payments
+    final refunded = _payments
+        .where((p) => p['type'] == 'refund' && p['status'] == 'completed')
+        .fold(0.0, (sum, p) => sum + (p['amount'] as num).toDouble());
+    return refunded.toStringAsFixed(0);
   }
 
   Color _getPaymentTypeColor(String type) {
-    switch (type) {
-      case 'From User':
-        return Colors.green[600]!;
-      case 'To Owner':
-        return Colors.orange[600]!;
-      case 'Refund':
-        return Colors.red[600]!;
+    switch (type.toLowerCase()) {
+      case 'user':
+      case 'from_user':
+        return Colors.green[600]!; // Green for incoming money from users
+      case 'owner':
+      case 'to_owner':
+      case 'cash':
+        return Colors.blue[600]!; // Blue for outgoing money to owners
+      case 'refund':
+        return Colors
+            .amber[700]!; // Amber for refunds (better than red-looking orange)
       default:
         return AppColors.textSecondary;
     }
   }
 
   IconData _getPaymentTypeIcon(String type) {
-    switch (type) {
-      case 'From User':
-        return Icons.south_east;
-      case 'To Owner':
-        return Icons.north_east;
-      case 'Refund':
-        return Icons.undo;
+    switch (type.toLowerCase()) {
+      case 'user':
+      case 'from_user':
+        return Icons.account_balance_wallet; // User payment wallet icon
+      case 'owner':
+      case 'to_owner':
+      case 'cash':
+        return Icons.payments; // Payment to owner icon
+      case 'refund':
+        return Icons.replay_circle_filled; // Refund circle icon
       default:
         return Icons.payment;
     }
   }
 
   Color _getPaymentStatusColor(String status) {
-    switch (status) {
-      case 'Completed':
+    switch (status.toLowerCase()) {
+      case 'completed':
         return Colors.green[600]!;
-      case 'Processing':
+      case 'successful': // For cash records
+        return Colors.green[600]!;
+      case 'processing':
         return Colors.blue[600]!;
+      case 'pending':
+        return Colors.orange[600]!;
+      case 'failed':
+        return Colors.red[600]!;
       default:
         return AppColors.textSecondary;
     }
+  }
+
+  // Special color method for refund status
+  Color _getRefundStatusColor(String status, String? type) {
+    // If it's a refund type, always use amber color
+    if (type != null && type.toLowerCase() == 'refund') {
+      return Colors.amber[700]!;
+    }
+    // Otherwise use regular status color
+    return _getPaymentStatusColor(status);
   }
 
   void _showPaymentDetails(Map<String, dynamic> payment) {
@@ -818,8 +982,9 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getPaymentStatusColor(
+                    color: _getRefundStatusColor(
                       payment['status'],
+                      payment['type'],
                     ).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -828,7 +993,10 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: _getPaymentStatusColor(payment['status']),
+                      color: _getRefundStatusColor(
+                        payment['status'],
+                        payment['type'],
+                      ),
                     ),
                   ),
                 ),
@@ -859,6 +1027,7 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                       payment['status'],
                       Icons.info_outline,
                     ),
+                    // Show method for all payments including cash
                     _buildPaymentDetailItem(
                       'Method',
                       payment['method'],
@@ -877,11 +1046,13 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                       payment['time'],
                       Icons.access_time,
                     ),
-                    _buildPaymentDetailItem(
-                      'Transaction ID',
-                      payment['transactionId'],
-                      Icons.receipt_long,
-                    ),
+                    // Only show transaction ID for non-cash payments
+                    if (payment['type'] != 'cash')
+                      _buildPaymentDetailItem(
+                        'Transaction ID',
+                        payment['transactionId'],
+                        Icons.receipt_long,
+                      ),
                   ], isMobile),
                   SizedBox(height: 16),
                   _buildPaymentDetailSection('Party Details', [
@@ -1236,9 +1407,15 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
           ),
           title: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.green[700]),
+              Icon(Icons.check_circle, color: Colors.amber[700]!),
               SizedBox(width: 8),
-              Text('Complete Refund'),
+              Text(
+                'Complete Refund',
+                style: TextStyle(
+                  color: Colors.amber[700]!,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           content: Column(
@@ -1315,39 +1492,327 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
     );
   }
 
+  void _showPendingRefundsDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Pending Refunds',
+            style: TextStyle(
+              color: Colors.amber[700]!,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            height: 400,
+            child:
+                _pendingRefunds.isEmpty
+                    ? Center(child: Text('No pending refunds'))
+                    : ListView.builder(
+                      itemCount: _pendingRefunds.length,
+                      itemBuilder: (context, index) {
+                        final refund = _pendingRefunds[index];
+                        return Card(
+                          margin: EdgeInsets.symmetric(vertical: 4),
+                          child: ListTile(
+                            onTap:
+                                () => _showRefundPaymentDialog(
+                                  refund,
+                                ), // Make clickable
+                            leading: Icon(
+                              Icons.pending_actions,
+                              color: Colors.orange,
+                            ),
+                            title: Text(
+                              refund['venue_name'] ?? 'Unknown Venue',
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'User: ${refund['user_name'] ?? 'Unknown User'}',
+                                ),
+                                Text(
+                                  'Mobile: ${refund['user_contact'] ?? 'N/A'}',
+                                ),
+                                Text(
+                                  'Date: ${refund['booking_date'] ?? 'N/A'}',
+                                ),
+                                Text(
+                                  'Reason: ${refund['cancellation_reason'] ?? 'N/A'}',
+                                ),
+                              ],
+                            ),
+                            trailing: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '৳${refund['refund_amount']}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange[600],
+                                  ),
+                                ),
+                                Text(
+                                  'Tap to pay',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            isThreeLine: true,
+                          ),
+                        );
+                      },
+                    ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showRefundPaymentDialog(Map<String, dynamic> refund) {
+    String? selectedMethod;
+    final amountController = TextEditingController(
+      text: refund['refund_amount'].toString(),
+    );
+    final notesController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(
+                'Process Refund Payment',
+                style: TextStyle(
+                  color: Colors.amber[700]!,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // User Info
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'User: ${refund['user_name'] ?? 'Unknown User'}',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text('Mobile: ${refund['user_contact'] ?? 'N/A'}'),
+                          Text('Email: ${refund['user_email'] ?? 'N/A'}'),
+                          Text('Venue: ${refund['venue_name'] ?? 'N/A'}'),
+                          Text('Date: ${refund['booking_date'] ?? 'N/A'}'),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 16),
+
+                    // Payment Method Selection
+                    Text(
+                      'Select Payment Method:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: Text('bKash'),
+                            value: 'bKash',
+                            groupValue: selectedMethod,
+                            onChanged:
+                                (value) =>
+                                    setState(() => selectedMethod = value),
+                            dense: true,
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: Text('Nagad'),
+                            value: 'Nagad',
+                            groupValue: selectedMethod,
+                            onChanged:
+                                (value) =>
+                                    setState(() => selectedMethod = value),
+                            dense: true,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Amount
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: amountController,
+                      decoration: InputDecoration(
+                        labelText: 'Refund Amount',
+                        prefixText: '৳',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                      readOnly: true,
+                    ),
+
+                    // Notes
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: notesController,
+                      decoration: InputDecoration(
+                        labelText: 'Admin Notes (Optional)',
+                        border: OutlineInputBorder(),
+                        hintText: 'Add payment notes...',
+                      ),
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed:
+                      selectedMethod != null
+                          ? () async {
+                            // Process refund payment
+                            await _processRefundPayment(
+                              refund,
+                              selectedMethod!,
+                              notesController.text,
+                            );
+                            Navigator.of(context).pop();
+                          }
+                          : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                  ),
+                  child: Text(
+                    'Process Payment',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _processRefundPayment(
+    Map<String, dynamic> refund,
+    String method,
+    String notes,
+  ) async {
+    try {
+      // Process refund payment via AdminPaymentService
+      final success = await AdminPaymentService.processRefundPayment(
+        refundId: refund['id'],
+        amount: refund['refund_amount'].toString(),
+        method: method,
+        adminNotes: notes,
+        userName: refund['user_name'] ?? 'Unknown User',
+        userContact: refund['user_contact'] ?? 'N/A',
+        venueName: refund['venue_name'] ?? 'Unknown Venue',
+      );
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Refund payment processed via $method'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Reload data to update the list
+        _loadPaymentData();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to process refund payment'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   void _showRecordCashPaymentDialog() {
     final _formKey = GlobalKey<FormState>();
     final _amountController = TextEditingController();
     final _descriptionController = TextEditingController();
-    final _personController = TextEditingController();
     final _contactController = TextEditingController();
-    final _bookingIdController = TextEditingController();
-    final _paymentReasonController = TextEditingController();
-    String _selectedOwner = 'Green Valley Sports Club';
-
-    final List<String> _owners = [
-      'Green Valley Sports Club',
-      'Elite Futsal Academy',
-      'BKSP Sports Authority',
-      'Dhanmondi Futsal Ground',
-      'Rajshahi Sports Council',
-    ];
+    String? _selectedOwner;
+    List<Map<String, dynamic>> _venues = [];
+    bool _isLoadingVenues = true;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            // Load venues when dialog opens
+            if (_isLoadingVenues) {
+              AdminPaymentService.getVenueOwners().then((venues) {
+                setDialogState(() {
+                  _venues = venues;
+                  _isLoadingVenues = false;
+                  if (_venues.isNotEmpty) {
+                    _selectedOwner = _venues.first['name'];
+                  }
+                });
+              });
+            }
+
             return AlertDialog(
               title: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.receipt_long, color: AppColors.primary),
                   SizedBox(width: 8),
-                  Text('Record Cash Payment'),
+                  Flexible(
+                    child: Text(
+                      'Record Cash Payment',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
-              content: Container(
-                width: 500,
+              content: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.9,
+                  maxHeight: MediaQuery.of(context).size.height * 0.7,
+                ),
                 child: SingleChildScrollView(
                   child: Form(
                     key: _formKey,
@@ -1376,12 +1841,14 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                                     size: 16,
                                   ),
                                   SizedBox(width: 6),
-                                  Text(
-                                    'Manual Cash Payment Record',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.primary,
+                                  Expanded(
+                                    child: Text(
+                                      'Manual Cash Payment Record',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primary,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1393,6 +1860,8 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                                   fontSize: 12,
                                   color: AppColors.textSecondary,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -1400,32 +1869,77 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                         SizedBox(height: 20),
 
                         // Owner Selection
-                        DropdownButtonFormField<String>(
-                          value: _selectedOwner,
-                          decoration: InputDecoration(
-                            labelText: 'Venue Owner',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.business),
-                          ),
-                          items:
-                              _owners.map((owner) {
-                                return DropdownMenuItem(
-                                  value: owner,
-                                  child: Text(owner),
-                                );
-                              }).toList(),
-                          onChanged: (String? newValue) {
-                            setDialogState(() {
-                              _selectedOwner = newValue!;
-                            });
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please select venue owner';
-                            }
-                            return null;
-                          },
-                        ),
+                        _isLoadingVenues
+                            ? Container(
+                              height: 56,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text('Loading venues...'),
+                                  ],
+                                ),
+                              ),
+                            )
+                            : DropdownButtonFormField<String>(
+                              value: _selectedOwner,
+                              decoration: InputDecoration(
+                                labelText: 'Venue Owner',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.business),
+                              ),
+                              isExpanded: true, // This prevents overflow
+                              items:
+                                  _venues.map<DropdownMenuItem<String>>((
+                                    venue,
+                                  ) {
+                                    final ownerInfo = venue['user_profiles'];
+                                    final displayText =
+                                        '${venue['name']} (${ownerInfo['full_name']})';
+                                    return DropdownMenuItem<String>(
+                                      value: venue['name'],
+                                      child: Text(
+                                        displayText,
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    );
+                                  }).toList(),
+                              onChanged: (String? newValue) {
+                                setDialogState(() {
+                                  _selectedOwner = newValue!;
+                                  // Auto-fill contact if available
+                                  final selectedVenue = _venues.firstWhere(
+                                    (venue) => venue['name'] == newValue,
+                                    orElse: () => {},
+                                  );
+                                  if (selectedVenue.isNotEmpty) {
+                                    final ownerInfo =
+                                        selectedVenue['user_profiles'];
+                                    _contactController.text =
+                                        ownerInfo['phone'] ?? '';
+                                  }
+                                });
+                              },
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please select venue owner';
+                                }
+                                return null;
+                              },
+                            ),
                         SizedBox(height: 16),
 
                         // Amount
@@ -1450,42 +1964,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                         ),
                         SizedBox(height: 16),
 
-                        // Payment Purpose
-                        TextFormField(
-                          controller: _paymentReasonController,
-                          decoration: InputDecoration(
-                            labelText: 'Payment Purpose',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.note),
-                            hintText: 'Monthly commission, Equipment fee, etc.',
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter payment purpose';
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: 16),
-
-                        // Received By
-                        TextFormField(
-                          controller: _personController,
-                          decoration: InputDecoration(
-                            labelText: 'Received By',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.person),
-                            hintText: 'Person who received the cash',
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter receiver name';
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: 16),
-
                         // Contact Number
                         TextFormField(
                           controller: _contactController,
@@ -1503,32 +1981,20 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                         ),
                         SizedBox(height: 16),
 
-                        // Related Booking (Optional)
-                        TextFormField(
-                          controller: _bookingIdController,
-                          decoration: InputDecoration(
-                            labelText: 'Related Booking ID (Optional)',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.confirmation_number),
-                            hintText: 'e.g., BK006',
-                          ),
-                        ),
-                        SizedBox(height: 16),
-
-                        // Additional Notes
+                        // Description
                         TextFormField(
                           controller: _descriptionController,
-                          maxLines: 2,
+                          maxLines: 3,
                           decoration: InputDecoration(
-                            labelText: 'Additional Notes',
+                            labelText: 'Description',
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.description),
                             hintText:
-                                'Any additional details about this payment',
+                                'Payment purpose, commission details, etc.',
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter some notes';
+                              return 'Please enter description';
                             }
                             return null;
                           },
@@ -1546,57 +2012,49 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                   child: Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      // Create cash payment record
-                      final newPayment = {
-                        'id': 'CASH${DateTime.now().millisecondsSinceEpoch}',
-                        'description':
-                            'Cash Payment: ${_paymentReasonController.text}',
-                        'amount': double.parse(_amountController.text),
-                        'type': 'To Owner (Cash)',
-                        'status': 'Completed',
-                        'method': 'Cash',
-                        'person': _personController.text,
-                        'contact': _contactController.text,
-                        'date':
-                            '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}',
-                        'time':
-                            '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-                        'transactionId':
-                            'CASH${DateTime.now().millisecondsSinceEpoch}',
-                        'venue': _selectedOwner,
-                        'bookingId':
-                            _bookingIdController.text.isNotEmpty
-                                ? _bookingIdController.text
-                                : 'N/A',
-                        'paymentReason': _paymentReasonController.text,
-                        'paidBy': 'Admin (Manual Cash)',
-                        'notes': _descriptionController.text,
-                        'recordedAt': DateTime.now().toIso8601String(),
-                      };
+                      try {
+                        final success =
+                            await AdminPaymentService.recordCashPayment(
+                              ownerName: _selectedOwner!,
+                              cashAmount: _amountController.text,
+                              contact: _contactController.text,
+                              description: _descriptionController.text,
+                            );
 
-                      setState(() {
-                        _demoPayments.insert(0, newPayment);
-                      });
-
-                      Navigator.of(context).pop();
-
-                      // Show success message
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            '✅ Cash payment recorded! ৳${_amountController.text} to ${_personController.text}',
+                        if (success) {
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Cash payment recorded successfully',
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          _loadPaymentData(); // Refresh data
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to record cash payment'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
                           ),
-                          backgroundColor: AppColors.success,
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
+                        );
+                      }
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.white,
+                    foregroundColor: Colors.white,
                   ),
                   child: Text('Record Payment'),
                 ),

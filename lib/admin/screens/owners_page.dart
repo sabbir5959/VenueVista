@@ -199,6 +199,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
     }
   }
 
+  // ignore: unused_element
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -231,6 +232,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildVenueTag(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

@@ -182,6 +182,7 @@ class _DynamicPricingPageState extends State<DynamicPricingPage> with SingleTick
   }
 
   // Simple wrapper method for button calls
+  // ignore: unused_element
   Future<void> _applyDiscount() async {
     await _applyDynamicDiscount();
   }
