@@ -798,6 +798,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
     }
   }
 
+  // ignore: unused_element
   Future<void> _selectRepeatEndDate() async {
     final DateTime now = DateTime.now();
     final DateTime? pickedDate = await showDatePicker(

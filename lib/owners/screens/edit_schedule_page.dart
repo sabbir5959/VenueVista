@@ -88,6 +88,7 @@ class _EditSchedulePageState extends State<EditSchedulePage> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _selectTime(bool isStartTime) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,

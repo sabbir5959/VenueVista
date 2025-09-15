@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'ground_details.dart';
 import 'widgets/common_drawer.dart';
+import '../services/venue_service.dart';
 
 class SearchGrounds extends StatefulWidget {
   const SearchGrounds({super.key});
@@ -10,174 +11,227 @@ class SearchGrounds extends StatefulWidget {
 }
 
 class _SearchGroundsState extends State<SearchGrounds> {
-  String selectedLocation = 'All Locations';
+  String selectedArea = 'All Areas';
   String selectedPlayers = 'Any';
   DateTime selectedDate = DateTime.now();
-  final String locationLabel = "Location";
+  final String locationLabel = "Area";
   final String pvpLabel = "PVP (Players)";
 
-  final List<String> locations = [
-    'All Locations',
-    'Mirpur',
-    'Dhanmondi',
-    'Gulshan',
-    'Uttara',
-    'Mohammadpur',
-    'Pallabi',
-  ];
+  // Dynamic data from backend
+  List<Map<String, dynamic>> allVenues = [];
+  List<Map<String, dynamic>> filteredVenues = [];
+  bool isLoadingVenues = true;
+  List<String> areas = ['All Areas'];
 
-  final List<String> playerCounts = ['Any', '5v5', '7v7', '11v11'];
+  @override
+  void initState() {
+    super.initState();
+    _loadAllVenues();
+  }
 
-  final List<Map<String, String>> grounds = [
-    {
-      'name': 'Club Volta',
-      'image':
-          'https://img.olympics.com/images/image/private/t_s_pog_staticContent_hero_lg_2x/f_auto/primary/sv4zhez2lyydydg8a4tb',
-      'location': 'Mirpur',
-      'description':
-          'Premier indoor football facility with FIFA-approved turf and professional lighting. Perfect for 5v5 and 7v7 matches.',
-      'price': '2000/hour',
-      'groundPayment': '400',
-      'rating': '4.8',
-      'facilities':
-          'Changing Rooms, Showers, Parking, Floodlights, Refreshments',
-      'size': '40m x 20m',
-    },
-    {
-      'name': 'Kings Arena',
-      'image':
-          'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=400&q=80',
-      'location': 'Dhanmondi',
-      'description':
-          'State-of-the-art outdoor football ground with natural grass. Ideal for full-size matches and training sessions.',
-      'price': '2500/hour',
-      'groundPayment': '600',
-      'rating': '4.9',
-      'facilities':
-          'Locker Rooms, Cafe, First Aid, Training Equipment, Spectator Seating',
-      'size': '100m x 64m',
-    },
-    {
-      'name': 'Dbox',
-      'image':
-          'https://imgresizer.tntsports.io/unsafe/2560x1440/filters:format(jpeg)/origin-imgresizer.tntsports.io/2025/03/11/image-2c33751b-72bd-4b98-9cc2-8873bbd18247-85-2560-1440.jpeg',
-      'location': 'Gulshan',
-      'description':
-          'Professional stadium with international standard facilities. Hosts major tournaments and events.',
-      'price': '3000/hour',
-      'groundPayment': '750',
-      'rating': '4.9',
-      'facilities':
-          'VIP Lounge, Media Room, Professional Lighting, Medical Center, Premium Seating',
-      'size': '105m x 68m',
-    },
-    {
-      'name': 'Volta',
-      'image':
-          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4TANOHp0yLFOUYKQWhbk_segU6KLW6WjGlg&s',
-      'location': 'Uttara',
-      'description':
-          'Multi-purpose sports facility with high-quality artificial turf. Suitable for both training and matches.',
-      'price': '2200/hour',
-      'groundPayment': '500',
-      'rating': '4.7',
-      'facilities':
-          'Training Equipment, Cafe, Changing Rooms, Floodlights, Parking',
-      'size': '90m x 45m',
-    },
-    {
-      'name': 'Soccer',
-      'image':
-          'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?auto=format&fit=crop&w=400&q=80',
-      'location': 'Mirpur',
-      'description':
-          'Indoor 5-a-side facility with climate control. Perfect for small group games and practice.',
-      'price': '1800/hour',
-      'groundPayment': '350',
-      'rating': '4.6',
-      'facilities':
-          'Air Conditioning, Lockers, Shop, First Aid, Water Dispensers',
-      'size': '30m x 15m',
-    },
-    {
-      'name': 'Masters',
-      'image':
-          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4TANOHp0yLFOUYKQWhbk_segU6KLW6WjGlg&s',
-      'location': 'Mohammadpur',
-      'description':
-          'Community sports complex with multiple fields. Great for tournaments and events.',
-      'price': '2400/hour',
-      'groundPayment': '550',
-      'rating': '4.8',
-      'facilities':
-          'Multiple Fields, Event Space, Cafeteria, Training Areas, Security',
-      'size': '95m x 50m',
-    },
-    {
-      'name': 'GreenTurf',
-      'image':
-          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSgznYPPwkW9y1Lt2iSL_4QjEZGZLmHddtI0bSoKiq_EcFq5oBGjRjj9w0PF8I4rJwZ1fY&usqp=CAU',
-      'location': 'Dhanmondi',
-      'description':
-          'Eco-friendly facility with natural grass. Includes professional coaching services.',
-      'price': '2300/hour',
-      'groundPayment': '520',
-      'rating': '4.7',
-      'facilities':
-          'Professional Coaching, Equipment Rental, Gym, Refreshments, Analysis Room',
-      'size': '100m x 64m',
-    },
-    {
-      'name': 'Kings Valley',
-      'image':
-          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRBgJlu4IYS6mZEEyLToTSTSUd8DY5Yj0mCNW95wQe-VZUNe7QiOyA_nqrEFzkKWX71tyw&usqp=CAU',
-      'location': 'Gulshan',
-      'description':
-          'Premium sports facility with hybrid grass technology. Hosts professional matches.',
-      'price': '2800/hour',
-      'groundPayment': '650',
-      'rating': '4.9',
-      'facilities':
-          'Premium Grass, Professional Setup, VIP Area, Video Analysis, Recovery Zone',
-      'size': '105m x 68m',
-    },
-    {
-      'name': 'SportsHub',
-      'image':
-          'https://images.unsplash.com/photo-1556056504-5c7696c4c28d?auto=format&fit=crop&w=400&q=80',
-      'location': 'Uttara',
-      'description':
-          'Modern sports complex with latest amenities. Suitable for all skill levels.',
-      'price': '2100/hour',
-      'groundPayment': '450',
-      'rating': '4.6',
-      'facilities':
-          'Modern Equipment, Training Programs, Cafe, Shop, Physio Room',
-      'size': '85m x 45m',
-    },
-    {
-      'name': 'GStation',
-      'image':
-          'https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=400&q=80',
-      'location': 'Mohammadpur',
-      'description':
-          'Versatile football facility with multiple pitch sizes. Perfect for various game formats.',
-      'price': '2000/hour',
-      'groundPayment': '400',
-      'rating': '4.7',
-      'facilities':
-          'Multiple Pitches, Training Zones, Changing Rooms, Floodlights, Parking',
-      'size': '80m x 40m',
-    },
-  ];
+  // Load all venues from backend
+  Future<void> _loadAllVenues() async {
+    setState(() {
+      isLoadingVenues = true;
+    });
 
-  List<Map<String, String>> get filteredGrounds {
-    return grounds.where((ground) {
-      bool locationMatch =
-          selectedLocation == 'All Locations' ||
-          ground['location'] == selectedLocation;
-      return locationMatch;
-    }).toList();
+    try {
+      final venues = await VenueService.getAllVenues();
+      if (venues.isNotEmpty) {
+        final venueAreas =
+            venues
+                .map((venue) => (venue['area']?.toString() ?? '').trim())
+                .where((area) => area.isNotEmpty)
+                .toSet()
+                .toList();
+        setState(() {
+          allVenues = venues;
+          filteredVenues = venues;
+          areas = ['All Areas', ...venueAreas];
+        });
+        print('✅ All venues loaded: ${venues.length}');
+      } else {
+        _loadFallbackVenues();
+      }
+    } catch (e) {
+      print('❌ Error loading venues: $e');
+      _loadFallbackVenues();
+    } finally {
+      setState(() {
+        isLoadingVenues = false;
+      });
+    }
+  }
+
+  // Fallback static venues data
+  void _loadFallbackVenues() {
+    allVenues = [
+      {
+        'id': 'fallback1',
+        'name': 'Club Volta',
+        'image_url':
+            'https://img.olympics.com/images/image/private/t_s_pog_staticContent_hero_lg_2x/f_auto/primary/sv4zhez2lyydydg8a4tb',
+        'location': 'Mirpur',
+        'description':
+            'Premier indoor football facility with FIFA-approved turf and professional lighting.',
+        'price_per_hour': 2000,
+        'rating': 4.8,
+        'facilities':
+            'Changing Rooms, Showers, Parking, Floodlights, Refreshments',
+        'ground_size': '40m x 20m',
+        'sport_type': 'Football',
+      },
+      {
+        'id': 'fallback2',
+        'name': 'Kings Arena',
+        'image_url':
+            'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=400&q=80',
+        'location': 'Dhanmondi',
+        'description':
+            'State-of-the-art outdoor football ground with natural grass.',
+        'price_per_hour': 2500,
+        'rating': 4.9,
+        'facilities':
+            'Locker Rooms, Cafe, First Aid, Training Equipment, Spectator Seating',
+        'ground_size': '100m x 64m',
+        'sport_type': 'Football',
+      },
+      {
+        'id': 'fallback3',
+        'name': 'Dbox Stadium',
+        'image_url':
+            'https://imgresizer.tntsports.io/unsafe/2560x1440/filters:format(jpeg)/origin-imgresizer.tntsports.io/2025/03/11/image-2c33751b-72bd-4b98-9cc2-8873bbd18247-85-2560-1440.jpeg',
+        'location': 'Gulshan',
+        'description':
+            'Professional stadium with international standard facilities.',
+        'price_per_hour': 3000,
+        'rating': 4.9,
+        'facilities':
+            'VIP Lounge, Media Room, Professional Lighting, Medical Center, Premium Seating',
+        'ground_size': '105m x 68m',
+        'sport_type': 'Football',
+      },
+      {
+        'id': 'fallback4',
+        'name': 'Volta Sports',
+        'image_url':
+            'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=400&q=80',
+        'location': 'Uttara',
+        'description': 'Multi-purpose sports facility with artificial turf.',
+        'price_per_hour': 2200,
+        'rating': 4.7,
+        'facilities': 'Training Equipment, Cafe, Changing Rooms, Floodlights',
+        'ground_size': '90m x 45m',
+        'sport_type': 'Football',
+      },
+      {
+        'id': 'fallback5',
+        'name': 'Green Field',
+        'image_url':
+            'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?auto=format&fit=crop&w=400&q=80',
+        'location': 'Mohammadpur',
+        'description': 'Indoor 5-a-side facility with climate control.',
+        'price_per_hour': 1800,
+        'rating': 4.6,
+        'facilities': 'Air Conditioning, Lockers, Shop, First Aid',
+        'ground_size': '30m x 15m',
+        'sport_type': 'Football',
+      },
+    ];
+    filteredVenues = allVenues;
+  }
+
+  // Remove locations list, use areas instead
+
+  final List<String> playerCounts = ['Any', '5', '6', '7', '8', '9', '10'];
+
+  // Apply filters to venues
+  void _applyFilters() {
+    setState(() {
+      filteredVenues =
+          allVenues.where((venue) {
+            final area = (venue['area']?.toString() ?? '').trim();
+            bool areaMatch =
+                selectedArea == 'All Areas' ||
+                area.toLowerCase() == selectedArea.toLowerCase();
+
+            // Player count filtering based on selected number and venue's PVP field
+            bool playerMatch = selectedPlayers == 'Any';
+            if (!playerMatch) {
+              int selectedNum = int.tryParse(selectedPlayers) ?? 0;
+              int venueNum = 0;
+              // Try to get PVP field from venue first (Supabase int field)
+              if (venue.containsKey('PVP') && venue['PVP'] != null) {
+                if (venue['PVP'] is int) {
+                  venueNum = venue['PVP'];
+                } else {
+                  venueNum = int.tryParse(venue['PVP'].toString()) ?? 0;
+                }
+              }
+              // Debug print for troubleshooting
+              print(
+                'Venue: \'${venue['name']}\' | PVP: $venueNum | Selected: $selectedNum',
+              );
+              // Fallback: Try to extract from ground_size or sport_type if PVP missing or not valid
+              if (venueNum <= 0) {
+                String groundSize =
+                    venue['ground_size']?.toString().toLowerCase() ?? '';
+                String sportType =
+                    venue['sport_type']?.toString().toLowerCase() ?? '';
+                RegExp vReg = RegExp(r'(\d+)v(\d+)');
+                var match = vReg.firstMatch(sportType);
+                if (match != null) {
+                  venueNum = int.tryParse(match.group(1) ?? '') ?? 0;
+                } else {
+                  RegExp nReg = RegExp(r'(\d+)');
+                  var nMatch = nReg.firstMatch(groundSize);
+                  if (nMatch != null) {
+                    venueNum = int.tryParse(nMatch.group(1) ?? '') ?? 0;
+                  }
+                }
+              }
+              playerMatch = venueNum == selectedNum;
+            }
+            return areaMatch && playerMatch;
+          }).toList();
+    });
+  }
+
+  // Convert dynamic venue data to string map for compatibility
+  Map<String, String> _convertVenueToStringMap(Map<String, dynamic> venue) {
+    // Debug: Print detailed venue data
+    print('🔍 Converting venue data: ${venue['name']}');
+    print('   - image_url field: ${venue['image_url']}');
+    print('   - image_urls field: ${venue['image_urls']}');
+
+    // Get image from image_urls array (your table uses this field)
+    String imageUrl = '';
+    if (venue['image_urls'] != null &&
+        venue['image_urls'] is List &&
+        venue['image_urls'].isNotEmpty) {
+      imageUrl = venue['image_urls'][0].toString();
+      print('   ✅ Found image from image_urls array: $imageUrl');
+    } else if (venue['image_url'] != null &&
+        venue['image_url'].toString().trim().isNotEmpty) {
+      imageUrl = venue['image_url'].toString();
+      print('   ✅ Found image from image_url field: $imageUrl');
+    } else {
+      print('   ⚠️ No image found in either field');
+    }
+
+    return <String, String>{
+      'id': venue['id']?.toString() ?? '', // Add venue ID
+      'name': venue['name']?.toString() ?? '',
+      'image': imageUrl, // Empty string if no image in table
+      'location': venue['location']?.toString() ?? '',
+      'description': venue['description']?.toString() ?? '',
+      'price': '৳${venue['price_per_hour']?.toString() ?? '0'}/hour',
+      'groundPayment': '${((venue['price_per_hour'] ?? 0) * 0.2).toInt()}',
+      'rating': venue['rating']?.toString() ?? '0.0',
+      'facilities': venue['facilities']?.toString() ?? '',
+      'size': venue['ground_size']?.toString() ?? '',
+      'area': venue['area']?.toString() ?? '',
+    };
   }
 
   void showSnackBar(String message) {
@@ -191,7 +245,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
       context: context,
       initialDate: selectedDate,
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(Duration(days: 30)),
+      lastDate: DateTime.now().add(Duration(days: 7)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -272,7 +326,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: DropdownButton<String>(
-                              value: selectedLocation,
+                              value: selectedArea,
                               isExpanded: true,
                               underline: SizedBox(),
                               icon: Icon(
@@ -280,16 +334,17 @@ class _SearchGroundsState extends State<SearchGrounds> {
                                 color: Colors.green.shade900,
                               ),
                               items:
-                                  locations.map((String location) {
+                                  areas.map((String area) {
                                     return DropdownMenuItem<String>(
-                                      value: location,
-                                      child: Text(location),
+                                      value: area,
+                                      child: Text(area),
                                     );
                                   }).toList(),
                               onChanged: (String? newValue) {
                                 setState(() {
-                                  selectedLocation = newValue!;
+                                  selectedArea = newValue!;
                                 });
+                                _applyFilters();
                               },
                             ),
                           ),
@@ -337,6 +392,7 @@ class _SearchGroundsState extends State<SearchGrounds> {
                                 setState(() {
                                   selectedPlayers = newValue!;
                                 });
+                                _applyFilters();
                               },
                             ),
                           ),
@@ -391,27 +447,47 @@ class _SearchGroundsState extends State<SearchGrounds> {
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
               ),
-              itemCount: filteredGrounds.length,
+              itemCount: isLoadingVenues ? 6 : filteredVenues.length,
               itemBuilder: (context, index) {
-                final ground = filteredGrounds[index];
+                if (isLoadingVenues) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Center(
+                      child: CircularProgressIndicator(color: Colors.green),
+                    ),
+                  );
+                }
+
+                final venue = filteredVenues[index];
+                final groundData = _convertVenueToStringMap(venue);
                 return _GroundCard(
-                  title: ground['name']!,
-                  imageUrl: ground['image']!,
+                  title: groundData['name']!,
+                  imageUrl: groundData['image']!,
                   onTap: () {
+                    print(
+                      '🚀 Navigating to GroundDetails with date: $selectedDate',
+                    );
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder:
                             (context) => GroundDetails(
-                              name: ground['name']!,
-                              imageUrl: ground['image']!,
-                              location: ground['location']!,
-                              description: ground['description']!,
-                              price: ground['price']!,
-                              groundPayment: ground['groundPayment']!,
-                              rating: ground['rating']!,
-                              facilities: ground['facilities']!,
-                              size: ground['size']!,
+                              venueId: groundData['id'], // Pass venue ID
+                              name: groundData['name']!,
+                              imageUrl: groundData['image']!,
+                              location: groundData['location']!,
+                              description: groundData['description']!,
+                              price: groundData['price']!,
+                              groundPayment: groundData['groundPayment']!,
+                              rating: groundData['rating']!,
+                              facilities: groundData['facilities']!,
+                              size: groundData['size']!,
+                              area: groundData['area']!,
+                              initialSelectedDate:
+                                  selectedDate, // Pass the selected date
                             ),
                       ),
                     );

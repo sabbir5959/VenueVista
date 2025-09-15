@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
+import '../../services/admin_tournament_service.dart';
 
 class AdminEventsPage extends StatefulWidget {
   const AdminEventsPage({super.key});
@@ -15,9 +16,95 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
   final int _itemsPerPage = 8;
   String _selectedStatus = 'All';
 
+  List<Map<String, dynamic>> _tournaments = [];
+  Map<String, dynamic> _stats = {};
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTournaments();
+  }
+
+  Future<void> _loadTournaments() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final tournaments = await AdminTournamentService.getAllTournaments();
+
+      final stats = await AdminTournamentService.getTournamentStats();
+
+      final formattedTournaments = <Map<String, dynamic>>[];
+      for (final tournament in tournaments) {
+        try {
+          final formatted = AdminTournamentService.formatTournamentForDisplay(
+            tournament,
+          );
+          formattedTournaments.add(formatted);
+        } catch (e) {
+          // Skip this tournament but continue with others
+        }
+      }
+
+      setState(() {
+        _tournaments = formattedTournaments;
+        _stats = stats;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to load tournaments: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: AppColors.error),
+              SizedBox(height: 16),
+              Text(
+                'Error loading tournaments',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(onPressed: _loadTournaments, child: Text('Retry')),
+            ],
+          ),
+        ),
+      );
+    }
+
     final filteredEvents = _getFilteredEvents();
     final totalPages = (filteredEvents.length / _itemsPerPage).ceil();
     final startIndex = (_currentPage - 1) * _itemsPerPage;
@@ -64,6 +151,25 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                     ],
                   ),
                 ),
+                SizedBox(width: 12),
+                // Refresh Button
+                Container(
+                  padding: EdgeInsets.all(isMobile ? 8 : 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: InkWell(
+                    onTap: _loadTournaments,
+                    child: Icon(
+                      Icons.refresh,
+                      color: AppColors.primary,
+                      size: isMobile ? 18 : 20,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12),
                 // Export Button
                 Container(
                   padding: EdgeInsets.symmetric(
@@ -109,7 +215,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
 
             SizedBox(height: isMobile ? 20 : 32),
 
-            
             GridView.count(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
@@ -120,7 +225,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
               children: [
                 _buildStatCard(
                   'Total Tournaments',
-                  '${_demoEvents.length}',
+                  '${_stats['totalTournaments'] ?? 0}',
                   Icons.emoji_events,
                   Colors.blue[600]!,
                   isMobile,
@@ -128,34 +233,33 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                 ),
                 _buildStatCard(
                   'Active Tournaments',
-                  '${_demoEvents.where((e) => e['status'] == 'Active').length}',
+                  '${_stats['activeTournaments'] ?? 0}',
                   Icons.event_available,
                   Colors.green[600]!,
                   isMobile,
-                  'Active',
+                  'active',
                 ),
                 _buildStatCard(
                   'Completed Tournaments',
-                  '${_demoEvents.where((e) => e['status'] == 'Completed').length}',
+                  '${_stats['completedTournaments'] ?? 0}',
                   Icons.done_all_outlined,
                   Colors.purple[600]!,
                   isMobile,
-                  'Completed',
+                  'completed',
                 ),
                 _buildStatCard(
                   'Upcoming Tournaments',
-                  '${_demoEvents.where((e) => e['status'] == 'Upcoming').length}',
+                  '${_stats['upcomingTournaments'] ?? 0}',
                   Icons.schedule_outlined,
                   Colors.orange[600]!,
                   isMobile,
-                  'Upcoming',
+                  'upcoming',
                 ),
               ],
             ),
 
             SizedBox(height: isMobile ? 20 : 24),
 
-            
             Container(
               decoration: BoxDecoration(
                 color: AppColors.surface,
@@ -170,7 +274,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
               ),
               child: Column(
                 children: [
-                  
                   Container(
                     padding: EdgeInsets.all(isMobile ? 16 : 20),
                     decoration: BoxDecoration(
@@ -204,7 +307,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                     ),
                   ),
 
-                  
                   ListView.separated(
                     shrinkWrap: true,
                     physics: NeverScrollableScrollPhysics(),
@@ -220,7 +322,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                     },
                   ),
 
-                
                   if (totalPages > 1)
                     Container(
                       padding: EdgeInsets.all(isMobile ? 16 : 20),
@@ -234,7 +335,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          
                           IconButton(
                             onPressed:
                                 _currentPage > 1
@@ -247,7 +347,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                                     : AppColors.textSecondary,
                           ),
 
-                         
                           ...List.generate(totalPages, (index) {
                             final page = index + 1;
                             final isCurrentPage = page == _currentPage;
@@ -289,7 +388,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                             );
                           }),
 
-                          
                           IconButton(
                             onPressed:
                                 _currentPage < totalPages
@@ -329,7 +427,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
       onTap: () {
         setState(() {
           _selectedStatus = filterStatus;
-          _currentPage = 1; 
+          _currentPage = 1;
         });
       },
       borderRadius: BorderRadius.circular(16),
@@ -428,7 +526,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        event['name'],
+                        event['name'] ?? 'Unknown Tournament',
                         style: TextStyle(
                           fontSize: isMobile ? 14 : 16,
                           fontWeight: FontWeight.w600,
@@ -443,16 +541,18 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: _getEventStatusColor(
-                          event['status'],
+                          event['status'] ?? 'active',
                         ).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        event['status'],
+                        _capitalizeStatus(event['status'] ?? 'Active'),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: _getEventStatusColor(event['status']),
+                          color: _getEventStatusColor(
+                            event['status'] ?? 'active',
+                          ),
                         ),
                       ),
                     ),
@@ -460,7 +560,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Tournament at ${event['venue']} • ${event['participants']} participants • ${event['playersPerTeam']} per team',
+                  'Tournament at ${event['venue'] ?? 'Unknown Venue'} • ${event['participants'] ?? 0} participants • ${event['playersPerTeam'] ?? 5} per team',
                   style: TextStyle(
                     fontSize: isMobile ? 12 : 14,
                     color: AppColors.textSecondary,
@@ -483,7 +583,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                             ),
                             SizedBox(width: 4),
                             Text(
-                              '${event['date']} at ${event['startTime']}',
+                              '${event['date'] ?? 'TBD'} at ${event['startTime'] ?? 'TBD'}',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -501,7 +601,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                             ),
                             SizedBox(width: 4),
                             Text(
-                              '${event['duration']} hours duration',
+                              '${event['duration'] ?? 0} hours duration',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -516,7 +616,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                             SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                '${event['participants']} players',
+                                '${event['participants'] ?? 0} players',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textSecondary,
@@ -558,7 +658,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                         ),
                         SizedBox(width: 4),
                         Text(
-                          '${event['date']} at ${event['startTime']}',
+                          '${event['date'] ?? 'TBD'} at ${event['startTime'] ?? 'TBD'}',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -572,7 +672,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                         ),
                         SizedBox(width: 4),
                         Text(
-                          '${event['duration']}h',
+                          '${event['duration'] ?? 0}h',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -587,7 +687,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                         SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            '${event['participants']} players',
+                            '${event['participants'] ?? 0} players',
                             style: TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary,
@@ -603,16 +703,18 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                           ),
                           decoration: BoxDecoration(
                             color: _getEventTypeColor(
-                              event['type'],
+                              event['type'] ?? 'Tournament',
                             ).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'By ${event['owner']}',
+                            'By ${event['owner'] ?? 'Unknown'}',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: _getEventTypeColor(event['type']),
+                              color: _getEventTypeColor(
+                                event['type'] ?? 'Tournament',
+                              ),
                             ),
                           ),
                         ),
@@ -622,7 +724,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
             ),
           ),
           SizedBox(width: isMobile ? 8 : 12),
-          
+
           InkWell(
             onTap: () => _showEventDetails(event),
             borderRadius: BorderRadius.circular(8),
@@ -670,32 +772,44 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
   }
 
   List<Map<String, dynamic>> _getFilteredEvents() {
-    List<Map<String, dynamic>> filtered = _demoEvents;
+    List<Map<String, dynamic>> filtered = List.from(_tournaments);
 
     // Filter by status
     if (_selectedStatus != 'All') {
       filtered =
           filtered
-              .where((event) => event['status'] == _selectedStatus)
+              .where(
+                (tournament) =>
+                    (tournament['status'] ?? 'active').toLowerCase() ==
+                    _selectedStatus.toLowerCase(),
+              )
               .toList();
     }
 
     // Filter by date range
     if (_startDate != null || _endDate != null) {
       filtered =
-          filtered.where((event) {
-            DateTime eventDate = DateTime.parse(event['date']);
+          filtered.where((tournament) {
+            try {
+              String? dateStr = tournament['date'];
+              if (dateStr == null || dateStr.isEmpty) return false;
 
-            if (_startDate != null && eventDate.isBefore(_startDate!)) {
+              DateTime eventDate = DateTime.parse(dateStr);
+
+              if (_startDate != null && eventDate.isBefore(_startDate!)) {
+                return false;
+              }
+
+              if (_endDate != null &&
+                  eventDate.isAfter(_endDate!.add(Duration(days: 1)))) {
+                return false;
+              }
+
+              return true;
+            } catch (e) {
+              // Skip tournaments with invalid dates
               return false;
             }
-
-            if (_endDate != null &&
-                eventDate.isAfter(_endDate!.add(Duration(days: 1)))) {
-              return false;
-            }
-
-            return true;
           }).toList();
     }
 
@@ -744,7 +858,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                         ),
                       ),
                       Text(
-                        event['name'],
+                        event['name'] ?? 'Unknown Tournament',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -762,11 +876,11 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    event['status'],
+                    _capitalizeStatus(event['status'] ?? 'Active'),
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: _getEventStatusColor(event['status']),
+                      color: _getEventStatusColor(event['status'] ?? 'active'),
                     ),
                   ),
                 ),
@@ -784,22 +898,22 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                   _buildDetailSection('Tournament Information', [
                     _buildDetailItem(
                       'Tournament Name',
-                      event['name'],
+                      event['name'] ?? 'Unknown Tournament',
                       Icons.emoji_events,
                     ),
                     _buildDetailItem(
                       'Tournament Type',
-                      event['type'],
+                      event['type'] ?? 'Tournament',
                       Icons.category,
                     ),
                     _buildDetailItem(
                       'Status',
-                      event['status'],
+                      _capitalizeStatus(event['status'] ?? 'Active'),
                       Icons.info_outline,
                     ),
                     _buildDetailItem(
                       'Created By',
-                      event['owner'],
+                      event['owner'] ?? 'Unknown',
                       Icons.person_outline,
                     ),
                   ], isMobile),
@@ -807,17 +921,17 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                   _buildDetailSection('Tournament Setup', [
                     _buildDetailItem(
                       'Total Participants',
-                      '${event['participants']} players',
+                      '${event['participants'] ?? 0} players',
                       Icons.groups,
                     ),
                     _buildDetailItem(
                       'Players per Team',
-                      '${event['playersPerTeam']} players',
+                      '${event['playersPerTeam'] ?? 5} players',
                       Icons.sports_soccer,
                     ),
                     _buildDetailItem(
                       'Duration',
-                      '${event['duration']} hours',
+                      '${event['duration'] ?? 0} hours',
                       Icons.schedule,
                     ),
                   ], isMobile),
@@ -825,17 +939,17 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                   _buildDetailSection('Venue Details', [
                     _buildDetailItem(
                       'Venue',
-                      event['venue'],
+                      event['venue'] ?? 'TBD',
                       Icons.location_on,
                     ),
                     _buildDetailItem(
                       'Date',
-                      event['date'],
+                      event['date'] ?? 'TBD',
                       Icons.calendar_today,
                     ),
                     _buildDetailItem(
                       'Start Time',
-                      event['startTime'],
+                      event['startTime'] ?? 'TBD',
                       Icons.access_time,
                     ),
                   ], isMobile),
@@ -1010,7 +1124,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
 
                       SizedBox(height: 24),
 
-                     
                       Text(
                         'Filter Settings',
                         style: TextStyle(
@@ -1124,7 +1237,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
 
                       SizedBox(height: 16),
 
-                      
                       Text(
                         'Time Period',
                         style: TextStyle(
@@ -1385,187 +1497,21 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
   }
 
   Color _getEventStatusColor(String status) {
-    switch (status) {
-      case 'Active':
+    switch (status.toLowerCase()) {
+      case 'active':
         return Colors.green[600]!;
-      case 'Upcoming':
+      case 'upcoming':
         return Colors.orange[600]!;
-      case 'Completed':
+      case 'completed':
         return Colors.purple[600]!;
       default:
         return AppColors.textSecondary;
     }
   }
 
-  static final List<Map<String, dynamic>> _demoEvents = [
-    {
-      'name': 'Inter-College Futsal Tournament',
-      'venue': 'Green Valley Futsal Complex',
-      'date': '2024-07-25',
-      'startTime': '09:00 AM',
-      'duration': 6,
-      'participants': 32,
-      'playersPerTeam': 5,
-      'status': 'Active',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue1.jpg',
-      'owner': 'Green Valley Sports Club',
-    },
-    {
-      'name': 'Premier Futsal Tournament 2024',
-      'venue': 'National Futsal Stadium',
-      'date': '2024-07-28',
-      'startTime': '10:00 AM',
-      'duration': 8,
-      'participants': 64,
-      'playersPerTeam': 5,
-      'status': 'Active',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue2.jpg',
-      'owner': 'National Sports Authority',
-    },
-    {
-      'name': 'Youth Futsal Championship',
-      'venue': 'Elite Futsal Academy',
-      'date': '2024-07-30',
-      'startTime': '08:00 AM',
-      'duration': 5,
-      'participants': 24,
-      'playersPerTeam': 5,
-      'status': 'Active',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue3.jpg',
-      'owner': 'Elite Futsal Academy',
-    },
-    {
-      'name': 'Dhaka vs Chittagong Futsal Cup',
-      'venue': 'Bangabandhu Futsal Arena',
-      'date': '2024-08-02',
-      'startTime': '03:00 PM',
-      'duration': 4,
-      'participants': 16,
-      'playersPerTeam': 5,
-      'status': 'Completed',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue4.jpg',
-      'owner': 'Bangladesh Futsal Federation',
-    },
-    {
-      'name': 'School Futsal Championship',
-      'venue': 'Dhanmondi Futsal Ground',
-      'date': '2024-08-05',
-      'startTime': '02:00 PM',
-      'duration': 6,
-      'participants': 20,
-      'playersPerTeam': 5,
-      'status': 'Active',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue5.jpg',
-      'owner': 'Dhaka School Sports Committee',
-    },
-    {
-      'name': 'Professional Futsal League',
-      'venue': 'Sylhet District Futsal Arena',
-      'date': '2024-08-10',
-      'startTime': '11:00 AM',
-      'duration': 7,
-      'participants': 48,
-      'playersPerTeam': 5,
-      'status': 'Completed',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue6.jpg',
-      'owner': 'Sylhet Futsal Association',
-    },
-    {
-      'name': 'District Futsal Championship',
-      'venue': 'BKSP Futsal Ground',
-      'date': '2024-08-12',
-      'startTime': '09:30 AM',
-      'duration': 5,
-      'participants': 28,
-      'playersPerTeam': 5,
-      'status': 'Active',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue7.jpg',
-      'owner': 'BKSP Sports Authority',
-    },
-    {
-      'name': 'Division Futsal Tournament Final',
-      'venue': 'Rajshahi Divisional Futsal Court',
-      'date': '2024-08-15',
-      'startTime': '04:00 PM',
-      'duration': 3,
-      'participants': 8,
-      'playersPerTeam': 5,
-      'status': 'Active',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue8.jpg',
-      'owner': 'Rajshahi Sports Council',
-    },
-    {
-      'name': 'Women Futsal Tournament',
-      'venue': 'Jessore Futsal Arena',
-      'date': '2024-08-18',
-      'startTime': '01:00 PM',
-      'duration': 4,
-      'participants': 16,
-      'playersPerTeam': 5,
-      'status': 'Completed',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue9.jpg',
-      'owner': 'Women Futsal Association',
-    },
-    {
-      'name': 'Corporate Futsal Tournament',
-      'venue': 'Uttara Futsal Complex',
-      'date': '2024-08-22',
-      'startTime': '10:30 AM',
-      'duration': 6,
-      'participants': 32,
-      'playersPerTeam': 5,
-      'status': 'Active',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue10.jpg',
-      'owner': 'Corporate Sports League',
-    },
-    {
-      'name': 'National Futsal Championship',
-      'venue': 'Chittagong MA Aziz Futsal Hall',
-      'date': '2024-08-28',
-      'startTime': '12:00 PM',
-      'duration': 8,
-      'participants': 64,
-      'playersPerTeam': 5,
-      'status': 'Upcoming',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue11.jpg',
-      'owner': 'Bangladesh Futsal Federation',
-    },
-    {
-      'name': 'Under-18 Futsal Tournament',
-      'venue': 'Mymensingh Futsal Court',
-      'date': '2024-09-02',
-      'startTime': '08:30 AM',
-      'duration': 5,
-      'participants': 24,
-      'playersPerTeam': 5,
-      'status': 'Upcoming',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue12.jpg',
-      'owner': 'Youth Sports Development',
-    },
-    {
-      'name': 'International Futsal Cup',
-      'venue': 'BFF Futsal Training Center',
-      'date': '2024-09-05',
-      'startTime': '02:30 PM',
-      'duration': 4,
-      'participants': 16,
-      'playersPerTeam': 5,
-      'status': 'Upcoming',
-      'type': 'Tournament',
-      'venueImage': 'assets/images/venue13.jpg',
-      'owner': 'International Futsal Committee',
-    },
-  ];
+  String _capitalizeStatus(String status) {
+    return status.isNotEmpty
+        ? '${status[0].toUpperCase()}${status.substring(1).toLowerCase()}'
+        : status;
+  }
 }

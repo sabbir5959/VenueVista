@@ -310,14 +310,11 @@ class _RegistrationPageState extends State<RegistrationPage> {
                         // Logo and Title
                         Container(
                           padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.green[50],
-                          ),
-                          child: Icon(
-                            Icons.person_add,
-                            size: 60,
-                            color: Colors.green[700],
+                          child: Image.asset(
+                            'assets/icons/venue.png',
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.contain,
                           ),
                         ),
 

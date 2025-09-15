@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../widgets/common_drawer.dart';
 import 'ground_booking_success_page.dart';
+import '../../services/payment_service.dart';
+import '../../services/booking_service.dart';
+import '../../services/auth_service.dart';
 
 class GroundBookingPaymentPage extends StatefulWidget {
   final Map<String, dynamic> booking;
@@ -452,6 +455,25 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
   }
 
   Widget _buildPaymentSummary() {
+    print('🔍 Debug _buildPaymentSummary:');
+    print('   Raw price: ${widget.booking['price']}');
+
+    final bookingFee = widget.booking['price']
+        .replaceAll('৳', '')
+        .replaceAll(',', '')
+        .replaceAll('/hour', '');
+    print('   Cleaned fee: $bookingFee');
+
+    // Parse as double first, then convert to int
+    final bookingAmount = (double.tryParse(bookingFee) ?? 0.0).toInt();
+    print('   Booking amount: $bookingAmount');
+
+    final transactionFee = _calculateTransactionFee(bookingAmount);
+    print('   Transaction fee: $transactionFee');
+
+    final totalAmount = bookingAmount + transactionFee;
+    print('   Total amount: $totalAmount');
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -487,26 +509,12 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Ground Payment:',
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-                Text(
-                  '৳${3000}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
                   'Transaction Fee:',
                   style: TextStyle(color: Colors.grey.shade600),
                 ),
-                const Text(
-                  '৳10',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                Text(
+                  '৳$transactionFee',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -519,7 +527,7 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  "৳${3010}",
+                  "৳$totalAmount",
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -566,36 +574,85 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
   }
 
   String _calculateTotal() {
+    print('🔍 Debug _calculateTotal:');
+    print('   Raw price: ${widget.booking['price']}');
+
     final bookingFee = widget.booking['price']
         .replaceAll('৳', '')
-        .replaceAll(',', '');
-    final bookingAmount = int.tryParse(bookingFee) ?? 0;
-    final groundPayment = _getGroundPaymentAmount();
-    final total =
-        bookingAmount +
-        groundPayment +
-        10; // Adding ground payment and transaction fee
-    return '৳${total.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}';
+        .replaceAll(',', '')
+        .replaceAll('/hour', '');
+    print('   Cleaned fee: $bookingFee');
+
+    // Parse as double first, then convert to int
+    final bookingAmount = (double.tryParse(bookingFee) ?? 0.0).toInt();
+    print('   Booking amount: $bookingAmount');
+
+    final transactionFee = _calculateTransactionFee(bookingAmount);
+    print('   Transaction fee: $transactionFee');
+
+    final totalAmount = bookingAmount + transactionFee;
+    print('   Total amount: $totalAmount');
+
+    return '৳$totalAmount';
   }
 
-  String _getGroundPayment() {
-    final amount = _getGroundPaymentAmount();
-    return amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    );
+  int _calculateTransactionFee(int amount) {
+    // Calculate 2% transaction fee
+    // 1000 tk -> 20 tk, 500 tk -> 10 tk, 3000 tk -> 60 tk
+    return (amount * 0.02).round();
   }
 
-  int _getGroundPaymentAmount() {
-    // Ground payment is typically 20% of the booking fee or minimum ৳50
-    final bookingFee = widget.booking['price']
-        .replaceAll('৳', '')
-        .replaceAll(',', '');
-    final bookingAmount = int.tryParse(bookingFee) ?? 0;
-    final groundPayment = (bookingAmount * 0.2).round();
-    return groundPayment < 50
-        ? 50
-        : groundPayment; // Minimum ৳50 ground payment
+  // Helper method to format date for database (from "1/1/2025" to "2025-01-01")
+  String _formatDateForDatabase(String dateString) {
+    try {
+      if (dateString.isEmpty) {
+        return DateTime.now().toIso8601String().split('T')[0];
+      }
+
+      final parts = dateString.split('/');
+      if (parts.length == 3) {
+        final day = parts[0].padLeft(2, '0');
+        final month = parts[1].padLeft(2, '0');
+        final year = parts[2];
+        return '$year-$month-$day';
+      }
+
+      return DateTime.now().toIso8601String().split('T')[0];
+    } catch (e) {
+      return DateTime.now().toIso8601String().split('T')[0];
+    }
+  }
+
+  // Helper method to extract start time from time slot (from "09:00 to 10:00" to "09:00")
+  String _extractStartTime(String timeSlot) {
+    try {
+      if (timeSlot.isEmpty) return '09:00';
+
+      final parts = timeSlot.split(' to ');
+      if (parts.isNotEmpty) {
+        return parts[0].trim();
+      }
+
+      return '09:00';
+    } catch (e) {
+      return '09:00';
+    }
+  }
+
+  // Helper method to extract end time from time slot (from "09:00 to 10:00" to "10:00")
+  String _extractEndTime(String timeSlot) {
+    try {
+      if (timeSlot.isEmpty) return '10:00';
+
+      final parts = timeSlot.split(' to ');
+      if (parts.length >= 2) {
+        return parts[1].trim();
+      }
+
+      return '10:00';
+    } catch (e) {
+      return '10:00';
+    }
   }
 
   void _processPayment() async {
@@ -607,28 +664,146 @@ class _GroundBookingPaymentPageState extends State<GroundBookingPaymentPage> {
       isProcessing = true;
     });
 
-    // Simulate payment processing
-    await Future.delayed(const Duration(seconds: 3));
+    try {
+      // Get current user
+      final currentUser = AuthService.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
 
-    if (mounted) {
-      setState(() {
-        isProcessing = false;
-      });
+      // Calculate amounts - booking fee + transaction fee
+      final bookingFee = widget.booking['price']
+          .replaceAll('৳', '')
+          .replaceAll(',', '')
+          .replaceAll('/hour', '');
+      final bookingAmount = (double.tryParse(bookingFee) ?? 0.0).toInt();
+      final transactionFee = _calculateTransactionFee(bookingAmount);
+      final totalAmount = (bookingAmount + transactionFee).toDouble();
 
-      // Navigate to success page
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
+      // Process payment through payment gateway
+      print('🔄 Processing payment...');
+      bool paymentSuccess = false;
+      int retryCount = 0;
+      const maxRetries = 2;
+
+      // Try payment with retry logic
+      while (!paymentSuccess && retryCount <= maxRetries) {
+        try {
+          paymentSuccess = await PaymentService.processPayment(
+            paymentMethod: selectedPaymentMethod,
+            mobileNumber: mobileController.text,
+            pin: pinController.text,
+            amount: totalAmount,
+          );
+
+          if (!paymentSuccess && retryCount < maxRetries) {
+            retryCount++;
+            print('⚠️ Payment attempt ${retryCount} failed, retrying...');
+            await Future.delayed(const Duration(seconds: 1));
+          }
+        } catch (e) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            print('⚠️ Payment attempt ${retryCount} failed: $e, retrying...');
+            await Future.delayed(const Duration(seconds: 1));
+          } else {
+            throw e; // Re-throw on final failure
+          }
+        }
+      }
+
+      if (!paymentSuccess) {
+        throw Exception(
+          'Payment failed after ${maxRetries + 1} attempts. Please check your details and try again.',
+        );
+      }
+
+      print('✅ Payment processed successfully');
+
+      // Create booking in database
+      print('🔄 Creating booking...');
+      final selectedSlots =
+          widget.booking['selectedSlots'] as List<String>? ?? [];
+      List<String> bookingIds = [];
+      for (final slot in selectedSlots) {
+        print(
+          '📋 Booking data: venueId=${widget.booking['venueId']}, date=${widget.booking['date']}, timeSlot=$slot',
+        );
+        final bookingId = await BookingService.createBooking(
+          userId: currentUser.id,
+          venueId: widget.booking['venueId'] ?? widget.booking['id'] ?? '',
+          bookingDate: _formatDateForDatabase(widget.booking['date'] ?? ''),
+          startTime: _extractStartTime(slot),
+          endTime: _extractEndTime(slot),
+          totalAmount: totalAmount,
+        );
+        if (bookingId == null) {
+          throw Exception('Failed to create booking for slot $slot');
+        }
+        bookingIds.add(bookingId);
+        print('✅ Booking created with ID: $bookingId');
+        // Create payment record for each booking
+        print('🔄 Recording payment...');
+        final paymentId = await PaymentService.createBookingPayment(
+          userId: currentUser.id,
+          bookingId: bookingId,
+          amount: totalAmount,
+          paymentMethod: selectedPaymentMethod,
+          mobileNumber: mobileController.text,
+          pin: pinController.text,
+        );
+        if (paymentId == null) {
+          throw Exception('Failed to record payment for booking $bookingId');
+        }
+        print('✅ Payment recorded with ID: $paymentId');
+      }
+
+      // Success - navigate to success page
+      if (mounted) {
+        setState(() {
+          isProcessing = false;
+        });
+
+        // Navigate to success page
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) => GroundBookingSuccessPage(
+                  booking: {...widget.booking},
+                  paymentMethod: selectedPaymentMethod,
+                  mobileNumber: mobileController.text,
+                  totalAmount: _calculateTotal(),
+                  transactionId: _generateTransactionId(),
+                ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Handle errors
+      if (mounted) {
+        setState(() {
+          isProcessing = false;
+        });
+
+        // Show error dialog
+        showDialog(
+          context: context,
           builder:
-              (context) => GroundBookingSuccessPage(
-                booking: widget.booking,
-                paymentMethod: selectedPaymentMethod,
-                mobileNumber: mobileController.text,
-                totalAmount: _calculateTotal(),
-                transactionId: _generateTransactionId(),
+              (context) => AlertDialog(
+                title: const Text('Payment Failed'),
+                content: Text(
+                  'Error: ${e.toString().replaceAll('Exception: ', '')}',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'),
+                  ),
+                ],
               ),
-        ),
-      );
+        );
+      }
     }
   }
 

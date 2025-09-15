@@ -19,6 +19,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   bool _isLoading = false;
 
   @override
+  
   void initState() {
     super.initState();
     _passwordController.addListener(() {

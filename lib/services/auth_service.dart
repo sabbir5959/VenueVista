@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'supabase_config.dart';
 
 /// Authentication service for handling all auth operations
@@ -23,9 +24,25 @@ class AuthService {
         email: email,
         password: password,
       );
+
+      // Clear logout flag on successful login
+      if (response.user != null) {
+        await _clearLogoutFlag();
+      }
+
       return response;
     } catch (e) {
       rethrow;
+    }
+  }
+
+  /// Clear logout flag to enable auto-login
+  static Future<void> _clearLogoutFlag() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_out', false);
+    } catch (e) {
+      print('Error clearing logout flag: $e');
     }
   }
 
@@ -105,12 +122,29 @@ class AuthService {
   /// Sign out current user
   static Future<void> signOut() async {
     try {
+      // Clear saved credentials when signing out
+      await _clearSavedCredentials();
+
       // Sign out from Google first
       await _googleSignIn.signOut();
       // Then sign out from Supabase
       await _client.auth.signOut();
     } catch (e) {
       rethrow;
+    }
+  }
+
+  /// Clear saved login credentials
+  static Future<void> _clearSavedCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('saved_email');
+      await prefs.remove('saved_password');
+      await prefs.remove('saved_role');
+      await prefs.setBool('remember_me', false);
+      await prefs.setBool('is_logged_out', true); // Set logout flag
+    } catch (e) {
+      print('Error clearing saved credentials: $e');
     }
   }
 

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import '../widgets/common_drawer.dart';
 import 'payment_page.dart';
-import '../../owners/services/tournament_service.dart';
+import '../../services/tournament_service.dart';
+import '../../services/supabase_config.dart';
 
 class TournamentsPage extends StatefulWidget {
   const TournamentsPage({super.key});
@@ -13,218 +13,763 @@ class TournamentsPage extends StatefulWidget {
 
 class _TournamentsPageState extends State<TournamentsPage> {
   List<Map<String, dynamic>> tournaments = [];
+  List<Map<String, dynamic>> filteredTournaments = [];
+  Map<String, bool> userRegistrations = {}; // Track user's registrations
   bool _isLoading = true;
+  String _errorMessage = '';
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadTournaments();
+    _loadUpcomingTournaments();
   }
 
-  Future<void> _loadTournaments() async {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh tournaments when returning to this page
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUpcomingTournaments();
+    });
+  }
+
+  Future<void> _loadUpcomingTournaments() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
     try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      final fetchedTournaments =
-          await OwnerTournamentService.getAllTournamentsForUsers();
-
-      setState(() {
-        tournaments = fetchedTournaments.isNotEmpty
-            ? _convertTournamentFormat(fetchedTournaments)
-            : _getFallbackTournaments();
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        tournaments = _getFallbackTournaments();
-      });
-    }
-  }
-
-  List<Map<String, dynamic>> _convertTournamentFormat(List<Map<String, dynamic>> dbTournaments) {
-    return dbTournaments.map((tournament) {
-      // Convert 24-hour time to 12-hour format
-      String formattedTime = '10:00 AM';
-      if (tournament['start_time'] != null) {
-        try {
-          final timeString = tournament['start_time'].toString();
-          final timeParts = timeString.split(':');
-          if (timeParts.length >= 2) {
-            final hour = int.parse(timeParts[0]);
-            final minute = int.parse(timeParts[1]);
-            
-            final period = hour >= 12 ? 'PM' : 'AM';
-            final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-            formattedTime = '${displayHour.toString()}:${minute.toString().padLeft(2, '0')} $period';
-          }
-        } catch (e) {
-          print('Error formatting time: $e');
-        }
-      }
-
-      return {
-        'name': tournament['name'] ?? 'Unnamed Tournament',
-        'image': tournament['image_url'],
-        'date': tournament['tournament_date'] ?? '2025-08-15',
-        'time': formattedTime,
-        'prize': '৳${tournament['first_prize'] ?? 0}',
-        'participants': '${tournament['registered_teams'] ?? 0}/${tournament['max_teams'] ?? 0} teams',
-        'playerFormat': tournament['player_format'] ?? '11v11',
-        'status': tournament['status'] ?? 'Registration Open',
-        'description': tournament['description'] ?? 'Tournament description not available.',
-        'entryFee': '৳${tournament['entry_fee'] ?? 0}',
-      };
-    }).toList();
-  }
-
-  List<Map<String, dynamic>> _getFallbackTournaments() {
-    return [
-      {
-        'name': 'Dhaka Premier League',
-        'image':
-            'https://images.unsplash.com/photo-1543326727-cf6c39e8f84c?auto=format&fit=crop&w=800&q=80',
-        'date': '2025-08-15',
-        'time': '10:00 AM',
-        'prize': '৳50,000',
-        'participants': '8/16 teams',
-        'playerFormat': '11v11',
-        'status': 'Registration Open',
-        'description':
-            'Annual premier football tournament featuring the best teams from Dhaka city.',
-        'entryFee': '৳5,000',
-      },
-      {
-        'name': 'Inter-University Championship',
-        'image':
-            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRP1pncn_KE2LWv7ekCregNYFhXid6ZFaVWeA&s',
-        'date': '2025-09-01',
-        'time': '2:00 PM',
-        'prize': '৳30,000',
-        'participants': '6/12 teams',
-        'playerFormat': '7v7',
-        'status': 'Registration Open',
-        'description':
-            'Prestigious university-level football competition bringing together the brightest talents.',
-        'entryFee': '৳3,000',
-      },
-      {
-        'name': 'Corporate Football League',
-        'image':
-            'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80',
-        'date': '2025-08-25',
-        'time': '6:00 PM',
-        'prize': '৳75,000',
-        'participants': '20/20 teams',
-        'playerFormat': '8v8',
-        'status': 'Registration Closed',
-        'description':
-            'Professional corporate teams compete in this high-stakes tournament.',
-        'entryFee': '৳8,000',
-      },
-      {
-        'name': 'Youth Development Cup',
-        'image':
-            'https://images.unsplash.com/photo-1606925797300-0b35e9d1794e?auto=format&fit=crop&w=800&q=80',
-        'date': '2025-09-10',
-        'time': '4:00 PM',
-        'prize': '৳25,000',
-        'participants': '12/24 teams',
-        'playerFormat': '6v6',
-        'status': 'Registration Open',
-        'description':
-            'Nurturing young talent through competitive football at the grassroots level.',
-        'entryFee': '৳2,000',
-      },
-      {
-        'name': 'Weekend Warriors League',
-        'image':
-            'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=800&q=80',
-        'date': '2025-08-30',
-        'time': '8:00 AM',
-        'prize': '৳20,000',
-        'participants': '4/8 teams',
-        'playerFormat': '5v5',
-        'status': 'Registration Open',
-        'description':
-            'Perfect tournament for weekend football enthusiasts and amateur players.',
-        'entryFee': '৳1,500',
-      },
-      {
-        'name': 'Champions Trophy 2025',
-        'image':
-            'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=800&q=80',
-        'date': '2025-10-05',
-        'time': '3:00 PM',
-        'prize': '৳100,000',
-        'participants': '0/32 teams',
-        'playerFormat': '11v11',
-        'status': 'Coming Soon',
-        'description':
-            'The ultimate football championship with the highest prize pool in the region.',
-        'entryFee': '৳10,000',
-      },
-    ];
-  }
-
-  Widget _buildTournamentImage(String? imageUrl) {
-    if (imageUrl == null) {
-      return Container(
-        height: 200,
-        width: double.infinity,
-        color: Colors.grey[300],
-        child: const Icon(Icons.sports_soccer, size: 80, color: Colors.grey),
-      );
-    }
-
-    if (imageUrl.startsWith('data:image')) {
-      try {
-        final base64String = imageUrl.split(',')[1];
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          height: 200,
-          width: double.infinity,
-        );
-      } catch (_) {
-        return Image.network(
-          'https://images.unsplash.com/photo-1543326727-cf6c39e8f84c?auto=format&fit=crop&w=800&q=80',
-          fit: BoxFit.cover,
-          height: 200,
-          width: double.infinity,
-        );
-      }
-    } else {
-      return Image.network(
-        imageUrl,
-        height: 200,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            height: 200,
-            color: Colors.grey[300],
-            child: const Icon(Icons.sports_soccer, size: 80, color: Colors.grey),
+      print('🏆 TournamentsPage: Loading upcoming tournaments...');
+      final upcomingTournaments =
+          await TournamentService.getUpcomingTournaments(
+            limit: 50, // Get up to 50 upcoming tournaments
           );
-        },
+
+      setState(() {
+        tournaments = upcomingTournaments;
+        filteredTournaments = upcomingTournaments; // Initialize filtered list
+      });
+
+      // Load user registration status for each tournament
+      await _loadUserRegistrationStatus();
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      print(
+        '✅ TournamentsPage: Loaded ${tournaments.length} upcoming tournaments',
       );
+    } catch (e) {
+      print('❌ TournamentsPage: Error loading tournaments: $e');
+      setState(() {
+        _errorMessage = 'Failed to load tournaments. Please try again.';
+        _isLoading = false;
+      });
     }
   }
 
-  Color _getStatusColor(String? status) {
-    switch (status) {
-      case 'Registration Open':
-        return Colors.green;
-      case 'Registration Closed':
-        return Colors.red;
-      case 'Coming Soon':
-        return Colors.orange;
-      default:
-        return Colors.grey;
+  Future<void> _loadUserRegistrationStatus() async {
+    try {
+      final userId = SupabaseConfig.client.auth.currentUser?.id;
+      if (userId != null) {
+        Map<String, bool> registrations = {};
+
+        for (var tournament in tournaments) {
+          final tournamentId = tournament['id']?.toString();
+          if (tournamentId != null) {
+            print('🔍 Checking registration for tournament ID: $tournamentId');
+            print('🔍 Tournament name: ${tournament['name']}');
+
+            final hasRegistered = await TournamentService.hasUserRegistered(
+              tournamentId,
+              userId,
+            );
+
+            print(
+              '✅ Registration status for ${tournament['name']}: $hasRegistered',
+            );
+            registrations[tournamentId] = hasRegistered;
+          }
+        }
+
+        setState(() {
+          userRegistrations = registrations;
+        });
+
+        print(
+          '✅ User registration status loaded for ${registrations.length} tournaments',
+        );
+        print('🔍 Registration map: $registrations');
+      }
+    } catch (e) {
+      print('❌ Error loading user registration status: $e');
     }
+  }
+
+  void _filterTournaments(String query) {
+    setState(() {
+      _searchQuery = query.toLowerCase();
+
+      if (_searchQuery.isEmpty) {
+        filteredTournaments = tournaments;
+      } else {
+        filteredTournaments =
+            tournaments.where((tournament) {
+              final name = tournament['name']?.toString().toLowerCase() ?? '';
+              final date = tournament['tournament_date']?.toString() ?? '';
+
+              // Search by name or date
+              return name.contains(_searchQuery) ||
+                  date.contains(_searchQuery) ||
+                  _formatDateForSearch(date).contains(_searchQuery);
+            }).toList();
+      }
+    });
+  }
+
+  String _formatDateForSearch(String date) {
+    try {
+      if (date.isEmpty) return '';
+
+      // Parse the date and format it in different ways for better searchability
+      final DateTime parsedDate = DateTime.parse(date);
+      final List<String> formats = [
+        '${parsedDate.day}',
+        '${parsedDate.month}',
+        '${parsedDate.year}',
+        '${parsedDate.day}-${parsedDate.month}',
+        '${parsedDate.day}/${parsedDate.month}',
+        '${parsedDate.month}-${parsedDate.year}',
+        '${parsedDate.month}/${parsedDate.year}',
+      ];
+
+      return formats.join(' ').toLowerCase();
+    } catch (e) {
+      return date.toLowerCase();
+    }
+  }
+
+  // Helper function to convert tournament data to display format
+  Map<String, String> _convertTournamentToDisplayMap(
+    Map<String, dynamic> data,
+  ) {
+    String imageUrl = '';
+    if (data['image_url'] != null && data['image_url'].toString().isNotEmpty) {
+      imageUrl = data['image_url'].toString();
+    } else {
+      // Multiple fallback images for variety
+      final fallbackImages = [
+        'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1459865264687-595d652de67e?auto=format&fit=crop&w=800&q=80',
+      ];
+      // Use hash of tournament name to consistently pick same image
+      final hash = data['name']?.toString().hashCode ?? 0;
+      imageUrl = fallbackImages[hash.abs() % fallbackImages.length];
+    }
+
+    String formattedTime = '';
+    if (data['start_time'] != null) {
+      formattedTime = data['start_time'].toString();
+    }
+
+    // Get venue data from the joined venue data
+    String venueName = 'Tournament Venue'; // Default fallback
+    String venueLocation = 'Tournament Location'; // Default fallback
+    if (data['venues'] != null && data['venues'] is Map) {
+      final venueData = data['venues'] as Map<String, dynamic>;
+      venueName = venueData['name']?.toString() ?? 'Tournament Venue';
+
+      // Get the actual venue address for location
+      final address = venueData['address']?.toString() ?? '';
+      final city = venueData['city']?.toString() ?? '';
+
+      if (address.isNotEmpty && city.isNotEmpty) {
+        venueLocation = '$address, $city';
+      } else if (address.isNotEmpty) {
+        venueLocation = address;
+      } else if (city.isNotEmpty) {
+        venueLocation = city;
+      } else {
+        venueLocation = venueName; // Fallback to venue name if no address
+      }
+    }
+
+    return {
+      'id': data['id']?.toString() ?? '', // Preserve the tournament ID
+      'name': data['name']?.toString() ?? 'Tournament',
+      'image': imageUrl,
+      'date': data['tournament_date']?.toString() ?? '',
+      'time': formattedTime,
+      'location': venueLocation, // Use venue address as location
+      'prize': '৳${data['first_prize']?.toString() ?? '0'}',
+      'participants': '${data['max_teams']?.toString() ?? '0'} teams',
+      'playerFormat': data['player_format']?.toString() ?? '',
+      'status':
+          (data['registered_teams'] ?? 0) < (data['max_teams'] ?? 0)
+              ? 'Registration Open'
+              : 'Full',
+      'description':
+          data['description']?.toString() ?? 'Tournament details coming soon.',
+      'entryFee': '৳${data['entry_fee']?.toString() ?? '0'}',
+      'organizer': venueName, // Use venue name as organizer
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: AppBar(
+        backgroundColor: Colors.green.shade700,
+        title: const Text(
+          'Tournaments & Events',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      drawer: const CommonDrawer(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header section
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.green.shade700, Colors.green.shade300],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Upcoming Tournaments',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Join exciting football tournaments and compete with the best teams',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Search Bar
+            Container(
+              margin: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _filterTournaments,
+                decoration: InputDecoration(
+                  hintText:
+                      'Search tournaments by name or date (e.g., "Football", "2025-09-15", "15")...',
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 14,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: Colors.grey.shade600,
+                    size: 20,
+                  ),
+                  suffixIcon:
+                      _searchController.text.isNotEmpty
+                          ? IconButton(
+                            icon: Icon(
+                              Icons.clear,
+                              color: Colors.grey.shade600,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              _filterTournaments('');
+                            },
+                          )
+                          : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                ),
+              ),
+            ),
+
+            // Loading, Error, or Tournaments list
+            if (_isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(color: Colors.green),
+                ),
+              )
+            else if (_errorMessage.isNotEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: Colors.red.shade400,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage,
+                        style: TextStyle(
+                          color: Colors.red.shade600,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadUpcomingTournaments,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                        ),
+                        child: const Text(
+                          'Try Again',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (tournaments.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.event_busy, size: 48, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No tournaments available at the moment.',
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (filteredTournaments.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.search_off, size: 48, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No tournaments found for "${_searchController.text}"',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Try searching with different keywords',
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Search Results Header
+                  if (_searchController.text.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        'Found ${filteredTournaments.length} tournament${filteredTournaments.length == 1 ? '' : 's'} for "${_searchController.text}"',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+
+                  // Tournaments list
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: filteredTournaments.length,
+                    itemBuilder: (context, index) {
+                      final tournamentData = filteredTournaments[index];
+                      final tournament = _convertTournamentToDisplayMap(
+                        tournamentData,
+                      );
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        child: Card(
+                          elevation: 6,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Tournament image
+                              ClipRRect(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                  topRight: Radius.circular(16),
+                                ),
+                                child: Image.network(
+                                  tournament['image'] ?? '',
+                                  height: 200,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (
+                                    context,
+                                    child,
+                                    loadingProgress,
+                                  ) {
+                                    if (loadingProgress == null) return child;
+                                    return Container(
+                                      height: 200,
+                                      width: double.infinity,
+                                      color: Colors.grey.shade200,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.green,
+                                          value:
+                                              loadingProgress
+                                                          .expectedTotalBytes !=
+                                                      null
+                                                  ? loadingProgress
+                                                          .cumulativeBytesLoaded /
+                                                      loadingProgress
+                                                          .expectedTotalBytes!
+                                                  : null,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    print('❌ Image load error: $error');
+                                    return Container(
+                                      height: 200,
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.green.shade300,
+                                            Colors.green.shade600,
+                                          ],
+                                        ),
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.emoji_events,
+                                            size: 60,
+                                            color: Colors.white,
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'Tournament',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+
+                              // Tournament details
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Tournament name and status
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            tournament['name'] ?? 'Tournament',
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.grey.shade800,
+                                            ),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _getStatusColor(
+                                              tournament['status'] ?? 'Unknown',
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            tournament['status'] ?? 'Unknown',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Description
+                                    Text(
+                                      tournament['description'] ??
+                                          'No description available',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade600,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    // Tournament info grid
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildInfoItem(
+                                            Icons.calendar_today,
+                                            'Date',
+                                            tournament['date'] ?? '',
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: _buildInfoItem(
+                                            Icons.access_time,
+                                            'Time',
+                                            tournament['time'] ?? '',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildInfoItem(
+                                            Icons.location_on,
+                                            'Location',
+                                            tournament['location'] ?? '',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildInfoItem(
+                                            Icons.emoji_events,
+                                            'Prize',
+                                            tournament['prize'] ?? '',
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: _buildInfoItem(
+                                            Icons.groups,
+                                            'Teams',
+                                            tournament['participants'] ?? '',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildInfoItem(
+                                            Icons.sports_soccer,
+                                            'Format',
+                                            tournament['playerFormat'] ?? '',
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: _buildInfoItem(
+                                            Icons.attach_money,
+                                            'Entry Fee',
+                                            tournament['entryFee'] ?? '',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildInfoItem(
+                                            Icons.payment,
+                                            'Entry Fee',
+                                            tournament['entryFee'] ?? '',
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: _buildInfoItem(
+                                            Icons.business,
+                                            'Organizer',
+                                            tournament['organizer'] ?? '',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 20),
+
+                                    // Action buttons
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: _getButtonAction(
+                                              tournament,
+                                            ),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: _getButtonColor(
+                                                tournament,
+                                              ),
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 12,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              _getButtonText(tournament),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        OutlinedButton(
+                                          onPressed: () {
+                                            _showTournamentDetails(
+                                              context,
+                                              tournament,
+                                            );
+                                          },
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor:
+                                                Colors.green.shade700,
+                                            side: BorderSide(
+                                              color: Colors.green.shade700,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                              horizontal: 20,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Details',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildInfoItem(IconData icon, String label, String value) {
@@ -237,21 +782,87 @@ class _TournamentsPageState extends State<TournamentsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500)),
-              Text(value,
-                  style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade800,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade800,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
       ],
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Registration Open':
+        return Colors.green;
+      case 'Registration Closed':
+        return Colors.red;
+      case 'Coming Soon':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // Get button action based on registration status
+  VoidCallback? _getButtonAction(Map<String, dynamic> tournament) {
+    final tournamentId = tournament['id'];
+    final isRegistered = userRegistrations[tournamentId] ?? false;
+    final status = tournament['status'] ?? '';
+
+    if (isRegistered) {
+      return null; // Disabled for already registered
+    } else if (status == 'Registration Open') {
+      return () {
+        _showRegistrationDialog(context, tournament);
+      };
+    } else {
+      return null; // Disabled for other statuses
+    }
+  }
+
+  // Get button text based on registration status
+  String _getButtonText(Map<String, dynamic> tournament) {
+    final tournamentId = tournament['id'];
+    final isRegistered = userRegistrations[tournamentId] ?? false;
+    final status = tournament['status'] ?? '';
+
+    if (isRegistered) {
+      return 'Already Registered';
+    } else if (status == 'Registration Open') {
+      return 'Register Now';
+    } else {
+      return status;
+    }
+  }
+
+  // Get button color based on registration status
+  Color _getButtonColor(Map<String, dynamic> tournament) {
+    final tournamentId = tournament['id'];
+    final isRegistered = userRegistrations[tournamentId] ?? false;
+    final status = tournament['status'] ?? '';
+
+    if (isRegistered) {
+      return Colors.blue.shade600; // Different color for registered
+    } else if (status == 'Registration Open') {
+      return Colors.green.shade700;
+    } else {
+      return Colors.grey.shade500;
+    }
   }
 
   void _showRegistrationDialog(
@@ -299,7 +910,12 @@ class _TournamentsPageState extends State<TournamentsPage> {
                   MaterialPageRoute(
                     builder: (context) => PaymentPage(tournament: tournament),
                   ),
-                );
+                ).then((result) {
+                  // Refresh tournaments after returning from payment
+                  if (result == true) {
+                    _loadUpcomingTournaments();
+                  }
+                });
               },
             ),
           ],
@@ -312,6 +928,10 @@ class _TournamentsPageState extends State<TournamentsPage> {
     BuildContext context,
     Map<String, dynamic> tournament,
   ) {
+    final tournamentId = tournament['id'];
+    final isRegistered = userRegistrations[tournamentId] ?? false;
+    final status = tournament['status'] ?? '';
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -329,11 +949,43 @@ class _TournamentsPageState extends State<TournamentsPage> {
                 const SizedBox(height: 16),
                 Text('📅 Date: ${tournament['date']}'),
                 Text('🕐 Time: ${tournament['time']}'),
+                Text('📍 Location: ${tournament['location']}'),
                 Text('🏆 Prize: ${tournament['prize']}'),
                 Text('👥 Teams: ${tournament['participants']}'),
                 Text('⚽ Format: ${tournament['playerFormat']}'),
                 Text('💰 Entry Fee: ${tournament['entryFee']}'),
+                Text('🏢 Organizer: ${tournament['organizer']}'),
                 Text('📊 Status: ${tournament['status']}'),
+
+                // Registration Status
+                if (isRegistered) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.blue.shade600,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'You are already registered for this tournament',
+                          style: TextStyle(
+                            color: Colors.blue.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -344,306 +996,40 @@ class _TournamentsPageState extends State<TournamentsPage> {
                 Navigator.of(context).pop();
               },
             ),
+            // Show register button only if not already registered and registration is open
+            if (!isRegistered && status == 'Registration Open')
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade700,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Register Now'),
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close details dialog
+                  _showRegistrationDialog(context, tournament);
+                },
+              )
+            else if (isRegistered)
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade600,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Already Registered'),
+                onPressed: null, // Disabled
+              )
+            else
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey.shade500,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text(status),
+                onPressed: null, // Disabled
+              ),
           ],
         );
       },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        backgroundColor: Colors.green.shade700,
-        title: const Text(
-          'Tournaments & Events',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _loadTournaments,
-          ),
-        ],
-      ),
-      drawer: const CommonDrawer(),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green)),
-            )
-          : tournaments.isEmpty
-              ? const Center(child: Text('No tournaments available'))
-              : RefreshIndicator(
-                  onRefresh: _loadTournaments,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header section
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.green.shade700, Colors.green.shade300],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Upcoming Tournaments',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Join exciting football tournaments and compete with the best teams',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Tournaments list
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: tournaments.length,
-                          itemBuilder: (context, index) {
-                            final tournament = tournaments[index];
-                            return Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 16),
-                              child: Card(
-                                elevation: 6,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Tournament image
-                                    ClipRRect(
-                                      borderRadius: const BorderRadius.only(
-                                        topLeft: Radius.circular(16),
-                                        topRight: Radius.circular(16),
-                                      ),
-                                      child: _buildTournamentImage(tournament['image']),
-                                    ),
-
-                                    // Tournament details
-                                    Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          // Tournament name and status
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  tournament['name'],
-                                                  style: TextStyle(
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.grey.shade800,
-                                                  ),
-                                                ),
-                                              ),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 6,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: _getStatusColor(
-                                                    tournament['status'],
-                                                  ),
-                                                  borderRadius: BorderRadius.circular(20),
-                                                ),
-                                                child: Text(
-                                                  tournament['status'],
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 12),
-
-                                          // Description
-                                          Text(
-                                            tournament['description'],
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey.shade600,
-                                              height: 1.4,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-
-                                          // Tournament info grid
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: _buildInfoItem(
-                                                  Icons.calendar_today,
-                                                  'Date',
-                                                  tournament['date'],
-                                                ),
-                                              ),
-                                              Expanded(
-                                                child: _buildInfoItem(
-                                                  Icons.access_time,
-                                                  'Time',
-                                                  tournament['time'],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 12),
-
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: _buildInfoItem(
-                                                  Icons.emoji_events,
-                                                  'Prize',
-                                                  tournament['prize'],
-                                                ),
-                                              ),
-                                              Expanded(
-                                                child: _buildInfoItem(
-                                                  Icons.groups,
-                                                  'Teams',
-                                                  tournament['participants'],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 12),
-
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: _buildInfoItem(
-                                                  Icons.sports_soccer,
-                                                  'Format',
-                                                  tournament['playerFormat'],
-                                                ),
-                                              ),
-                                              Expanded(
-                                                child: _buildInfoItem(
-                                                  Icons.attach_money,
-                                                  'Entry Fee',
-                                                  tournament['entryFee'],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 20),
-
-                                          // Action buttons
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: ElevatedButton(
-                                                  onPressed:
-                                                      tournament['status'] ==
-                                                              'Registration Open'
-                                                          ? () {
-                                                            _showRegistrationDialog(
-                                                              context,
-                                                              tournament,
-                                                            );
-                                                          }
-                                                          : null,
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: Colors.green.shade700,
-                                                    foregroundColor: Colors.white,
-                                                    padding: const EdgeInsets.symmetric(
-                                                      vertical: 12,
-                                                    ),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius: BorderRadius.circular(
-                                                        8,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  child: Text(
-                                                    tournament['status'] ==
-                                                            'Registration Open'
-                                                        ? 'Register Now'
-                                                        : tournament['status'],
-                                                    style: const TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              OutlinedButton(
-                                                onPressed: () {
-                                                  _showTournamentDetails(
-                                                    context,
-                                                    tournament,
-                                                  );
-                                                },
-                                                style: OutlinedButton.styleFrom(
-                                                  foregroundColor: Colors.green.shade700,
-                                                  side: BorderSide(
-                                                    color: Colors.green.shade700,
-                                                  ),
-                                                  padding: const EdgeInsets.symmetric(
-                                                    vertical: 12,
-                                                    horizontal: 20,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius: BorderRadius.circular(8),
-                                                  ),
-                                                ),
-                                                child: const Text(
-                                                  'Details',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
     );
   }
 }

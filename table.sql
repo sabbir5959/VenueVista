@@ -270,7 +270,7 @@ ORDER BY v.price_per_hour DESC;
 -- 2. Bookings Table (Your Simple Version)
 CREATE TABLE IF NOT EXISTS public.bookings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  booking_id VARCHAR(20) UNIQUE NOT NULL,
+  booking_id TYPE TEXT UNIQUE NOT NULL,
   user_id UUID NOT NULL REFERENCES public.user_profiles(id),
   venue_id UUID NOT NULL REFERENCES public.venues(id),
   booking_date DATE NOT NULL,
