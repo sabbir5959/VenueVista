@@ -33,7 +33,7 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
   XFile? _selectedImageFile; // Store XFile for better cross-platform support
   bool _isLoading = false;
 
-  // Better image conversion method for Flutter Web/Windows
+  // Better image conversion method
   Future<String?> _convertImageToBase64(XFile imageFile) async {
     try {
       print('Converting image to base64...');
@@ -627,11 +627,17 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
                                 // Get owner's venues first
                                 final ownerVenues = await OwnerTournamentService.getOwnerVenues(user.id);
                                 if (ownerVenues.isEmpty) {
-                                  throw Exception('No venues found for this owner');
+                                  throw Exception('No venues exist for this owner. Please add a venue first.');
                                 }
 
-                                // Use the first venue for now
-                                final selectedVenue = ownerVenues.first;
+                                // Prefer an active venue; otherwise fallback to first maintenance venue
+                                Map<String, dynamic> selectedVenue = ownerVenues.first;
+                                if (ownerVenues.any((v) => v['status'] == 'active')) {
+                                  selectedVenue = ownerVenues.firstWhere((v) => v['status'] == 'active');
+                                } else {
+                                  // All venues non-active; show info banner later
+                                  print('DEBUG [OWNER]: No active venues, using first non-active venue for attempt');
+                                }
 
                                 // Generate image URL from picked image
                                 String? imageUrl;
@@ -689,7 +695,11 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
                                 });
 
                                 String errorMessage = 'Failed to create tournament';
-                                if (e.toString().contains('venue_id')) {
+                                if (e.toString().contains('No venues exist')) {
+                                  errorMessage = 'You have no venues yet. Create a venue before creating a tournament.';
+                                } else if (e.toString().contains('maintenance')) {
+                                  errorMessage = e.toString();
+                                } else if (e.toString().contains('venue_id')) {
                                   errorMessage = 'Venue selection error';
                                 } else if (e.toString().contains('organizer_id')) {
                                   errorMessage = 'User authentication error';

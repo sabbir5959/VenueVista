@@ -223,15 +223,23 @@ class _OwnerProfileWidgetState extends State<OwnerProfileWidget> {
                           ),
                           const Spacer(),
                           IconButton(
-                            onPressed: () {
+                            onPressed: () async {
                               Navigator.pop(context);
                               // Navigate to edit venue details page
-                              Navigator.push(
+                              final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const EditProfilePage(),
+                                  builder: (context) => EditProfilePage(
+                                    ownerData: ownerData,
+                                    venueData: venueData,
+                                  ),
                                 ),
                               );
+                              
+                              // If profile was updated successfully, refresh data
+                              if (result == true) {
+                                _loadOwnerData();
+                              }
                             },
                             icon: Icon(
                               Icons.edit,
@@ -326,15 +334,23 @@ class _OwnerProfileWidgetState extends State<OwnerProfileWidget> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () {
+                        onPressed: () async {
                           Navigator.pop(context);
-                          // Navigate to edit profile page
-                          Navigator.push(
+                          // Navigate to edit profile page with real data
+                          final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const EditProfilePage(),
+                              builder: (context) => EditProfilePage(
+                                ownerData: ownerData,
+                                venueData: venueData,
+                              ),
                             ),
                           );
+                          
+                          // If profile was updated successfully, refresh data
+                          if (result == true) {
+                            _loadOwnerData();
+                          }
                         },
                         icon: const Icon(Icons.edit_outlined),
                         label: const Text('Edit Profile'),

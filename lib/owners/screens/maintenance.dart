@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/maintenance_schedule.dart';
 import '../services/maintenance_service.dart';
 import '../widgets/venue_owner_sidebar.dart';
@@ -61,6 +62,200 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
         );
       }
     }
+  }
+
+  Future<void> _scheduleMaintenanceWithConflictCheck() async {
+    if (_startDate == null || _endDate == null || _reasonController.text.isEmpty) {
+      _showError('Please fill all required fields');
+      return;
+    }
+
+    if (_endDate!.isBefore(_startDate!)) {
+      _showError('End date must be after start date');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Check for tournament conflicts
+      final conflicts = await _checkTournamentConflicts(_startDate!, _endDate!);
+      if (conflicts.isNotEmpty) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showConflictDialog(conflicts);
+        return;
+      }
+
+      // Get current user's venue
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Update venue maintenance fields
+      await Supabase.instance.client
+          .from('venues')
+          .update({
+        'maintenance_reason': _reasonController.text,
+        'maintenance_start': _startDate!.toIso8601String().split('T')[0],
+        'maintenance_end': _endDate!.toIso8601String().split('T')[0],
+        'status': 'maintenance',
+      })
+          .eq('owner_id', user.id);
+
+      // Clear form
+      setState(() {
+        _startDate = null;
+        _endDate = null;
+        _reasonController.clear();
+        _isLoading = false;
+      });
+
+      // Reload schedules
+      await _loadMaintenanceSchedules();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Maintenance scheduled successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showError('Error scheduling maintenance: $e');
+    }
+  }
+
+  Future<void> _updateMaintenanceWithConflictCheck(MaintenanceSchedule updatedMaintenance) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Check for tournament conflicts
+      final conflicts = await _checkTournamentConflicts(updatedMaintenance.startTime, updatedMaintenance.endTime);
+      if (conflicts.isNotEmpty) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showConflictDialog(conflicts);
+        return;
+      }
+
+      // Update the maintenance schedule
+      await _maintenanceService.updateMaintenanceSchedule(updatedMaintenance);
+
+      // Update venue status
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        await Supabase.instance.client
+            .from('venues')
+            .update({
+          'status': 'maintenance',
+        })
+            .eq('owner_id', user.id);
+      }
+
+      // Reload schedules
+      await _loadMaintenanceSchedules();
+
+      setState(() {
+        _isLoading = false;
+      });
+
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      rethrow; // Re-throw to let the calling method handle it
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _checkTournamentConflicts(DateTime startDate, DateTime endDate) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return [];
+
+      // Get user's venue ID
+      final venueResponse = await Supabase.instance.client
+          .from('venues')
+          .select('id')
+          .eq('owner_id', user.id)
+          .single();
+
+      final venueId = venueResponse['id'];
+
+      // Check for tournaments in the maintenance date range
+      final tournamentResponse = await Supabase.instance.client
+          .from('tournaments')
+          .select('*')
+          .eq('venue_id', venueId)
+          .gte('tournament_date', startDate.toIso8601String().split('T')[0])
+          .lte('tournament_date', endDate.toIso8601String().split('T')[0]);
+
+      return List<Map<String, dynamic>>.from(tournamentResponse);
+    } catch (e) {
+      print('Error checking tournament conflicts: $e');
+      return [];
+    }
+  }
+
+  void _showConflictDialog(List<Map<String, dynamic>> conflicts) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Tournament Conflict'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('The following tournaments are scheduled during your maintenance period:'),
+            const SizedBox(height: 12),
+            ...conflicts.map((tournament) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  border: Border.all(color: Colors.red[200]!),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(tournament['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Date: ${tournament['tournament_date']}'),
+                    Text('Time: ${tournament['start_time']}'),
+                  ],
+                ),
+              ),
+            )),
+            const SizedBox(height: 8),
+            const Text('Please choose different dates or reschedule the tournaments first.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -388,7 +583,7 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _scheduleMainenance,
+              onPressed: _scheduleMaintenanceWithConflictCheck,
               icon: const Icon(Icons.schedule),
               label: const Text('Schedule Maintenance'),
               style: ElevatedButton.styleFrom(
@@ -565,10 +760,22 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
 
   Future<void> _selectDate(bool isStartDate) async {
     final DateTime now = DateTime.now();
+    DateTime initialDate;
+    DateTime firstDate;
+    
+    if (isStartDate) {
+      initialDate = _startDate ?? now;
+      firstDate = now;
+    } else {
+      // For end date, start from the selected start date or current date
+      initialDate = _endDate ?? _startDate ?? now;
+      firstDate = _startDate ?? now; // End date can't be before start date
+    }
+    
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: now,
-      firstDate: now,
+      initialDate: initialDate,
+      firstDate: firstDate,
       lastDate: DateTime(now.year + 2),
     );
 
@@ -576,6 +783,10 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
       setState(() {
         if (isStartDate) {
           _startDate = pickedDate;
+          // If end date is before new start date, reset it
+          if (_endDate != null && _endDate!.isBefore(pickedDate)) {
+            _endDate = pickedDate;
+          }
           // Auto-set end date to same day if not set
           if (_endDate == null) {
             _endDate = pickedDate;
@@ -704,22 +915,156 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
   }
 
   void _editMaintenance(MaintenanceSchedule maintenance) {
-  
+    // Set initial values for editing
+    DateTime? editStartDate = maintenance.startTime;
+    DateTime? editEndDate = maintenance.endTime;
+    final TextEditingController editReasonController = TextEditingController(text: maintenance.reason);
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Maintenance'),
-        content: const Text('Edit functionality'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Maintenance'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Reason field
+                TextField(
+                  controller: editReasonController,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'Maintenance Reason',
+                    hintText: 'Enter maintenance reason',
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 16),
+                
+                // Start Date
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final DateTime now = DateTime.now();
+                    final DateTime? pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: editStartDate ?? now,
+                      firstDate: now,
+                      lastDate: DateTime(2030),
+                    );
+                    if (pickedDate != null) {
+                      setDialogState(() {
+                        editStartDate = pickedDate;
+                        // Reset end date if it's before new start date
+                        if (editEndDate != null && editEndDate!.isBefore(pickedDate)) {
+                          editEndDate = null;
+                        }
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.calendar_today),
+                  label: Text(
+                    editStartDate != null 
+                        ? 'Start: ${DateFormat('MMM dd, yyyy').format(editStartDate!)}'
+                        : 'Select Start Date',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                
+                // End Date
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final DateTime firstDate = editStartDate ?? DateTime.now();
+                    final DateTime? pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: editEndDate ?? firstDate,
+                      firstDate: firstDate,
+                      lastDate: DateTime(2030),
+                    );
+                    if (pickedDate != null) {
+                      setDialogState(() {
+                        editEndDate = pickedDate;
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.calendar_today),
+                  label: Text(
+                    editEndDate != null 
+                        ? 'End: ${DateFormat('MMM dd, yyyy').format(editEndDate!)}'
+                        : 'Select End Date',
+                  ),
+                ),
+              ],
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Save'),
-          ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () {
+                editReasonController.dispose();
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                // Validate inputs
+                if (editReasonController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter a maintenance reason')),
+                  );
+                  return;
+                }
+                
+                if (editStartDate == null || editEndDate == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please select both start and end dates')),
+                  );
+                  return;
+                }
+                
+                if (!editEndDate!.isAfter(editStartDate!)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('End date must be after start date')),
+                  );
+                  return;
+                }
+                
+                // Create updated maintenance schedule
+                final updatedMaintenance = MaintenanceSchedule(
+                  id: maintenance.id,
+                  startTime: editStartDate!,
+                  endTime: editEndDate!,
+                  reason: editReasonController.text.trim(),
+                  status: MaintenanceSchedule.getStatusForTime(editStartDate!, editEndDate!),
+                  isRepeating: false, // For now, keep as non-repeating
+                );
+                
+                try {
+                  // Check for tournament conflicts before updating
+                  await _updateMaintenanceWithConflictCheck(updatedMaintenance);
+                  
+                  editReasonController.dispose();
+                  Navigator.pop(context);
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Maintenance updated successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error updating maintenance: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -775,5 +1120,16 @@ class _MaintenancePageState extends State<MaintenancePage> with SingleTickerProv
         ],
       ),
     );
+  }
+
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

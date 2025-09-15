@@ -226,7 +226,7 @@ class DynamicPricingService {
       }
     }
     
-    // Note: Time validation removed since UI uses full-day (00:00-23:59) automatically
+    
     
     // Check discount value validity
     if (schedule.discountValue <= 0) {
