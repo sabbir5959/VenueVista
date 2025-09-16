@@ -237,7 +237,6 @@ class _LoginPageState extends State<LoginPage> {
           password: password,
         );
 
-
         if (response.user != null) {
           // Get user profile from database using DatabaseService
           final userProfile = await DatabaseService.getUserProfile(
@@ -550,26 +549,31 @@ class _LoginPageState extends State<LoginPage> {
                                   },
                                   activeColor: Colors.green[700],
                                 ),
-                                const Text(
-                                  'Remember me',
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                const Spacer(),
-                                // Forgot Password Link
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder:
-                                            (context) =>
-                                                const ForgotPasswordPage(),
-                                      ),
-                                    );
-                                  },
+                                const Expanded(
                                   child: Text(
-                                    'Forgot Password?',
-                                    style: TextStyle(color: Colors.green[700]),
+                                    'Remember me',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                                // Forgot Password Link
+                                Flexible(
+                                  child: TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (context) =>
+                                                  const ForgotPasswordPage(),
+                                        ),
+                                      );
+                                    },
+                                    child: Text(
+                                      'Forgot Password?',
+                                      style: TextStyle(
+                                        color: Colors.green[700],
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
