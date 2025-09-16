@@ -556,24 +556,20 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                                 // Forgot Password Link
-                                Flexible(
-                                  child: TextButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (context) =>
-                                                  const ForgotPasswordPage(),
-                                        ),
-                                      );
-                                    },
-                                    child: Text(
-                                      'Forgot Password?',
-                                      style: TextStyle(
-                                        color: Colors.green[700],
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) =>
+                                                const ForgotPasswordPage(),
                                       ),
-                                    ),
+                                    );
+                                  },
+                                  child: Text(
+                                    'Forgot Password?',
+                                    style: TextStyle(color: Colors.green[700]),
                                   ),
                                 ),
                               ],
