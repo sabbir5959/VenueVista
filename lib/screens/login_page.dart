@@ -400,11 +400,18 @@ class _LoginPageState extends State<LoginPage> {
                           color: Colors.green[50],
                         ),
                         child: ClipOval(
-                          child: Image.asset(
-                            'assets/icons/venue.png',
+                          child: Container(
                             width: 80,
                             height: 80,
-                            fit: BoxFit.cover,
+                            decoration: BoxDecoration(
+                              color: Colors.green[700],
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.sports_soccer,
+                              color: Colors.white,
+                              size: 40,
+                            ),
                           ),
                         ),
                       ),
@@ -556,24 +563,20 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                                 // Forgot Password Link
-                                Flexible(
-                                  child: TextButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (context) =>
-                                                  const ForgotPasswordPage(),
-                                        ),
-                                      );
-                                    },
-                                    child: Text(
-                                      'Forgot Password?',
-                                      style: TextStyle(
-                                        color: Colors.green[700],
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) =>
+                                                const ForgotPasswordPage(),
                                       ),
-                                    ),
+                                    );
+                                  },
+                                  child: Text(
+                                    'Forgot Password?',
+                                    style: TextStyle(color: Colors.green[700]),
                                   ),
                                 ),
                               ],

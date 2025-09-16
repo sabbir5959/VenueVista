@@ -12,6 +12,15 @@ import 'users/screens/profile_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Handle image codec exceptions silently
+  FlutterError.onError = (FlutterErrorDetails details) {
+    if (details.exception.toString().contains('ImageCodecException')) {
+      // Silently handle image codec errors
+      return;
+    }
+    FlutterError.presentError(details);
+  };
+
   // Initialize Supabase through our config service
   await SupabaseConfig.initialize();
 
