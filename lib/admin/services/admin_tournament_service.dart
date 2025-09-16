@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'supabase_config.dart';
+import '../../services/supabase_config.dart';
 
 /// Admin tournament service for managing all tournaments
 class AdminTournamentService {

@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'supabase_config.dart';
+import '../../services/supabase_config.dart';
 
 /// Admin booking service for managing all bookings and cancellation requests
 class AdminBookingService {

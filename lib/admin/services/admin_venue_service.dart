@@ -1,4 +1,4 @@
-import '../services/supabase_config.dart';
+import '../../services/supabase_config.dart';
 
 class AdminVenueService {
   static final _supabase = SupabaseConfig.client;

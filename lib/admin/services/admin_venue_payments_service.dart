@@ -1,7 +1,7 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/supabase_config.dart';
 
 class AdminVenuePaymentsService {
-  static final _supabase = Supabase.instance.client;
+  static final _supabase = SupabaseConfig.client;
 
   static Future<int> getPendingCommissionCount() async {
     try {

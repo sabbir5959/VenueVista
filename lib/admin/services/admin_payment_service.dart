@@ -1,7 +1,7 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/supabase_config.dart';
 
 class AdminPaymentService {
-  static final _client = Supabase.instance.client;
+  static final _client = SupabaseConfig.client;
 
   /// Fast method to get pending payments count only
   static Future<int> getPendingPaymentsCount() async {

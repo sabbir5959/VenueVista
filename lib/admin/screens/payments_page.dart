@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
-import '../../services/admin_payment_service.dart';
+import '../services/admin_payment_service.dart';
 
 class AdminPaymentsPage extends StatefulWidget {
   final VoidCallback? onNotificationUpdate;
@@ -62,9 +62,7 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
         _isLoading = false;
       });
 
-      // Update notification counts in dashboard
       if (widget.onCountsUpdate != null) {
-        // Count pending payments (not refunds)
         final pendingPaymentsCount =
             payments.where((p) => p['payment_status'] == 'pending').length;
         widget.onCountsUpdate!(pendingPaymentsCount, _pendingRefunds.length);
@@ -107,7 +105,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Section
             Row(
               children: [
                 Expanded(
@@ -142,7 +139,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
 
             SizedBox(height: isMobile ? 16 : 24),
 
-            // Payment Summary Cards
             Row(
               children: [
                 Expanded(
@@ -169,13 +165,12 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                 SizedBox(width: 16),
                 Expanded(
                   child: InkWell(
-                    onTap:
-                        () => _showPendingRefundsDialog(), // Make it clickable
+                    onTap: () => _showPendingRefundsDialog(),
                     child: _buildSummaryCard(
                       'Pending Refund',
-                      '${_pendingRefunds.length}', // Show count instead of amount
+                      '${_pendingRefunds.length}',
                       Icons.pending_actions,
-                      Colors.amber[700]!, // Changed to amber for better look
+                      Colors.amber[700]!,
                       'Refund requests',
                       isMobile,
                       notificationCount: _pendingRefunds.length,
@@ -187,7 +182,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
 
             SizedBox(height: isMobile ? 16 : 20),
 
-            // Filter Section
             Container(
               padding: EdgeInsets.all(isMobile ? 12 : 16),
               decoration: BoxDecoration(
@@ -296,7 +290,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
 
             SizedBox(height: isMobile ? 12 : 16),
 
-            // Payments List
             Container(
               decoration: BoxDecoration(
                 color: AppColors.surface,
@@ -311,7 +304,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
               ),
               child: Column(
                 children: [
-                  // List Header
                   Container(
                     padding: EdgeInsets.all(isMobile ? 16 : 20),
                     decoration: BoxDecoration(
@@ -345,7 +337,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                     ),
                   ),
 
-                  // Payments List
                   ListView.separated(
                     shrinkWrap: true,
                     physics: NeverScrollableScrollPhysics(),
@@ -361,7 +352,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                     },
                   ),
 
-                  // Pagination
                   if (totalPages > 1)
                     Container(
                       padding: EdgeInsets.all(isMobile ? 16 : 20),
@@ -454,7 +444,7 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
               ),
             ),
 
-            SizedBox(height: 40), // Bottom spacing
+            SizedBox(height: 40),
           ],
         ),
       ),
@@ -499,7 +489,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                     ),
                     child: Icon(icon, color: color, size: 20),
                   ),
-                  // Notification badge
                   if (notificationCount != null && notificationCount > 0)
                     Positioned(
                       right: -2,
@@ -598,7 +587,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
       padding: EdgeInsets.all(isMobile ? 16 : 20),
       child: Row(
         children: [
-          // Payment Type Icon
           Container(
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -613,7 +601,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
           ),
           SizedBox(width: 16),
 
-          // Payment Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -717,7 +704,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
           ),
           SizedBox(width: isMobile ? 8 : 12),
 
-          // Details Button
           InkWell(
             onTap: () => _showPaymentDetails(payment),
             borderRadius: BorderRadius.circular(8),
@@ -765,20 +751,15 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
   }
 
   List<Map<String, dynamic>> _getFilteredPayments() {
-    // Combine payments and cash records
     List<Map<String, dynamic>> allPayments = [..._payments, ..._cashRecords];
 
     List<Map<String, dynamic>> filtered = allPayments;
 
-    // Filter by payment type
     if (_selectedPaymentType != 'All') {
-      // Map filter button text to actual payment types
       String filterType = '';
       if (_selectedPaymentType == 'From User') {
-        // Fixed: button value is 'From User' not 'From Users'
         filterType = 'user';
       } else if (_selectedPaymentType == 'To Owner') {
-        // Fixed: button value is 'To Owner' not 'To Owners'
         filterType = 'owner';
       } else if (_selectedPaymentType == 'Refund') {
         filterType = 'refund';
@@ -790,9 +771,7 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
           filtered.where((payment) => payment['type'] == filterType).toList();
     }
 
-    // Filter by status
     if (_selectedStatus != 'All') {
-      // Map filter button text to actual status values
       String filterStatus = '';
       if (_selectedStatus == 'Completed') {
         filterStatus = 'completed';
@@ -811,7 +790,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
               .toList();
     }
 
-    // Filter by date range
     if (_startDate != null || _endDate != null) {
       filtered =
           filtered.where((payment) {
@@ -829,19 +807,17 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
 
               return true;
             } catch (e) {
-              return true; // Include if date parsing fails
+              return true;
             }
           }).toList();
     }
 
-    // Sort by date - newest first (latest records at top)
     filtered.sort((a, b) {
       try {
         DateTime dateA = DateTime.parse('${a['date']} ${a['time']}');
         DateTime dateB = DateTime.parse('${b['date']} ${b['time']}');
-        return dateB.compareTo(dateA); // Newest first
+        return dateB.compareTo(dateA);
       } catch (e) {
-        // Fallback to date only if time parsing fails
         try {
           DateTime dateA = DateTime.parse(a['date']);
           DateTime dateB = DateTime.parse(b['date']);
@@ -860,9 +836,7 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
   }
 
   String _calculateTotalPaid() {
-    return (_stats['totalPaid'] ?? 0.0).toStringAsFixed(
-      0,
-    ); // Now includes cash + refunds
+    return (_stats['totalPaid'] ?? 0.0).toStringAsFixed(0);
   }
 
   // ignore: unused_element
@@ -872,7 +846,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
 
   // ignore: unused_element
   String _calculateTotalRefunded() {
-    // Calculate refunds from payments
     final refunded = _payments
         .where((p) => p['type'] == 'refund' && p['status'] == 'completed')
         .fold(0.0, (sum, p) => sum + (p['amount'] as num).toDouble());
@@ -883,14 +856,13 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
     switch (type.toLowerCase()) {
       case 'user':
       case 'from_user':
-        return Colors.green[600]!; // Green for incoming money from users
+        return Colors.green[600]!;
       case 'owner':
       case 'to_owner':
       case 'cash':
-        return Colors.blue[600]!; // Blue for outgoing money to owners
+        return Colors.blue[600]!;
       case 'refund':
-        return Colors
-            .amber[700]!; // Amber for refunds (better than red-looking orange)
+        return Colors.amber[700]!;
       default:
         return AppColors.textSecondary;
     }
@@ -900,13 +872,13 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
     switch (type.toLowerCase()) {
       case 'user':
       case 'from_user':
-        return Icons.account_balance_wallet; // User payment wallet icon
+        return Icons.account_balance_wallet;
       case 'owner':
       case 'to_owner':
       case 'cash':
-        return Icons.payments; // Payment to owner icon
+        return Icons.payments;
       case 'refund':
-        return Icons.replay_circle_filled; // Refund circle icon
+        return Icons.replay_circle_filled;
       default:
         return Icons.payment;
     }
@@ -916,9 +888,9 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
     switch (status.toLowerCase()) {
       case 'completed':
         return Colors.green[600]!;
-      case 'successful': // For cash records
+      case 'successful':
         return Colors.green[600]!;
-      case 'paid': // For owner cash records
+      case 'paid':
         return Colors.blue[600]!;
       case 'processing':
         return Colors.blue[600]!;
@@ -931,13 +903,10 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
     }
   }
 
-  // Special color method for refund status
   Color _getRefundStatusColor(String status, String? type) {
-    // If it's a refund type, always use amber color
     if (type != null && type.toLowerCase() == 'refund') {
       return Colors.amber[700]!;
     }
-    // Otherwise use regular status color
     return _getPaymentStatusColor(status);
   }
 
@@ -1042,7 +1011,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                       payment['status'],
                       Icons.info_outline,
                     ),
-                    // Show method for all payments including cash
                     _buildPaymentDetailItem(
                       'Method',
                       payment['method'],
@@ -1061,7 +1029,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                       payment['time'],
                       Icons.access_time,
                     ),
-                    // Only show transaction ID for non-cash payments
                     if (payment['type'] != 'cash')
                       _buildPaymentDetailItem(
                         'Transaction ID',
@@ -1088,7 +1055,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                     ),
                   ], isMobile),
 
-                  // Refund-specific details
                   if (payment['type'] == 'Refund') ...[
                     SizedBox(height: 16),
                     _buildPaymentDetailSection('Refund Details', [
@@ -1119,7 +1085,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
             ),
           ),
           actions: [
-            // Show refund action buttons for refunds in processing status
             if (payment['type'] == 'Refund' &&
                 payment['status'] == 'Processing') ...[
               TextButton.icon(
@@ -1345,7 +1310,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
       'time': '05:20 PM',
       'transactionId': 'BKS2024073010',
     },
-    // Refund Transactions
     {
       'id': 'REF001',
       'description': 'Refund: Chittagong Football Stadium booking cancellation',
@@ -1360,7 +1324,7 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
       'transactionId': 'REF2024072401',
       'bookingId': 'BK009',
       'reason': 'Customer requested due to emergency',
-      'refundFee': 50, // 1% refund processing fee
+      'refundFee': 50,
     },
     {
       'id': 'REF002',
@@ -1376,7 +1340,7 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
       'transactionId': 'REF2024071802',
       'bookingId': 'BK006',
       'reason': 'Weather conditions - venue closed',
-      'refundFee': 0, // No fee for venue-caused cancellation
+      'refundFee': 0,
     },
     {
       'id': 'REF003',
@@ -1392,7 +1356,7 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
       'transactionId': 'REF2024072903',
       'bookingId': 'BK013',
       'reason': 'Double booking error - venue issue',
-      'refundFee': 0, // No fee for venue error
+      'refundFee': 0,
     },
     {
       'id': 'REF004',
@@ -1408,7 +1372,7 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
       'transactionId': 'REF2024073004',
       'bookingId': 'BK016',
       'reason': 'Customer illness - medical emergency',
-      'refundFee': 25, // Reduced fee for medical reasons
+      'refundFee': 25,
     },
   ];
 
@@ -1480,7 +1444,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
               onPressed: () {
                 Navigator.of(context).pop();
                 setState(() {
-                  // In a real app, this would update the database
                   final index = _demoPayments.indexWhere(
                     (p) => p['id'] == payment['id'],
                   );
@@ -1533,10 +1496,7 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                         return Card(
                           margin: EdgeInsets.symmetric(vertical: 4),
                           child: ListTile(
-                            onTap:
-                                () => _showRefundPaymentDialog(
-                                  refund,
-                                ), // Make clickable
+                            onTap: () => _showRefundPaymentDialog(refund),
                             leading: Icon(
                               Icons.pending_actions,
                               color: Colors.orange,
@@ -1623,7 +1583,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // User Info
                     Container(
                       padding: EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -1646,7 +1605,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                     ),
                     SizedBox(height: 16),
 
-                    // Payment Method Selection
                     Text(
                       'Select Payment Method:',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -1679,7 +1637,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                       ],
                     ),
 
-                    // Amount
                     SizedBox(height: 16),
                     TextField(
                       controller: amountController,
@@ -1692,7 +1649,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                       readOnly: true,
                     ),
 
-                    // Notes
                     SizedBox(height: 16),
                     TextField(
                       controller: notesController,
@@ -1715,7 +1671,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                   onPressed:
                       selectedMethod != null
                           ? () async {
-                            // Process refund payment
                             await _processRefundPayment(
                               refund,
                               selectedMethod!,
@@ -1746,7 +1701,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
     String notes,
   ) async {
     try {
-      // Process refund payment via AdminPaymentService
       final success = await AdminPaymentService.processRefundPayment(
         refundId: refund['id'],
         amount: refund['refund_amount'].toString(),
@@ -1765,10 +1719,8 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
           ),
         );
 
-        // Reload data to update the list
         _loadPaymentData();
 
-        // Update notification count
         if (widget.onNotificationUpdate != null) {
           widget.onNotificationUpdate!();
         }
