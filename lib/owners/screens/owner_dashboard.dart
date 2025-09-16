@@ -1,41 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'create_tournament.dart';
 import '../widgets/venue_owner_sidebar.dart';
 import '../widgets/owner_profile_widget.dart';
-
-// Models for tournament and booking data
-class Tournament {
-  final String id;
-  final String name;
-  final DateTime date;
-  final double revenue;
-  final int teams;
-
-  Tournament({
-    required this.id,
-    required this.name,
-    required this.date,
-    required this.revenue,
-    required this.teams,
-  });
-}
-
-class DailyBooking {
-  final String id;
-  final String customerName;
-  final DateTime date;
-  final double amount;
-  final String timeSlot;
-
-  DailyBooking({
-    required this.id,
-    required this.customerName,
-    required this.date,
-    required this.amount,
-    required this.timeSlot,
-  });
-}
+import '../services/activity_service.dart';
+import '../models/activity_data.dart';
 
 class OwnerDashboard extends StatefulWidget {
   const OwnerDashboard({super.key});
@@ -45,130 +14,36 @@ class OwnerDashboard extends StatefulWidget {
 }
 
 class _OwnerDashboardState extends State<OwnerDashboard> {
-  DateTime? _startDate;
-  DateTime? _endDate;
-  List<Tournament> _tournaments = [];
-  List<DailyBooking> _dailyBookings = [];
-  List<Tournament> _filteredTournaments = [];
-  List<DailyBooking> _filteredBookings = [];
-  double _totalRevenue = 0.0;
+  final ActivityService _activityService = ActivityService();
+  ActivityData? _activityData;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadSampleData();
-    _filterData();
+    _loadActivityData();
   }
 
-  void _loadSampleData() {
-    _tournaments = [
-      Tournament(
-        id: '1',
-        name: 'Inter-College Futsal Tournament',
-        date: DateTime.now().subtract(const Duration(days: 5)),
-        revenue: 15000.0,
-        teams: 16,
-      ),
-      Tournament(
-        id: '2',
-        name: 'MIST Football Tournament',
-        date: DateTime.now().subtract(const Duration(days: 12)),
-        revenue: 18500.0,
-        teams: 12,
-      ),
-      Tournament(
-        id: '3',
-        name: 'Youth Tournament',
-        date: DateTime.now().subtract(const Duration(days: 20)),
-        revenue: 5200.0,
-        teams: 8,
-      ),
-    ];
-
-    // Sample daily booking data
-    _dailyBookings = [
-      DailyBooking(
-        id: '1',
-        customerName: 'Maheen Khan',
-        date: DateTime.now().subtract(const Duration(days: 1)),
-        amount: 500.0,
-        timeSlot: '10:00 AM - 12:00 PM',
-      ),
-      DailyBooking(
-        id: '2',
-        customerName: 'Shohan Rahman',
-        date: DateTime.now().subtract(const Duration(days: 3)),
-        amount: 750.0,
-        timeSlot: '2:00 PM - 4:00 PM',
-      ),
-      DailyBooking(
-        id: '3',
-        customerName: 'Amira Khan',
-        date: DateTime.now().subtract(const Duration(days: 7)),
-        amount: 600.0,
-        timeSlot: '6:00 PM - 8:00 PM',
-      ),
-    ];
-  }
-
-  void _filterData() {
-    setState(() {
-      if (_startDate != null && _endDate != null) {
-        // Get date only (without time) for comparison
-        final startDateOnly = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
-        final endDateOnly = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
-        
-        _filteredTournaments = _tournaments.where((tournament) {
-          final tournamentDateOnly = DateTime(tournament.date.year, tournament.date.month, tournament.date.day);
-          return (tournamentDateOnly.isAtSameMomentAs(startDateOnly) || 
-                  tournamentDateOnly.isAfter(startDateOnly)) &&
-                 (tournamentDateOnly.isAtSameMomentAs(endDateOnly) || 
-                  tournamentDateOnly.isBefore(endDateOnly));
-        }).toList();
-
-        _filteredBookings = _dailyBookings.where((booking) {
-          final bookingDateOnly = DateTime(booking.date.year, booking.date.month, booking.date.day);
-          return (bookingDateOnly.isAtSameMomentAs(startDateOnly) || 
-                  bookingDateOnly.isAfter(startDateOnly)) &&
-                 (bookingDateOnly.isAtSameMomentAs(endDateOnly) || 
-                  bookingDateOnly.isBefore(endDateOnly));
-        }).toList();
-      } else {
-        _filteredTournaments = _tournaments;
-        _filteredBookings = _dailyBookings;
-      }
-
-      // Calculate total revenue
-      _totalRevenue = _filteredTournaments.fold(0.0, (sum, t) => sum + t.revenue) +
-                    _filteredBookings.fold(0.0, (sum, b) => sum + b.amount);
-    });
-  }
-
-  Future<void> _selectDateRange() async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now(),
-      initialDateRange: _startDate != null && _endDate != null
-          ? DateTimeRange(start: _startDate!, end: _endDate!)
-          : null,
-    );
-
-    if (picked != null) {
+  Future<void> _loadActivityData() async {
+    try {
       setState(() {
-        _startDate = picked.start;
-        _endDate = picked.end;
+        _isLoading = true;
       });
-      _filterData();
+      
+      final data = await _activityService.getActivityData();
+      
+      setState(() {
+        _activityData = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading activity data: $e')),
+      );
     }
-  }
-
-  void _clearDateFilter() {
-    setState(() {
-      _startDate = null;
-      _endDate = null;
-    });
-    _filterData();
   }
   @override
   Widget build(BuildContext context) {
@@ -241,264 +116,121 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
             const SizedBox(height: 20),
 
-                // Date Range Search Card
-                Card(
-                  elevation: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.search, color: Colors.green[700]),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Earnings by Date Range',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _selectDateRange,
-                                icon: const Icon(Icons.calendar_today),
-                                label: Text(
-                                  _startDate != null && _endDate != null
-                                      ? '${DateFormat('MMM dd').format(_startDate!)} - ${DateFormat('MMM dd, yyyy').format(_endDate!)}'
-                                      : 'Select Date Range',
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.all(16),
-                                  foregroundColor: Colors.green[700],
-                                ),
-                              ),
-                            ),
-                            if (_startDate != null && _endDate != null) ...[
-                              const SizedBox(width: 8),
-                              IconButton(
-                                onPressed: _clearDateFilter,
-                                icon: const Icon(Icons.clear),
-                                color: Colors.red,
-                                tooltip: 'Clear Filter',
-                              ),
-                            ],
-                          ],
-                        ),
-                        if (_startDate != null && _endDate != null) ...[
-                          const SizedBox(height: 16),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.green[50],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green[200]!),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Total Earnings for Selected Period',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.green[700],
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '৳${_totalRevenue.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green[800],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+            // Activity Diagram Section
+            if (_isLoading)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.green[700]!),
                   ),
                 ),
-
-            const SizedBox(height: 20),
-
-            // Results Section
-            Container(
-              height: 600, // Fixed height for the tab view
-              child: DefaultTabController(
-                length: 2,
-                child: Column(
-                  children: [
-                    TabBar(
-                      labelColor: Colors.green[700],
-                      unselectedLabelColor: Colors.grey,
-                      indicatorColor: Colors.green[700],
-                      tabs: [
-                        Tab(
-                          icon: const Icon(Icons.emoji_events),
-                          text: 'Tournaments (${_filteredTournaments.length})',
-                        ),
-                        Tab(
-                          icon: const Icon(Icons.calendar_month),
-                          text: 'Daily Bookings (${_filteredBookings.length})',
-                        ),
-                      ],
-                    ),
-                    Expanded(
-                      child: TabBarView(
-                        children: [
-                          _buildTournamentsTab(),
-                          _buildBookingsTab(),
-                        ],
+              )
+            else if (_activityData != null)
+              _buildActivityDiagram()
+            else
+              Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: Colors.grey[400],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      Text(
+                        'Unable to load activity data',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadActivityData,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildTournamentsTab() {
-    if (_filteredTournaments.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.emoji_events_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No tournaments found',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _startDate != null 
-                  ? 'No tournaments in selected date range'
-                  : 'No tournaments available',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _filteredTournaments.length,
-      itemBuilder: (context, index) {
-        final tournament = _filteredTournaments[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 2,
+  Widget _buildActivityDiagram() {
+    return Column(
+      children: [
+        // Activity Overview Card
+        Card(
+          elevation: 4,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.emoji_events,
-                        color: Colors.orange[700],
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tournament.name,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            DateFormat('MMM dd, yyyy').format(tournament.date),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green[100],
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '৳${tournament.revenue.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green[700],
-                        ),
+                    Icon(Icons.analytics, color: Colors.green[700]),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Activity Overview',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[700],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
+                
+                // Statistics Cards Row
                 Row(
                   children: [
-                    Icon(
-                      Icons.people,
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${tournament.teams} teams',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
+                    Expanded(
+                      child: _buildStatCard(
+                        'Total Bookings',
+                        '${_activityData!.totalBookings}',
+                        Icons.calendar_month,
+                        Colors.blue,
                       ),
                     ),
-                    const Spacer(),
-                    Text(
-                      'Earnings',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[500],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildStatCard(
+                        'Tournament Bookings', 
+                        '${_activityData!.tournamentBookings}',
+                        Icons.emoji_events,
+                        Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 12),
+                
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        'Total Reviews',
+                        '${_activityData!.totalReviews}',
+                        Icons.rate_review,
+                        Colors.purple,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildStatCard(
+                        'Average Rating',
+                        _activityData!.averageRating.toStringAsFixed(1),
+                        Icons.star,
+                        Colors.amber,
                       ),
                     ),
                   ],
@@ -506,139 +238,315 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
               ],
             ),
           ),
-        );
-      },
+        ),
+
+        const SizedBox(height: 16),
+
+        // Charts Section
+        Row(
+          children: [
+            // Pie Chart - Booking Distribution
+            Expanded(
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Booking Distribution',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green[700],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        height: 200,
+                        child: _buildBookingPieChart(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            
+            const SizedBox(width: 16),
+            
+            // Bar Chart - Rating Distribution
+            Expanded(
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Rating Distribution',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green[700],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        height: 200,
+                        child: _buildRatingBarChart(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // Recent Reviews Card
+        Card(
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Recent Reviews',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[700],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                
+                if (_activityData!.recentReviews.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'No reviews yet',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                  )
+                else
+                  ...(_activityData!.recentReviews.take(3).map((review) => 
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              ...List.generate(5, (index) => Icon(
+                                index < review.rating ? Icons.star : Icons.star_border,
+                                color: Colors.amber,
+                                size: 16,
+                              )),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${review.rating}/5',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                review.userName,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (review.reviewText.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              review.reviewText,
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 13,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  )),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildBookingsTab() {
-    if (_filteredBookings.isEmpty) {
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 32),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookingPieChart() {
+    final normalBookings = _activityData!.totalBookings - _activityData!.tournamentBookings;
+    final tournamentBookings = _activityData!.tournamentBookings;
+    
+    if (normalBookings == 0 && tournamentBookings == 0) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.calendar_month_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No bookings found',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _startDate != null 
-                  ? 'No bookings in selected date range'
-                  : 'No bookings available',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
+        child: Text(
+          'No bookings data',
+          style: TextStyle(color: Colors.grey[600]),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _filteredBookings.length,
-      itemBuilder: (context, index) {
-        final booking = _filteredBookings[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.calendar_month,
-                        color: Colors.blue[700],
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            booking.customerName,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            DateFormat('MMM dd, yyyy').format(booking.date),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green[100],
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '৳${booking.amount.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green[700],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      booking.timeSlot,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+    return PieChart(
+      PieChartData(
+        pieTouchData: PieTouchData(enabled: true),
+        borderData: FlBorderData(show: false),
+        sectionsSpace: 2,
+        centerSpaceRadius: 40,
+        sections: [
+          PieChartSectionData(
+            color: Colors.blue,
+            value: normalBookings.toDouble(),
+            title: 'Normal\n$normalBookings',
+            radius: 60,
+            titleStyle: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
           ),
-        );
-      },
+          PieChartSectionData(
+            color: Colors.orange,
+            value: tournamentBookings.toDouble(),
+            title: 'Tournament\n$tournamentBookings',
+            radius: 60,
+            titleStyle: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRatingBarChart() {
+    if (_activityData!.recentReviews.isEmpty) {
+      return Center(
+        child: Text(
+          'No ratings data',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+      );
+    }
+
+    // Count ratings 1-5
+    final ratingCounts = <int, int>{};
+    for (int i = 1; i <= 5; i++) {
+      ratingCounts[i] = 0;
+    }
+    
+    for (final review in _activityData!.recentReviews) {
+      ratingCounts[review.rating] = (ratingCounts[review.rating] ?? 0) + 1;
+    }
+
+    final maxCount = ratingCounts.values.isEmpty ? 1 : ratingCounts.values.reduce((a, b) => a > b ? a : b);
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxCount.toDouble() + 1,
+        barTouchData: BarTouchData(enabled: true),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                return Text('${value.toInt()}⭐',
+                    style: const TextStyle(fontSize: 10));
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                return Text('${value.toInt()}',
+                    style: const TextStyle(fontSize: 10));
+              },
+            ),
+          ),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: ratingCounts.entries.map((entry) {
+          return BarChartGroupData(
+            x: entry.key,
+            barRods: [
+              BarChartRodData(
+                toY: entry.value.toDouble(),
+                color: Colors.amber,
+                width: 16,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  topRight: Radius.circular(4),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
     );
   }
 }
