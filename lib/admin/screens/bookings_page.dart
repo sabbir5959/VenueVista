@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../constants/app_colors.dart';
-import '../../services/admin_booking_service.dart';
+import '../services/admin_booking_service.dart';
 
 class AdminBookingsPage extends StatefulWidget {
   const AdminBookingsPage({super.key});
@@ -17,7 +17,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
   final int _itemsPerPage = 8;
   String _selectedStatus = 'All';
 
-  // State for real data
   List<Map<String, dynamic>> _bookings = [];
   List<Map<String, dynamic>> _cancellationRequests = [];
   Map<String, dynamic> _stats = {};
@@ -49,12 +48,9 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
             booking,
           );
           formattedBookings.add(formatted);
-        } catch (e) {
-          // Silently skip malformed booking
-        }
+        } catch (e) {}
       }
 
-      // Cancellations are already formatted by AdminBookingService
       setState(() {
         _bookings = formattedBookings;
         _cancellationRequests = cancellations;
@@ -73,7 +69,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
 
-    // Show loading state
     if (_isLoading) {
       return Scaffold(
         backgroundColor: AppColors.background,
@@ -93,7 +88,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
       );
     }
 
-    // Show error state
     if (_error != null) {
       return Scaffold(
         backgroundColor: AppColors.background,
@@ -174,7 +168,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                   ),
                 ),
                 SizedBox(width: 12),
-                // Refresh Button
                 Container(
                   padding: EdgeInsets.all(isMobile ? 8 : 10),
                   decoration: BoxDecoration(
@@ -192,7 +185,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                   ),
                 ),
                 SizedBox(width: 12),
-                // Export Button
                 Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: isMobile ? 12 : 16,
@@ -535,10 +527,8 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
   }
 
   Widget _buildBookingListItem(Map<String, dynamic> item, bool isMobile) {
-    // Check if this is a cancellation request or regular booking
     final isCancellation = item.containsKey('reason');
 
-    // Use formatted data directly - formatting function already processed the data
     final venueName = item['venue_name'] ?? 'Unknown Venue';
     final userName = item['user_name'] ?? 'Unknown User';
 
@@ -554,7 +544,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
         item['total_amount'] ?? item['total_price'] ?? item['amount'] ?? 0;
     final formattedAmount = amount is String ? amount : '৳${amount.toString()}';
 
-    // Determine status
     final status = item['status'] ?? (isCancellation ? 'Cancelled' : 'Unknown');
 
     return Container(
@@ -717,13 +706,11 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
   List<Map<String, dynamic>> _getFilteredBookings() {
     List<Map<String, dynamic>> filtered = [];
 
-    // For cancelled status, show cancellation requests instead of bookings
     if (_selectedStatus == 'cancelled') {
       filtered = List.from(_cancellationRequests);
     } else {
       filtered = List.from(_bookings);
 
-      // Filter by status for regular bookings
       if (_selectedStatus != 'All') {
         filtered =
             filtered
@@ -736,7 +723,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
       }
     }
 
-    // Filter by date range
     if (_startDate != null || _endDate != null) {
       filtered =
           filtered.where((item) {
@@ -757,7 +743,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
               return true;
             } catch (e) {
-              // Skip items with invalid dates
               return false;
             }
           }).toList();
@@ -1718,7 +1703,6 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
     final isMobile = MediaQuery.of(context).size.width < 768;
     final isCancellation = item.containsKey('reason');
 
-    // Use formatted data directly - formatting function already processed the data
     final venueName = item['venue_name'] ?? 'Unknown Venue';
     final userName = item['user_name'] ?? 'Unknown User';
     final userEmail = item['user_email'] ?? '';
@@ -1888,7 +1872,7 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                     if (createdAt.isNotEmpty)
                       _buildDetailItem(
                         isCancellation ? 'Requested On' : 'Booked On',
-                        createdAt.split('T')[0], // Format date part only
+                        createdAt.split('T')[0],
                         Icons.schedule_outlined,
                       ),
                     if (!isCancellation)

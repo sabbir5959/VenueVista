@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
-import '../../services/admin_stats_service.dart';
+import '../services/admin_stats_service.dart';
 
 class AdminOverviewPage extends StatefulWidget {
   const AdminOverviewPage({super.key});
@@ -97,7 +97,6 @@ class _AdminOverviewPageState extends State<AdminOverviewPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               children: [
                 Icon(
@@ -135,12 +134,10 @@ class _AdminOverviewPageState extends State<AdminOverviewPage> {
             ),
             SizedBox(height: isMobile ? 24 : 32),
 
-            // Stats Cards
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    // Top Stats Row
                     GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -178,7 +175,6 @@ class _AdminOverviewPageState extends State<AdminOverviewPage> {
 
                     SizedBox(height: 32),
 
-                    // Recent Activity Section
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
@@ -214,7 +210,6 @@ class _AdminOverviewPageState extends State<AdminOverviewPage> {
 
                     SizedBox(height: 32),
 
-                    // Quick Stats Row
                     Row(
                       children: [
                         Expanded(

@@ -10,54 +10,56 @@ class AdminOwnersPage extends StatefulWidget {
 }
 
 class _AdminOwnersPageState extends State<AdminOwnersPage> {
-  // Stub for owner details dialog
   void _showOwnerDetails(Map<String, dynamic> owner) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(owner['name'] ?? 'Owner Details'),
-        content: Text('Email: ${owner['email'] ?? ''}\nPhone: ${owner['phone'] ?? ''}'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+      builder:
+          (context) => AlertDialog(
+            title: Text(owner['name'] ?? 'Owner Details'),
+            content: Text(
+              'Email: ${owner['email'] ?? ''}\nPhone: ${owner['phone'] ?? ''}',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
-  // Stub for pagination controls
   Widget _buildPaginationControls(bool isMobile) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: _currentPage > 1
-              ? () {
-                  setState(() {
-                    _currentPage--;
-                  });
-                }
-              : null,
+          onPressed:
+              _currentPage > 1
+                  ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
+                  : null,
         ),
         Text('Page $_currentPage of $_totalPages'),
         IconButton(
           icon: Icon(Icons.arrow_forward),
-          onPressed: _currentPage < _totalPages
-              ? () {
-                  setState(() {
-                    _currentPage++;
-                  });
-                }
-              : null,
+          onPressed:
+              _currentPage < _totalPages
+                  ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
+                  : null,
         ),
       ],
     );
   }
 
-  // Helper to get status color
   Color _getStatusColor(String status) {
     switch (status) {
       case 'active':
@@ -71,7 +73,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
     }
   }
 
-  // Show dialog to edit owner status
   Future<void> _showEditOwnerStatusDialog(Map<String, dynamic> owner) async {
     String selectedStatus = owner['status'] ?? 'active';
     await showDialog(
@@ -102,12 +103,15 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 try {
                   await _supabase
                       .from('user_profiles')
-                      .update({'status': selectedStatus}).eq('id', owner['id']);
+                      .update({'status': selectedStatus})
+                      .eq('id', owner['id']);
                   await _loadOwnersData();
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Owner status updated to "$selectedStatus"'),
+                        content: Text(
+                          'Owner status updated to "$selectedStatus"',
+                        ),
                         backgroundColor: AppColors.success,
                       ),
                     );
@@ -134,7 +138,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   int _currentPage = 1;
-  final int _itemsPerPage = 6; // Mobile এর জন্য optimal
+  final int _itemsPerPage = 6;
 
   List<Map<String, dynamic>> _owners = [];
   bool _isLoading = true;
@@ -165,7 +169,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
     });
 
     try {
-      // Load ONLY owners from user_profiles where role = 'owner'
       final ownersResponse = await _supabase
           .from('user_profiles')
           .select('id, full_name, email, phone, status, created_at')
@@ -262,7 +265,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Text(
               isMobile
                   ? 'Football Venue Owners'
@@ -288,7 +290,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
             ),
             SizedBox(height: isMobile ? 16 : 32),
 
-            // Quick Stats or Loading/Error
             if (_isLoading)
               const Center(
                 child: Padding(
@@ -343,7 +344,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
 
             SizedBox(height: 24),
 
-            // Owners List Header
             if (!_isLoading && _errorMessage.isEmpty)
               Container(
                 padding: EdgeInsets.all(isMobile ? 16 : 20),
@@ -358,7 +358,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                       color: AppColors.shadowLight,
                       blurRadius: 10,
                       offset: const Offset(0, 4),
-                    )
+                    ),
                   ],
                 ),
                 child: Row(
@@ -376,7 +376,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 ),
               ),
 
-            // Owners List Items
             if (!_isLoading && _errorMessage.isEmpty)
               Container(
                 decoration: BoxDecoration(
@@ -412,7 +411,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                       else
                         ..._buildDesktopOwnersList(),
 
-                      // Pagination
                       if (_totalPages > 1) ...[
                         Padding(
                           padding: EdgeInsets.all(isMobile ? 16 : 20),
@@ -496,7 +494,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
         ),
         child: Row(
           children: [
-            // Owner Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -555,7 +552,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 ],
               ),
             ),
-            // Actions
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -571,11 +567,7 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 ),
                 IconButton(
                   onPressed: () => _showEditOwnerStatusDialog(owner),
-                  icon: Icon(
-                    Icons.edit,
-                    size: 20,
-                    color: AppColors.warning,
-                  ),
+                  icon: Icon(Icons.edit, size: 20, color: AppColors.warning),
                   tooltip: 'Edit owner status (Active, Inactive, Suspended)',
                   padding: const EdgeInsets.all(4),
                 ),
@@ -589,7 +581,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
 
   List<Widget> _buildDesktopOwnersList() {
     return [
-      // Header Row
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
@@ -635,12 +626,11 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 ),
               ),
             ),
-            const SizedBox(width: 80), // Actions space
+            const SizedBox(width: 80),
           ],
         ),
       ),
 
-      // Owner Rows
       ..._paginatedOwners.map((owner) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -654,7 +644,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
           ),
           child: Row(
             children: [
-              // Owner Details
               Expanded(
                 flex: 4,
                 child: Column(
@@ -684,7 +673,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 ),
               ),
 
-              // Phone
               Expanded(
                 flex: 2,
                 child: Text(
@@ -697,7 +685,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 ),
               ),
 
-              // Status
               Expanded(
                 flex: 1,
                 child: Container(
@@ -723,7 +710,6 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                 ),
               ),
 
-              // Actions
               SizedBox(
                 width: 80,
                 child: Row(
@@ -746,7 +732,8 @@ class _AdminOwnersPageState extends State<AdminOwnersPage> {
                         size: 20,
                         color: AppColors.warning,
                       ),
-                      tooltip: 'Edit owner status (Active, Inactive, Suspended)',
+                      tooltip:
+                          'Edit owner status (Active, Inactive, Suspended)',
                       padding: const EdgeInsets.all(4),
                     ),
                   ],

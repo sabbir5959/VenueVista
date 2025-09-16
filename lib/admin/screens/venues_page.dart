@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
-import '../../services/admin_venue_service.dart';
+import '../services/admin_venue_service.dart';
 
 class AdminVenuesPage extends StatefulWidget {
   const AdminVenuesPage({super.key});

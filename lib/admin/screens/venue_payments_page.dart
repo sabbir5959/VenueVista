@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
-import '../../services/admin_venue_payments_service.dart';
+import '../services/admin_venue_payments_service.dart';
 
 class AdminVenuePaymentsPage extends StatefulWidget {
   final VoidCallback? onNotificationUpdate;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/app_colors.dart';
-import '../../services/admin_venue_payments_service.dart';
+import '../services/admin_venue_payments_service.dart';
 import 'overview_page.dart';
 import 'users_page.dart';
 import 'owners_page.dart';
@@ -48,13 +48,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
-    // Load notification counts immediately
     _loadPendingCount();
   }
 
   Future<void> _loadPendingCount() async {
     try {
-      // Use fast count methods instead of loading all data
       final commissionCount =
           await AdminVenuePaymentsService.getPendingCommissionCount();
 
@@ -65,7 +63,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
       }
     } catch (e) {
       print('Error loading pending counts: $e');
-      // On error, set counts to 0
       if (mounted) {
         setState(() {
           _pendingCommissionCount = 0;
@@ -183,7 +180,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 _selectedIndex = item.index;
                               });
                               Navigator.pop(context);
-                              // Refresh notification count when payments or venue payments is selected
                               if (item.index == 6 || item.index == 7) {
                                 _loadPendingCount();
                               }
@@ -248,7 +244,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     ),
                                   ),
 
-                                  // Show notification badge for Venue Payments
                                   if (item.index == 7 &&
                                       _pendingCommissionCount > 0)
                                     Container(

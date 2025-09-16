@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
-import '../../services/user_service.dart';
+import '../services/admin_user_service.dart';
 
 class AdminUsersPage extends StatefulWidget {
   const AdminUsersPage({super.key});
@@ -59,7 +59,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     });
 
     try {
-      final result = await UserService.getUsers(
+      final result = await AdminUserService.getUsers(
         page: _currentPage,
         limit: _itemsPerPage,
         searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
@@ -947,7 +947,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 });
 
                 try {
-                  await UserService.deleteUser(user['id']);
+                  await AdminUserService.deleteUser(user['id']);
 
                   if (!mounted) return;
                   // Show success message

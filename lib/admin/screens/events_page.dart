@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
-import '../../services/admin_tournament_service.dart';
+import '../services/admin_tournament_service.dart';
 
 class AdminEventsPage extends StatefulWidget {
   const AdminEventsPage({super.key});
@@ -45,9 +45,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
             tournament,
           );
           formattedTournaments.add(formatted);
-        } catch (e) {
-          // Skip this tournament but continue with others
-        }
+        } catch (e) {}
       }
 
       setState(() {
@@ -121,7 +119,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Section
             Row(
               children: [
                 Expanded(
@@ -152,7 +149,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                   ),
                 ),
                 SizedBox(width: 12),
-                // Refresh Button
                 Container(
                   padding: EdgeInsets.all(isMobile ? 8 : 10),
                   decoration: BoxDecoration(
@@ -170,7 +166,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                   ),
                 ),
                 SizedBox(width: 12),
-                // Export Button
                 Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: isMobile ? 12 : 16,
@@ -406,7 +401,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
               ),
             ),
 
-            SizedBox(height: 40), // Bottom spacing
+            SizedBox(height: 40),
           ],
         ),
       ),
@@ -517,7 +512,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
       padding: EdgeInsets.all(isMobile ? 16 : 20),
       child: Row(
         children: [
-          // Event Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -569,7 +563,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                   maxLines: 1,
                 ),
                 SizedBox(height: 8),
-                // Mobile: Stack vertically, Desktop: Row
                 isMobile
                     ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -774,7 +767,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
   List<Map<String, dynamic>> _getFilteredEvents() {
     List<Map<String, dynamic>> filtered = List.from(_tournaments);
 
-    // Filter by status
     if (_selectedStatus != 'All') {
       filtered =
           filtered
@@ -786,7 +778,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
               .toList();
     }
 
-    // Filter by date range
     if (_startDate != null || _endDate != null) {
       filtered =
           filtered.where((tournament) {
@@ -807,7 +798,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
 
               return true;
             } catch (e) {
-              // Skip tournaments with invalid dates
               return false;
             }
           }).toList();
@@ -1076,7 +1066,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Export Format Options
                       Text(
                         'Export Format',
                         style: TextStyle(
@@ -1095,7 +1084,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                       ),
                       SizedBox(height: 16),
 
-                      // Export Options Row
                       Row(
                         children: [
                           Expanded(
@@ -1134,7 +1122,6 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                       ),
                       SizedBox(height: 16),
 
-                      // Status Filter
                       Text(
                         'Tournament Status',
                         style: TextStyle(
