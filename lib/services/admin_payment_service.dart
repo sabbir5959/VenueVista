@@ -3,6 +3,36 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AdminPaymentService {
   static final _client = Supabase.instance.client;
 
+  /// Fast method to get pending payments count only
+  static Future<int> getPendingPaymentsCount() async {
+    try {
+      final response = await _client
+          .from('payments')
+          .select('id')
+          .eq('payment_status', 'pending');
+
+      return (response as List).length;
+    } catch (e) {
+      print('Error getting pending payments count: $e');
+      return 0;
+    }
+  }
+
+  /// Fast method to get pending refunds count only
+  static Future<int> getPendingRefundsCount() async {
+    try {
+      final response = await _client
+          .from('cancellations')
+          .select('id')
+          .isFilter('refund_processed_at', null);
+
+      return (response as List).length;
+    } catch (e) {
+      print('Error getting pending refunds count: $e');
+      return 0;
+    }
+  }
+
   /// Get all payments for admin dashboard
   static Future<List<Map<String, dynamic>>> getAllPayments() async {
     try {
@@ -119,13 +149,18 @@ class AdminPaymentService {
       double totalRefunded = 0.0;
 
       for (final payment in receivedResponse) {
-        final amount = (payment['amount'] as num).toDouble();
+        final amount = payment['amount'];
         final paymentId = payment['payment_id'] ?? '';
 
-        if (paymentId.startsWith('REF')) {
-          totalRefunded += amount; // This is a refund payment
-        } else {
-          totalReceived += amount; // This is a regular payment
+        if (amount != null) {
+          final amountDouble =
+              (amount is int ? amount.toDouble() : amount as double);
+
+          if (paymentId.startsWith('REF')) {
+            totalRefunded += amountDouble; // This is a refund payment
+          } else {
+            totalReceived += amountDouble; // This is a regular payment
+          }
         }
       }
 
@@ -139,6 +174,8 @@ class AdminPaymentService {
 
       final totalCash = cashResponse.fold(0.0, (sum, record) {
         final amount = record['cash amount']; // Space in column name
+        if (amount == null) return sum;
+
         if (amount is String) {
           final parsed = double.tryParse(amount) ?? 0.0;
           return sum + parsed;
@@ -179,11 +216,14 @@ class AdminPaymentService {
   /// Get all cash records from owner_record_cash table
   static Future<List<Map<String, dynamic>>> getAllCashRecords() async {
     try {
+      print('🔄 Attempting to fetch from owner_record_cash table...');
+
       final response = await _client
           .from('owner_record_cash')
           .select('*')
           .order('created_at', ascending: false);
 
+      print('✅ Cash records fetched successfully: ${response.length} records');
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('❌ Error fetching cash records: $e');
@@ -326,18 +366,15 @@ class AdminPaymentService {
   ) {
     return {
       'id': 'CASH${cashRecord['id']}',
-      'description':
-          'To Owner', // Changed to show payment direction instead of description
-      'amount':
-          double.tryParse(cashRecord['cash amount'] ?? '0') ??
-          0.0, // Fixed column name with space
-      'type':
-          'owner', // Changed from 'cash' to 'owner' to indicate payment to owner
-      'status': cashRecord['status'] ?? 'successful', // Default to successful
+      'description': 'To Owner',
+      'amount': double.tryParse(cashRecord['cash_amount'] ?? '0') ?? 0.0,
+      'type': 'owner',
+      'status': cashRecord['status'] ?? 'successful',
       'method': 'Cash',
       'person':
-          cashRecord['owner name'] ??
-          'Unknown Owner', // Fixed column name with space
+          cashRecord['owner_name']?.toString().trim().isNotEmpty == true
+              ? cashRecord['owner_name']
+              : 'Venue Owner',
       'contact': cashRecord['contact'] ?? 'N/A',
       'transactionId': 'CASH${cashRecord['id']}',
       'bookingId': 'N/A',

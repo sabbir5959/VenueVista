@@ -3,7 +3,14 @@ import '../../constants/app_colors.dart';
 import '../../services/admin_payment_service.dart';
 
 class AdminPaymentsPage extends StatefulWidget {
-  const AdminPaymentsPage({super.key});
+  final VoidCallback? onNotificationUpdate;
+  final Function(int paymentsCount, int refundsCount)? onCountsUpdate;
+
+  const AdminPaymentsPage({
+    super.key,
+    this.onNotificationUpdate,
+    this.onCountsUpdate,
+  });
 
   @override
   State<AdminPaymentsPage> createState() => _AdminPaymentsPageState();
@@ -54,6 +61,14 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
         _stats = stats;
         _isLoading = false;
       });
+
+      // Update notification counts in dashboard
+      if (widget.onCountsUpdate != null) {
+        // Count pending payments (not refunds)
+        final pendingPaymentsCount =
+            payments.where((p) => p['payment_status'] == 'pending').length;
+        widget.onCountsUpdate!(pendingPaymentsCount, _pendingRefunds.length);
+      }
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(
@@ -122,24 +137,6 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                     ],
                   ),
                 ),
-                if (!isMobile) SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _showRecordCashPaymentDialog(),
-                  icon: Icon(Icons.receipt_long),
-                  label: Text(isMobile ? 'Record Cash' : 'Record Cash Payment'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.white,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isMobile ? 12 : 20,
-                      vertical: isMobile ? 8 : 12,
-                    ),
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
               ],
             ),
 
@@ -181,6 +178,7 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                       Colors.amber[700]!, // Changed to amber for better look
                       'Refund requests',
                       isMobile,
+                      notificationCount: _pendingRefunds.length,
                     ),
                   ),
                 ),
@@ -374,77 +372,82 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
                           bottomRight: Radius.circular(16),
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Previous Button
-                          IconButton(
-                            onPressed:
-                                _currentPage > 1
-                                    ? () => setState(() => _currentPage--)
-                                    : null,
-                            icon: Icon(Icons.chevron_left),
-                            color:
-                                _currentPage > 1
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
-                          ),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Previous Button
+                            IconButton(
+                              onPressed:
+                                  _currentPage > 1
+                                      ? () => setState(() => _currentPage--)
+                                      : null,
+                              icon: Icon(Icons.chevron_left),
+                              color:
+                                  _currentPage > 1
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                            ),
 
-                          // Page Numbers
-                          ...List.generate(totalPages, (index) {
-                            final page = index + 1;
-                            final isCurrentPage = page == _currentPage;
-                            return InkWell(
-                              onTap: () => setState(() => _currentPage = page),
-                              child: Container(
-                                margin: EdgeInsets.symmetric(horizontal: 4),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      isCurrentPage
-                                          ? AppColors.primary
-                                          : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
+                            // Page Numbers
+                            ...List.generate(totalPages, (index) {
+                              final page = index + 1;
+                              final isCurrentPage = page == _currentPage;
+                              return InkWell(
+                                onTap:
+                                    () => setState(() => _currentPage = page),
+                                child: Container(
+                                  margin: EdgeInsets.symmetric(horizontal: 4),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
                                     color:
                                         isCurrentPage
                                             ? AppColors.primary
-                                            : AppColors.borderLight,
+                                            : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color:
+                                          isCurrentPage
+                                              ? AppColors.primary
+                                              : AppColors.borderLight,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '$page',
+                                    style: TextStyle(
+                                      color:
+                                          isCurrentPage
+                                              ? Colors.white
+                                              : AppColors.textPrimary,
+                                      fontWeight:
+                                          isCurrentPage
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                    ),
                                   ),
                                 ),
-                                child: Text(
-                                  '$page',
-                                  style: TextStyle(
-                                    color:
-                                        isCurrentPage
-                                            ? Colors.white
-                                            : AppColors.textPrimary,
-                                    fontWeight:
-                                        isCurrentPage
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
+                              );
+                            }),
 
-                          // Next Button
-                          IconButton(
-                            onPressed:
-                                _currentPage < totalPages
-                                    ? () => setState(() => _currentPage++)
-                                    : null,
-                            icon: Icon(Icons.chevron_right),
-                            color:
-                                _currentPage < totalPages
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
-                          ),
-                        ],
+                            // Next Button
+                            IconButton(
+                              onPressed:
+                                  _currentPage < totalPages
+                                      ? () => setState(() => _currentPage++)
+                                      : null,
+                              icon: Icon(Icons.chevron_right),
+                              color:
+                                  _currentPage < totalPages
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                 ],
@@ -464,8 +467,9 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
     IconData icon,
     Color color,
     String subtitle,
-    bool isMobile,
-  ) {
+    bool isMobile, {
+    int? notificationCount,
+  }) {
     return Container(
       padding: EdgeInsets.all(isMobile ? 16 : 20),
       decoration: BoxDecoration(
@@ -485,13 +489,41 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
         children: [
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 20),
+              Stack(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, color: color, size: 20),
+                  ),
+                  // Notification badge
+                  if (notificationCount != null && notificationCount > 0)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          notificationCount.toString(),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               Spacer(),
               Icon(Icons.trending_up, color: color, size: 16),
@@ -886,6 +918,8 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
         return Colors.green[600]!;
       case 'successful': // For cash records
         return Colors.green[600]!;
+      case 'paid': // For owner cash records
+        return Colors.blue[600]!;
       case 'processing':
         return Colors.blue[600]!;
       case 'pending':
@@ -1733,6 +1767,11 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
 
         // Reload data to update the list
         _loadPaymentData();
+
+        // Update notification count
+        if (widget.onNotificationUpdate != null) {
+          widget.onNotificationUpdate!();
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1746,304 +1785,5 @@ class _AdminPaymentsPageState extends State<AdminPaymentsPage> {
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
     }
-  }
-
-  void _showRecordCashPaymentDialog() {
-    final _formKey = GlobalKey<FormState>();
-    final _amountController = TextEditingController();
-    final _descriptionController = TextEditingController();
-    final _contactController = TextEditingController();
-    String? _selectedOwner;
-    List<Map<String, dynamic>> _venues = [];
-    bool _isLoadingVenues = true;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            // Load venues when dialog opens
-            if (_isLoadingVenues) {
-              AdminPaymentService.getVenueOwners().then((venues) {
-                setDialogState(() {
-                  _venues = venues;
-                  _isLoadingVenues = false;
-                  if (_venues.isNotEmpty) {
-                    _selectedOwner = _venues.first['name'];
-                  }
-                });
-              });
-            }
-
-            return AlertDialog(
-              title: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.receipt_long, color: AppColors.primary),
-                  SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Record Cash Payment',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              content: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.9,
-                  maxHeight: MediaQuery.of(context).size.height * 0.7,
-                ),
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Info Header
-                        Container(
-                          padding: EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: AppColors.primary.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.info_outline,
-                                    color: AppColors.primary,
-                                    size: 16,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'Manual Cash Payment Record',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                '📝 Fill this form AFTER giving cash to owner to keep proper records',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 20),
-
-                        // Owner Selection
-                        _isLoadingVenues
-                            ? Container(
-                              height: 56,
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Center(
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text('Loading venues...'),
-                                  ],
-                                ),
-                              ),
-                            )
-                            : DropdownButtonFormField<String>(
-                              value: _selectedOwner,
-                              decoration: InputDecoration(
-                                labelText: 'Venue Owner',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.business),
-                              ),
-                              isExpanded: true, // This prevents overflow
-                              items:
-                                  _venues.map<DropdownMenuItem<String>>((
-                                    venue,
-                                  ) {
-                                    final ownerInfo = venue['user_profiles'];
-                                    final displayText =
-                                        '${venue['name']} (${ownerInfo['full_name']})';
-                                    return DropdownMenuItem<String>(
-                                      value: venue['name'],
-                                      child: Text(
-                                        displayText,
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                    );
-                                  }).toList(),
-                              onChanged: (String? newValue) {
-                                setDialogState(() {
-                                  _selectedOwner = newValue!;
-                                  // Auto-fill contact if available
-                                  final selectedVenue = _venues.firstWhere(
-                                    (venue) => venue['name'] == newValue,
-                                    orElse: () => {},
-                                  );
-                                  if (selectedVenue.isNotEmpty) {
-                                    final ownerInfo =
-                                        selectedVenue['user_profiles'];
-                                    _contactController.text =
-                                        ownerInfo['phone'] ?? '';
-                                  }
-                                });
-                              },
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please select venue owner';
-                                }
-                                return null;
-                              },
-                            ),
-                        SizedBox(height: 16),
-
-                        // Amount
-                        TextFormField(
-                          controller: _amountController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Cash Amount Given (৳)',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.attach_money),
-                            hintText: 'Amount you gave in cash',
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter cash amount';
-                            }
-                            if (double.tryParse(value) == null) {
-                              return 'Please enter valid amount';
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: 16),
-
-                        // Contact Number
-                        TextFormField(
-                          controller: _contactController,
-                          decoration: InputDecoration(
-                            labelText: 'Contact Number',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.phone),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter contact number';
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: 16),
-
-                        // Description
-                        TextFormField(
-                          controller: _descriptionController,
-                          maxLines: 3,
-                          decoration: InputDecoration(
-                            labelText: 'Description',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.description),
-                            hintText:
-                                'Payment purpose, commission details, etc.',
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter description';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      try {
-                        final success =
-                            await AdminPaymentService.recordCashPayment(
-                              ownerName: _selectedOwner!,
-                              cashAmount: _amountController.text,
-                              contact: _contactController.text,
-                              description: _descriptionController.text,
-                            );
-
-                        if (success) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Cash payment recorded successfully',
-                              ),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                          _loadPaymentData(); // Refresh data
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Failed to record cash payment'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: Text('Record Payment'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
   }
 }

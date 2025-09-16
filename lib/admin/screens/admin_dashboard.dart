@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/app_colors.dart';
+import '../../services/admin_venue_payments_service.dart';
 import 'overview_page.dart';
 import 'users_page.dart';
 import 'owners_page.dart';
@@ -8,6 +9,7 @@ import 'venues_page.dart';
 import 'bookings_page.dart';
 import 'events_page.dart';
 import 'payments_page.dart';
+import 'venue_payments_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -18,6 +20,7 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
+  int _pendingCommissionCount = 0;
 
   final List<AdminMenuItem> _menuItems = [
     AdminMenuItem(icon: Icons.dashboard_outlined, title: 'Overview', index: 0),
@@ -35,7 +38,41 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ),
     AdminMenuItem(icon: Icons.event_outlined, title: 'Events', index: 5),
     AdminMenuItem(icon: Icons.payment_outlined, title: 'Payments', index: 6),
+    AdminMenuItem(
+      icon: Icons.account_balance_wallet_outlined,
+      title: 'Venue Payments',
+      index: 7,
+    ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Load notification counts immediately
+    _loadPendingCount();
+  }
+
+  Future<void> _loadPendingCount() async {
+    try {
+      // Use fast count methods instead of loading all data
+      final commissionCount =
+          await AdminVenuePaymentsService.getPendingCommissionCount();
+
+      if (mounted) {
+        setState(() {
+          _pendingCommissionCount = commissionCount;
+        });
+      }
+    } catch (e) {
+      print('Error loading pending counts: $e');
+      // On error, set counts to 0
+      if (mounted) {
+        setState(() {
+          _pendingCommissionCount = 0;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,6 +183,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 _selectedIndex = item.index;
                               });
                               Navigator.pop(context);
+                              // Refresh notification count when payments or venue payments is selected
+                              if (item.index == 6 || item.index == 7) {
+                                _loadPendingCount();
+                              }
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -190,20 +231,44 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                  Text(
-                                    item.title,
-                                    style: TextStyle(
-                                      color:
-                                          isSelected
-                                              ? AppColors.primary
-                                              : AppColors.textPrimary,
-                                      fontWeight:
-                                          isSelected
-                                              ? FontWeight.w600
-                                              : FontWeight.w500,
-                                      fontSize: 14,
+                                  Expanded(
+                                    child: Text(
+                                      item.title,
+                                      style: TextStyle(
+                                        color:
+                                            isSelected
+                                                ? AppColors.primary
+                                                : AppColors.textPrimary,
+                                        fontWeight:
+                                            isSelected
+                                                ? FontWeight.w600
+                                                : FontWeight.w500,
+                                        fontSize: 14,
+                                      ),
                                     ),
                                   ),
+
+                                  // Show notification badge for Venue Payments
+                                  if (item.index == 7 &&
+                                      _pendingCommissionCount > 0)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        _pendingCommissionCount.toString(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -312,7 +377,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case 5:
         return const AdminEventsPage();
       case 6:
-        return const AdminPaymentsPage();
+        return AdminPaymentsPage(onNotificationUpdate: _loadPendingCount);
+      case 7:
+        return AdminVenuePaymentsPage(onNotificationUpdate: _loadPendingCount);
       default:
         return const AdminOverviewPage();
     }
