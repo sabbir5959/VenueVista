@@ -781,3 +781,242 @@ CREATE TRIGGER trigger_update_venue_rating_on_delete
 
 -- Verify table creation
 SELECT 'Venue reviews table created successfully!' as status;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- 7. Cancellations Table
+CREATE TABLE IF NOT EXISTS public.cancellations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id UUID NOT NULL REFERENCES public.bookings(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.user_profiles(id),
+  venue_id UUID NOT NULL REFERENCES public.venues(id),
+  venue_name TEXT NOT NULL,
+  booking_date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  original_amount DECIMAL(10,2) NOT NULL,
+  cancellation_fee DECIMAL(10,2) DEFAULT 0.00,
+  refund_amount DECIMAL(10,2) DEFAULT 0.00,
+  reason TEXT NOT NULL,
+  cancellation_reason TEXT, -- Additional detailed reason if different from 'reason'
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  refund_type VARCHAR(20) CHECK (refund_type IN ('full','half','none')),
+  refund_status VARCHAR(20) DEFAULT 'pending' CHECK (refund_status IN ('pending','accepted','rejected','processed','failed')),
+  cancelled_at TIMESTAMPTZ DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  refund_processed_at TIMESTAMPTZ,
+  processed_by UUID REFERENCES public.user_profiles(id),
+  admin_notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.cancellations ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for cancellations
+CREATE POLICY "Users can view their own cancellation requests" ON public.cancellations 
+FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create their own cancellation requests" ON public.cancellations 
+FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own pending cancellation requests" ON public.cancellations 
+FOR UPDATE USING (auth.uid() = user_id AND status = 'pending');
+
+CREATE POLICY "Venue owners can view cancellations for their venues" ON public.cancellations 
+FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.venues 
+    WHERE venues.id = cancellations.venue_id 
+    AND venues.owner_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Venue owners can update cancellations for their venues" ON public.cancellations 
+FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM public.venues 
+    WHERE venues.id = cancellations.venue_id 
+    AND venues.owner_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all cancellations" ON public.cancellations 
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.user_profiles 
+    WHERE user_profiles.id = auth.uid() 
+    AND user_profiles.role = 'admin'
+  )
+);
+
+-- Add indexes for performance
+CREATE INDEX IF NOT EXISTS idx_cancellations_user_id ON public.cancellations(user_id);
+CREATE INDEX IF NOT EXISTS idx_cancellations_booking_id ON public.cancellations(booking_id);
+CREATE INDEX IF NOT EXISTS idx_cancellations_venue_id ON public.cancellations(venue_id);
+CREATE INDEX IF NOT EXISTS idx_cancellations_status ON public.cancellations(status);
+CREATE INDEX IF NOT EXISTS idx_cancellations_refund_status ON public.cancellations(refund_status);
+CREATE INDEX IF NOT EXISTS idx_cancellations_booking_date ON public.cancellations(booking_date);
+CREATE INDEX IF NOT EXISTS idx_cancellations_cancelled_at ON public.cancellations(cancelled_at);
+CREATE INDEX IF NOT EXISTS idx_cancellations_created_at ON public.cancellations(created_at);
+
+-- Add constraint to prevent duplicate cancellation requests for same booking
+ALTER TABLE public.cancellations 
+ADD CONSTRAINT unique_booking_cancellation 
+UNIQUE (booking_id);
+
+-- Function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_cancellations_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger to automatically update updated_at
+CREATE TRIGGER trigger_update_cancellations_updated_at
+  BEFORE UPDATE ON public.cancellations
+  FOR EACH ROW EXECUTE FUNCTION update_cancellations_updated_at();
+
+-- Verify table creation
+SELECT 'Cancellations table created successfully!' as status;
+
+-- Insert sample regular user for testing cancellation requests
+INSERT INTO public.user_profiles (
+    id,
+    full_name,
+    email,
+    phone,
+    role,
+    status,
+    city,
+    address,
+    created_at,
+    updated_at
+) VALUES (
+    '12345678-1234-5678-9012-123456789abc', -- Sample UUID for testing
+    'John Doe',
+    'john.doe@example.com',
+    '+8801712345999',
+    'user',
+    'active',
+    'Dhaka',
+    'Gulshan-1, Dhaka',
+    NOW(),
+    NOW()
+) ON CONFLICT (email) DO NOTHING;
+
+-- Insert sample booking at Tasnuva Islam's venue (Volta Football Arena)
+INSERT INTO public.bookings (
+    id,
+    booking_id,
+    user_id,
+    venue_id,
+    booking_date,
+    start_time,
+    end_time,
+    duration_hours,
+    created_at
+) 
+SELECT 
+    'booking-uuid-1234-5678-9012-123456789abc', -- Sample booking UUID
+    'BOOK001',
+    '12345678-1234-5678-9012-123456789abc', -- John Doe's user ID
+    v.id, -- Volta Football Arena venue ID
+    '2025-09-20'::DATE,
+    '16:00:00'::TIME,
+    '18:00:00'::TIME,
+    2.0,
+    NOW()
+FROM public.venues v
+JOIN public.user_profiles up ON v.owner_id = up.id
+WHERE up.email = 'tasnuvaislam.me@gmail.com' AND v.name = 'Volta Football Arena';
+
+-- Insert sample cancellation request for venue owner "Tasnuva Islam"
+INSERT INTO public.cancellations (
+    id,
+    booking_id,
+    user_id,
+    venue_id,
+    venue_name,
+    booking_date,
+    start_time,
+    end_time,
+    original_amount,
+    cancellation_fee,
+    refund_amount,
+    reason,
+    cancellation_reason,
+    status,
+    refund_type,
+    refund_status,
+    cancelled_at,
+    created_at,
+    updated_at
+)
+SELECT 
+    'cancel-uuid-1234-5678-9012-123456789abc', -- Sample cancellation UUID
+    'booking-uuid-1234-5678-9012-123456789abc', -- References the booking above
+    '12345678-1234-5678-9012-123456789abc', -- John Doe's user ID
+    v.id, -- Volta Football Arena venue ID
+    v.name, -- Volta Football Arena
+    '2025-09-20'::DATE,
+    '16:00:00'::TIME,
+    '18:00:00'::TIME,
+    4000.00, -- 2 hours * 2000 per hour
+    200.00, -- 5% cancellation fee
+    3800.00, -- Original amount - cancellation fee
+    'Personal emergency',
+    'Family member hospitalized, unable to attend the scheduled match',
+    'pending', -- Waiting for venue owner approval
+    'half', -- Half refund policy applies
+    'pending', -- Refund not yet processed
+    NOW() - INTERVAL '2 hours', -- User cancelled 2 hours ago
+    NOW() - INTERVAL '2 hours',
+    NOW() - INTERVAL '2 hours'
+FROM public.venues v
+JOIN public.user_profiles up ON v.owner_id = up.id
+WHERE up.email = 'tasnuvaislam.me@gmail.com' AND v.name = 'Volta Football Arena';
+
+-- Verify the cancellation request was created for Tasnuva Islam
+SELECT 
+    c.id as cancellation_id,
+    u.full_name as user_name,
+    u.email as user_email,
+    c.venue_name,
+    owner.full_name as venue_owner,
+    owner.email as owner_email,
+    c.booking_date,
+    c.start_time,
+    c.end_time,
+    c.original_amount,
+    c.cancellation_fee,
+    c.refund_amount,
+    c.reason,
+    c.cancellation_reason,
+    c.status,
+    c.refund_type,
+    c.refund_status,
+    c.cancelled_at
+FROM public.cancellations c
+JOIN public.user_profiles u ON c.user_id = u.id
+JOIN public.venues v ON c.venue_id = v.id
+JOIN public.user_profiles owner ON v.owner_id = owner.id
+WHERE owner.email = 'tasnuvaislam.me@gmail.com'
+ORDER BY c.cancelled_at DESC;

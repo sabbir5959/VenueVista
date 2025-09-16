@@ -1,34 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/venue_owner_sidebar.dart';
 import '../widgets/owner_profile_widget.dart';
-
-class CancellationRequest {
-  final String userName;
-  final String reason;
-  final DateTime bookedTime;
-  final DateTime requestTime;
-
-  CancellationRequest({
-    required this.userName, 
-    required this.reason,
-    required this.bookedTime,
-    required this.requestTime,
-  });
-
-  String get timingInfo {
-    final difference = bookedTime.difference(requestTime);
-    final hours = difference.inHours;
-    final days = difference.inDays;
-    
-    if (days > 0) {
-      return "$days day${days > 1 ? 's' : ''} before booked time";
-    } else if (hours > 0) {
-      return "$hours hour${hours > 1 ? 's' : ''} before booked time";
-    } else {
-      return "Less than 1 hour before booked time";
-    }
-  }
-}
+import '../services/cancellation_service.dart';
 
 class CancellationRequestsPage extends StatefulWidget {
   const CancellationRequestsPage({Key? key}) : super(key: key);
@@ -38,51 +12,227 @@ class CancellationRequestsPage extends StatefulWidget {
 }
 
 class _CancellationRequestsPageState extends State<CancellationRequestsPage> {
-  List<CancellationRequest> requests = [
-    CancellationRequest(
-      userName: "Shohan Khan", 
-      reason: "Family emergency.",
-      bookedTime: DateTime.now().add(const Duration(hours: 48)), // Booked for 2 days from now
-      requestTime: DateTime.now().subtract(const Duration(hours: 24)), // Requested 1 day ago
-    ),
-    CancellationRequest(
-      userName: "Subhro Roy", 
-      reason: "Injury during practice.",
-      bookedTime: DateTime.now().add(const Duration(hours: 12)), // Booked for 12 hours from now
-      requestTime: DateTime.now().subtract(const Duration(hours: 2)), // Requested 2 hours ago
-    ),
-    CancellationRequest(
-      userName: "Reyana Akhter", 
-      reason: "Bad weather forecast.",
-      bookedTime: DateTime.now().add(const Duration(hours: 6)), // Booked for 6 hours from now
-      requestTime: DateTime.now().subtract(const Duration(minutes: 30)), // Requested 30 minutes ago
-    ),
-  ];
+  List<Map<String, dynamic>> cancellationRequests = [];
+  bool isLoading = true;
+  String? currentUserId;
 
-  void handleRequest(String userName, String action) {
+  @override
+  void initState() {
+    super.initState();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    await _getCurrentUser();
+    await _loadCancellationRequests();
+  }
+
+  Future<void> _getCurrentUser() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      setState(() {
+        currentUserId = user.id;
+      });
+    }
+  }
+
+  Future<void> _loadCancellationRequests() async {
+    if (currentUserId == null) return;
+
     setState(() {
-      requests.removeWhere((req) => req.userName == userName);
+      isLoading = true;
     });
 
-    String message = "";
-    switch (action) {
-      case 'acknowledged':
-        message = "Acknowledged cancellation for $userName";
-        break;
-      case 'full_refund':
-        message = "Full refund approved for $userName";
-        break;
-      case 'half_refund':
-        message = "Half refund approved for $userName";
-        break;
+    try {
+      final requests = await CancellationService.getOwnerCancellationRequests(currentUserId!);
+      setState(() {
+        cancellationRequests = requests;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading cancellation requests: $e');
+      setState(() {
+        isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading cancellation requests: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
+  Future<void> _showRefundAmountDialog(Map<String, dynamic> request) async {
+    final TextEditingController refundController = TextEditingController();
+    final originalAmount = (request['original_amount'] as num).toDouble();
+    
+    // Set default refund amount as original amount
+    refundController.text = originalAmount.toStringAsFixed(2);
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Enter Refund Amount'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('User: ${request['user_full_name']}'),
+                const SizedBox(height: 8),
+                Text('Original Amount: ${CancellationService.formatCurrency(originalAmount)}'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: refundController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Refund Amount (৳)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              child: const Text('Accept & Process Refund'),
+              onPressed: () async {
+                final refundAmount = double.tryParse(refundController.text);
+                if (refundAmount == null || refundAmount < 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a valid refund amount'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.of(context).pop();
+                await _acceptCancellationRequest(request['id'], refundAmount);
+              },
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  Future<void> _acceptCancellationRequest(String cancellationId, double refundAmount) async {
+    try {
+      final success = await CancellationService.acceptCancellationRequest(
+        cancellationId: cancellationId,
+        refundAmount: refundAmount,
+        ownerId: currentUserId!,
+      );
+
+      if (success) {
+        await _loadCancellationRequests(); // Reload the list
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Cancellation accepted with refund of ${CancellationService.formatCurrency(refundAmount)}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to accept cancellation request'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error accepting cancellation: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _rejectCancellationRequest(String cancellationId, String userName) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Reject Cancellation'),
+          content: Text('Are you sure you want to reject the cancellation request from $userName?\n\nNo refund will be processed.'),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Reject'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final success = await CancellationService.rejectCancellationRequest(
+        cancellationId: cancellationId,
+        ownerId: currentUserId!,
+        rejectionReason: 'Rejected by venue owner',
+      );
+
+      if (success) {
+        await _loadCancellationRequests(); // Reload the list
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Cancellation request from $userName has been rejected'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to reject cancellation request'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error rejecting cancellation: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -96,152 +246,220 @@ class _CancellationRequestsPageState extends State<CancellationRequestsPage> {
         ],
       ),
       drawer: const VenueOwnerSidebar(currentPage: 'cancellations'),
-      body: requests.isEmpty
-          ? const Center(
-              child: Text(
-                "No cancellation requests",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
-              ),
-            )
-          : ListView.builder(
-              itemCount: requests.length,
-              itemBuilder: (context, index) {
-                final req = requests[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : cancellationRequests.isEmpty
+              ? const Center(
+                  child: Text(
+                    "No pending cancellation requests",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
                   ),
-                  elevation: 4,
-                  child: ExpansionTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.green[100],
-                      child: Icon(
-                        Icons.person,
-                        color: Colors.green[700],
-                      ),
-                    ),
-                    title: Text(
-                      req.userName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    subtitle: const Text("Tap to view details"),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Reason: ${req.reason}",
-                              style: const TextStyle(fontSize: 16, color: Colors.black87),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.blue[50],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.blue[200]!),
-                              ),
-                              child: Row(
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadCancellationRequests,
+                  child: ListView.builder(
+                    itemCount: cancellationRequests.length,
+                    itemBuilder: (context, index) {
+                      final request = cancellationRequests[index];
+                      final userName = request['user_full_name'] ?? 'Unknown User';
+                      final bookingDate = request['booking_date'];
+                      final startTime = request['start_time'];
+                      final endTime = request['end_time'];
+                      final originalAmount = (request['original_amount'] as num).toDouble();
+                      final cancellationReason = request['cancellation_reason'] ?? 'No reason provided';
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 4,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // User Name
+                              Row(
                                 children: [
-                                  Icon(Icons.schedule, color: Colors.blue[700], size: 20),
-                                  const SizedBox(width: 8),
+                                  CircleAvatar(
+                                    backgroundColor: Colors.green[100],
+                                    child: Icon(
+                                      Icons.person,
+                                      color: Colors.green[700],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
                                   Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "Cancellation Timing",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.blue[700],
-                                          ),
-                                        ),
-                                        Text(
-                                          "Requested ${req.timingInfo}",
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.blue[800],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
+                                    child: Text(
+                                      userName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              "Select Action:",
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                SizedBox(
-                                  width: (MediaQuery.of(context).size.width - 64) / 2,
-                                  child: ElevatedButton.icon(
-                                    icon: const Icon(Icons.visibility, size: 16),
-                                    label: const Text("Acknowledged", style: TextStyle(fontSize: 12)),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 8),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                              const SizedBox(height: 16),
+
+                              // Booking Details Container
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.blue[200]!),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Booking Details',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.blue[800],
                                       ),
                                     ),
-                                    onPressed: () => handleRequest(req.userName, 'acknowledged'),
-                                  ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.calendar_today, color: Colors.blue[700], size: 16),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Date: ${CancellationService.formatDate(bookingDate)}',
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.access_time, color: Colors.blue[700], size: 16),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Time: ${CancellationService.formatTime(startTime)} - ${CancellationService.formatTime(endTime)}',
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.attach_money, color: Colors.green[700], size: 16),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Amount: ${CancellationService.formatCurrency(originalAmount)}',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                                SizedBox(
-                                  width: (MediaQuery.of(context).size.width - 64) / 2,
-                                  child: ElevatedButton.icon(
-                                    icon: const Icon(Icons.money, size: 16),
-                                    label: const Text("Full Refund", style: TextStyle(fontSize: 12)),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 8),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Requested At Information
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.orange[200]!),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.schedule, color: Colors.orange[700], size: 16),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Requested at: ${CancellationService.formatDateTime(request['created_at'])}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                    onPressed: () => handleRequest(req.userName, 'full_refund'),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Cancellation Reason
+                              Text(
+                                'Cancellation Reason:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.red[200]!),
+                                ),
+                                child: Text(
+                                  cancellationReason,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontStyle: FontStyle.italic,
                                   ),
                                 ),
-                                SizedBox(
-                                  width: (MediaQuery.of(context).size.width - 64) / 2,
-                                  child: ElevatedButton.icon(
-                                    icon: const Icon(Icons.money_off, size: 16),
-                                    label: const Text("Half Refund", style: TextStyle(fontSize: 12)),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.orange,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 8),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Action Buttons
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      icon: const Icon(Icons.check_circle, size: 18),
+                                      label: const Text('Accept'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
                                       ),
+                                      onPressed: () => _showRefundAmountDialog(request),
                                     ),
-                                    onPressed: () => handleRequest(req.userName, 'half_refund'),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      icon: const Icon(Icons.cancel, size: 18),
+                                      label: const Text('Reject'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      onPressed: () => _rejectCancellationRequest(request['id'], userName),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      )
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
-            ),
+                ),
     );
   }
 }
